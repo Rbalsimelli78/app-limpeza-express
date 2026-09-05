@@ -551,6 +551,28 @@ h1, h2, h3, h4, .brand-title {
   border-radius: var(--radius-md);
 }
 
+.login-input {
+  width: 100% !important;
+  height: 60px !important;
+  min-height: 60px !important;
+  padding: 0.85rem 1.25rem 0.85rem 3.6rem !important;
+  background-color: var(--bg-input) !important;
+  color: var(--text-primary) !important;
+  border: 1.5px solid var(--border-color) !important;
+  border-radius: 14px !important;
+  font-size: 1.15rem !important;
+  line-height: 1.5 !important;
+  outline: none !important;
+  box-sizing: border-box !important;
+  transition: all 0.2s ease !important;
+}
+
+.login-input:focus {
+  border-color: var(--primary-500) !important;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.25) !important;
+  background-color: var(--bg-secondary) !important;
+}
+
 /* Modais */
 .modal-overlay {
   position: fixed;

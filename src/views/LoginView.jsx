@@ -166,13 +166,14 @@ export const LoginView = () => {
               <div style={{ position: 'relative' }}>
                 <div style={{
                   position: 'absolute',
-                  left: '1.1rem',
+                  left: '1.15rem',
                   top: '50%',
                   transform: 'translateY(-50%)',
-                  color: 'var(--text-muted)',
+                  color: 'var(--primary-400)',
                   display: 'flex',
                   alignItems: 'center',
-                  pointerEvents: 'none'
+                  pointerEvents: 'none',
+                  zIndex: 2
                 }}>
                   <User size={22} />
                 </div>
@@ -181,14 +182,20 @@ export const LoginView = () => {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder="Ex: admin"
-                  className="input form-input"
+                  className="login-input"
                   style={{ 
-                    height: '56px', 
-                    paddingLeft: '3.4rem', 
-                    paddingRight: '1.1rem', 
-                    fontSize: '1.05rem',
-                    borderRadius: '12px',
-                    width: '100%' 
+                    height: '60px', 
+                    minHeight: '60px',
+                    paddingLeft: '3.6rem', 
+                    paddingRight: '1.25rem', 
+                    fontSize: '1.15rem',
+                    backgroundColor: 'var(--bg-input)',
+                    color: 'var(--text-primary)',
+                    border: '1.5px solid var(--border-color)',
+                    borderRadius: '14px',
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    outline: 'none'
                   }}
                   autoComplete="username"
                   required
@@ -225,13 +232,14 @@ export const LoginView = () => {
               <div style={{ position: 'relative' }}>
                 <div style={{
                   position: 'absolute',
-                  left: '1.1rem',
+                  left: '1.15rem',
                   top: '50%',
                   transform: 'translateY(-50%)',
-                  color: 'var(--text-muted)',
+                  color: 'var(--primary-400)',
                   display: 'flex',
                   alignItems: 'center',
-                  pointerEvents: 'none'
+                  pointerEvents: 'none',
+                  zIndex: 2
                 }}>
                   <Lock size={22} />
                 </div>
@@ -240,14 +248,20 @@ export const LoginView = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Digite sua senha"
-                  className="input form-input"
+                  className="login-input"
                   style={{ 
-                    height: '56px', 
-                    paddingLeft: '3.4rem', 
-                    paddingRight: '3.4rem', 
-                    fontSize: '1.05rem',
-                    borderRadius: '12px',
-                    width: '100%' 
+                    height: '60px', 
+                    minHeight: '60px',
+                    paddingLeft: '3.6rem', 
+                    paddingRight: '3.6rem', 
+                    fontSize: '1.15rem',
+                    backgroundColor: 'var(--bg-input)',
+                    color: 'var(--text-primary)',
+                    border: '1.5px solid var(--border-color)',
+                    borderRadius: '14px',
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    outline: 'none'
                   }}
                   autoComplete="current-password"
                   required
@@ -266,7 +280,8 @@ export const LoginView = () => {
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
-                    padding: '0.35rem'
+                    padding: '0.5rem',
+                    zIndex: 3
                   }}
                   title={showPassword ? 'Ocultar senha' : 'Exibir senha'}
                 >
