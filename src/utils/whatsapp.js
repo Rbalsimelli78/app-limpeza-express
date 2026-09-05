@@ -144,3 +144,77 @@ Estamos à disposição para atender às suas necessidades de limpeza! 🏡✨
 ${plano.avisoCancelamento || 'No caso de cancelamento avisar com 48hs de antecedência ou será cobrado 50% da sua reserva!!!'}`;
 };
 
+/**
+ * Mensagem de extrato financeiro para o cliente
+ */
+export const buildExtratoClienteText = ({
+  clienteNome,
+  periodoDesc,
+  agendamentos,
+  totalGeral,
+  totalPago,
+  totalPendente
+}) => {
+  const listaFaxinas = agendamentos.map((ag) => {
+    const data = new Date(ag.dataHoraInicio).toLocaleDateString('pt-BR');
+    const valor = Number(ag.valorCliente || 0).toFixed(2).replace('.', ',');
+    const status = ag.statusClientePagamento === 'pago' ? '✅ Pago' : '⏳ Pendente';
+    return `• *${data}* - ${ag.planoNome || 'Faxina'}: R$ ${valor} (${status})`;
+  }).join('\n');
+
+  return `✨ *EXTRATO FINANCEIRO - LIMPEZA EXPRESS SP* ✨
+
+Olá, *${clienteNome}*! Segue o seu demonstrativo de serviços e pagamentos:
+
+📅 *Período:* ${periodoDesc}
+
+📋 *Histórico de Faxinas:*
+${listaFaxinas || '• Nenhuma faxina registrada no período.'}
+
+💰 *RESUMO FINANCEIRO:*
+✅ Total Quitado: *R$ ${Number(totalPago).toFixed(2).replace('.', ',')}*
+⏳ Saldo Pendente: *R$ ${Number(totalPendente).toFixed(2).replace('.', ',')}*
+📊 Total Geral: *R$ ${Number(totalGeral).toFixed(2).replace('.', ',')}* (${agendamentos.length} faxinas)
+
+Qualquer dúvida ou comprovante necessário, estamos à disposição! 🧼🧹✨`;
+};
+
+/**
+ * Mensagem de extrato financeiro para a colaboradora/ajudante
+ */
+export const buildExtratoAjudanteText = ({
+  ajudanteNome,
+  periodoDesc,
+  historicoDiarias,
+  totalGeral,
+  totalPago,
+  totalPendente,
+  chavePix,
+  tipoPix
+}) => {
+  const listaDiarias = historicoDiarias.map((h) => {
+    const data = new Date(h.dataHora).toLocaleDateString('pt-BR');
+    const valor = Number(h.valor || 0).toFixed(2).replace('.', ',');
+    const status = h.statusPagamento === 'pago' ? '✅ Pago' : '⏳ A Pagar';
+    return `• *${data}* - Cliente ${h.clienteNome}: R$ ${valor} (${status})`;
+  }).join('\n');
+
+  return `✨ *EXTRATO DE DIÁRIAS - LIMPEZA EXPRESS SP* ✨
+
+Olá, *${ajudanteNome}*! Segue o seu extrato de diárias e serviços realizados:
+
+📅 *Período:* ${periodoDesc}
+🔑 *Sua Chave PIX cadastrada:* ${chavePix || 'Não informada'} (${tipoPix || 'Chave'})
+
+📋 *Diárias Realizadas:*
+${listaDiarias || '• Nenhuma diária registrada no período.'}
+
+💰 *RESUMO DO PERÍODO:*
+✅ Total Já Pago / Transferido: *R$ ${Number(totalPago).toFixed(2).replace('.', ',')}*
+⏳ Saldo a Pagar: *R$ ${Number(totalPendente).toFixed(2).replace('.', ',')}*
+📊 Total de Faxinas: *${historicoDiarias.length} trabalhos*
+
+Muito obrigado pela sua dedicação e excelente trabalho na equipe! ⭐✨`;
+};
+
+

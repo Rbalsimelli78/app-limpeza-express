@@ -11,14 +11,17 @@ import {
   Home, 
   Edit2, 
   Trash2,
-  Sparkles
+  Sparkles,
+  TrendingUp
 } from 'lucide-react';
 import { formatPhone, formatCurrency } from '../utils/formatters';
 import { getWhatsAppUrl } from '../utils/whatsapp';
+import { ModalExtratoCliente } from '../components/ModalExtratoCliente';
 
 export const ClientesView = ({ onNovoCliente, onEditarCliente, onAgendarParaCliente }) => {
   const { clientes, agendamentos, planos, deleteCliente } = useApp();
   const [busca, setBusca] = useState('');
+  const [clienteExtrato, setClienteExtrato] = useState(null);
 
   const clientesFiltrados = clientes.filter(c => {
     const termo = busca.toLowerCase();
@@ -142,6 +145,27 @@ export const ClientesView = ({ onNovoCliente, onEditarCliente, onAgendarParaClie
                   </span>
                 </div>
 
+                {/* Botão de Extrato Financeiro & Gráfico */}
+                <button
+                  type="button"
+                  onClick={() => setClienteExtrato(c)}
+                  className="btn btn-secondary btn-sm"
+                  style={{ 
+                    width: '100%', 
+                    marginBottom: '0.625rem', 
+                    gap: '0.4rem', 
+                    justifyContent: 'center',
+                    background: 'rgba(16, 185, 129, 0.08)',
+                    borderColor: 'rgba(16, 185, 129, 0.25)',
+                    color: 'var(--primary-400)',
+                    fontWeight: '600'
+                  }}
+                  title="Ver extrato financeiro completo e gráfico de pagamentos"
+                >
+                  <TrendingUp size={15} />
+                  <span>Ver Extrato & Gráfico</span>
+                </button>
+
                 {/* Botões de Ação */}
                 <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
                   <div style={{ display: 'flex', gap: '0.375rem' }}>
@@ -192,6 +216,13 @@ export const ClientesView = ({ onNovoCliente, onEditarCliente, onAgendarParaClie
           })
         )}
       </div>
+
+      {/* Modal de Extrato do Cliente */}
+      <ModalExtratoCliente 
+        isOpen={!!clienteExtrato} 
+        onClose={() => setClienteExtrato(null)} 
+        cliente={clienteExtrato} 
+      />
     </div>
   );
 };

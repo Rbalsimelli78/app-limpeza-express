@@ -12,10 +12,12 @@ import {
   Clock, 
   Edit2, 
   Trash2,
-  AlertTriangle
+  AlertTriangle,
+  TrendingUp
 } from 'lucide-react';
 import { formatCurrency, formatPhone, formatDate, formatTime } from '../utils/formatters';
 import { getWhatsAppUrl } from '../utils/whatsapp';
+import { ModalExtratoAjudante } from '../components/ModalExtratoAjudante';
 
 export const AjudantesView = ({ onNovaAjudante, onEditarAjudante }) => {
   const { 
@@ -28,6 +30,7 @@ export const AjudantesView = ({ onNovaAjudante, onEditarAjudante }) => {
   } = useApp();
 
   const [abaInterna, setAbaInterna] = useState('cadastro'); // 'cadastro' ou 'extrato'
+  const [ajudanteExtrato, setAjudanteExtrato] = useState(null);
 
   const copiarPix = (chave) => {
     navigator.clipboard.writeText(chave);
@@ -249,6 +252,27 @@ export const AjudantesView = ({ onNovaAjudante, onEditarAjudante }) => {
                   </div>
                 )}
 
+                {/* Botão de Extrato de Diárias & Gráfico */}
+                <button
+                  type="button"
+                  onClick={() => setAjudanteExtrato(aj)}
+                  className="btn btn-secondary btn-sm"
+                  style={{ 
+                    width: '100%', 
+                    marginBottom: '0.625rem', 
+                    gap: '0.4rem', 
+                    justifyContent: 'center',
+                    background: 'rgba(6, 182, 212, 0.08)',
+                    borderColor: 'rgba(6, 182, 212, 0.25)',
+                    color: 'var(--accent-cyan)',
+                    fontWeight: '600'
+                  }}
+                  title="Ver extrato completo de diárias e gráfico de evolução"
+                >
+                  <TrendingUp size={15} />
+                  <span>Ver Extrato de Diárias & Gráfico</span>
+                </button>
+
                 {/* Botões de Ação */}
                 <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
                   <a 
@@ -288,6 +312,13 @@ export const AjudantesView = ({ onNovaAjudante, onEditarAjudante }) => {
           })
         )}
       </div>
+
+      {/* Modal de Extrato da Ajudante */}
+      <ModalExtratoAjudante 
+        isOpen={!!ajudanteExtrato} 
+        onClose={() => setAjudanteExtrato(null)} 
+        ajudante={ajudanteExtrato} 
+      />
     </div>
   );
 };
