@@ -6,7 +6,8 @@ import {
   Users, 
   UserCheck, 
   Calculator, 
-  DollarSign 
+  DollarSign,
+  Layers
 } from 'lucide-react';
 
 export const BottomNav = () => {
@@ -15,9 +16,10 @@ export const BottomNav = () => {
   const items = [
     { id: 'dashboard', label: 'Início', icon: LayoutDashboard },
     { id: 'agenda', label: 'Agenda', icon: Calendar },
+    { id: 'planos', label: 'Planos', icon: Layers },
     { id: 'orcamento', label: 'Orçar', icon: Calculator },
     { id: 'clientes', label: 'Clientes', icon: Users },
-    { id: 'ajudantes', label: 'Ajudantes', icon: UserCheck },
+    { id: 'ajudantes', label: 'Equipe', icon: UserCheck },
     { id: 'financeiro', label: 'Caixa', icon: DollarSign },
   ];
 

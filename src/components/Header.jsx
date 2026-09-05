@@ -11,6 +11,7 @@ export const Header = ({ onOpenNovoAgendamento }) => {
       case 'agenda': return 'Agenda de Faxinas';
       case 'clientes': return 'Gestão de Clientes';
       case 'ajudantes': return 'Controle de Ajudantes & Diárias';
+      case 'planos': return 'Catálogo & Planos de Limpeza';
       case 'orcamento': return 'Calculadora de Propostas WhatsApp';
       case 'financeiro': return 'Fluxo de Caixa & Lucro Líquido';
       case 'config': return 'Configurações & Backup';

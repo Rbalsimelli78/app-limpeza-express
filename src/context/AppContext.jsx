@@ -53,7 +53,19 @@ export const AppProvider = ({ children }) => {
     }
   });
 
+  const [planos, setPlanos] = useState(() => {
+    try {
+      const saved = localStorage.getItem(`${STORAGE_KEY}_planos`);
+      return saved ? JSON.parse(saved) : PLANOS_CATALOGO;
+    } catch (e) {
+      return PLANOS_CATALOGO;
+    }
+  });
+
   // Efeito para persistência automática
+  useEffect(() => {
+    localStorage.setItem(`${STORAGE_KEY}_planos`, JSON.stringify(planos));
+  }, [planos]);
   useEffect(() => {
     localStorage.setItem(`${STORAGE_KEY}_clientes`, JSON.stringify(clientes));
   }, [clientes]);
@@ -125,6 +137,33 @@ export const AppProvider = ({ children }) => {
   const deleteAjudante = (id) => {
     setAjudantes(prev => prev.filter(a => a.id !== id));
     showToast('Colaboradora removida.');
+  };
+
+  // Funções de Planos de Limpeza
+  const addPlano = (planoData) => {
+    const novo = {
+      ...planoData,
+      id: `plano-${Date.now()}`
+    };
+    setPlanos(prev => [...prev, novo]);
+    showToast(`Plano "${novo.nome}" cadastrado com sucesso!`);
+    return novo;
+  };
+
+  const updatePlano = (id, planoData) => {
+    setPlanos(prev => prev.map(p => p.id === id ? { ...p, ...planoData } : p));
+    showToast('Plano de limpeza atualizado!');
+  };
+
+  const deletePlano = (id) => {
+    setPlanos(prev => prev.filter(p => p.id !== id));
+    showToast('Plano de limpeza excluído.');
+  };
+
+  const resetPlanosPadrao = () => {
+    setPlanos(PLANOS_CATALOGO);
+    localStorage.setItem(`${STORAGE_KEY}_planos`, JSON.stringify(PLANOS_CATALOGO));
+    showToast('Planos restaurados para o catálogo oficial Limpeza Express SP!');
   };
 
   // Funções de Agendamentos
@@ -236,6 +275,7 @@ export const AppProvider = ({ children }) => {
       if (jsonData.clientes) setClientes(jsonData.clientes);
       if (jsonData.ajudantes) setAjudantes(jsonData.ajudantes);
       if (jsonData.agendamentos) setAgendamentos(jsonData.agendamentos);
+      if (jsonData.planos) setPlanos(jsonData.planos);
       showToast('Backup restaurado com sucesso!');
     } catch (e) {
       showToast('Erro ao ler arquivo de backup.', 'danger');
@@ -265,6 +305,7 @@ export const AppProvider = ({ children }) => {
     setClientes(CLIENTES_INICIAIS);
     setAjudantes(AJUDANTES_INICIAIS);
     setAgendamentos(AGENDAMENTOS_INICIAIS);
+    setPlanos(PLANOS_CATALOGO);
     showToast('Dados de demonstração recarregados!');
   };
 
@@ -279,7 +320,7 @@ export const AppProvider = ({ children }) => {
       clientes,
       ajudantes,
       agendamentos,
-      planos: PLANOS_CATALOGO,
+      planos,
       checklist: CHECKLIST_PADRAO,
       regras: REGRAS_ADICIONAIS,
       addCliente,
@@ -288,6 +329,10 @@ export const AppProvider = ({ children }) => {
       addAjudante,
       updateAjudante,
       deleteAjudante,
+      addPlano,
+      updatePlano,
+      deletePlano,
+      resetPlanosPadrao,
       addAgendamento,
       updateAgendamento,
       deleteAgendamento,

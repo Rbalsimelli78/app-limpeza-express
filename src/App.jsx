@@ -12,10 +12,12 @@ import { AjudantesView } from './views/AjudantesView';
 import { OrcamentoView } from './views/OrcamentoView';
 import { FinanceiroView } from './views/FinanceiroView';
 import { ConfigView } from './views/ConfigView';
+import { PlanosView } from './views/PlanosView';
 
 import { ModalAgendamento } from './components/ModalAgendamento';
 import { ModalCliente } from './components/ModalCliente';
 import { ModalAjudante } from './components/ModalAjudante';
+import { ModalPlano } from './components/ModalPlano';
 
 const MainAppContent = () => {
   const { activeTab, setActiveTab, addCliente } = useApp();
@@ -29,6 +31,9 @@ const MainAppContent = () => {
 
   const [modalAjudanteOpen, setModalAjudanteOpen] = useState(false);
   const [ajudanteEdicao, setAjudanteEdicao] = useState(null);
+
+  const [modalPlanoOpen, setModalPlanoOpen] = useState(false);
+  const [planoEdicao, setPlanoEdicao] = useState(null);
 
   // Ações de Agendamento
   const handleNovoAgendamento = () => {
@@ -101,6 +106,17 @@ const MainAppContent = () => {
     setModalAjudanteOpen(true);
   };
 
+  // Ações de Planos
+  const handleNovoPlano = () => {
+    setPlanoEdicao(null);
+    setModalPlanoOpen(true);
+  };
+
+  const handleEditarPlano = (plano) => {
+    setPlanoEdicao(plano);
+    setModalPlanoOpen(true);
+  };
+
   return (
     <div className="app-container">
       {/* Barra de Notificações Toast */}
@@ -143,6 +159,13 @@ const MainAppContent = () => {
             />
           )}
 
+          {activeTab === 'planos' && (
+            <PlanosView 
+              onNovoPlano={handleNovoPlano}
+              onEditarPlano={handleEditarPlano}
+            />
+          )}
+
           {activeTab === 'orcamento' && (
             <OrcamentoView 
               onAgendarComDados={handleAgendarComDadosOrcamento}
@@ -179,6 +202,12 @@ const MainAppContent = () => {
         isOpen={modalAjudanteOpen} 
         onClose={() => setModalAjudanteOpen(false)}
         ajudanteEdicao={ajudanteEdicao}
+      />
+
+      <ModalPlano 
+        isOpen={modalPlanoOpen} 
+        onClose={() => setModalPlanoOpen(false)}
+        planoEdicao={planoEdicao}
       />
     </div>
   );

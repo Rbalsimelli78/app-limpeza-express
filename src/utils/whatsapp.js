@@ -112,3 +112,35 @@ export const buildLembreteClienteText = ({
 Nossa equipe estará pontualmente no seu endereço! 
 Qualquer dúvida ou necessidade, estamos à disposição. Até amanhã! ✨`;
 };
+
+/**
+ * Mensagem de apresentação completa do plano e catálogo para enviar ao cliente
+ */
+export const buildApresentacaoPlanoText = (plano, clienteNome = '') => {
+  const saudacao = clienteNome ? `Olá ${clienteNome}! Tudo bem?` : `Olá! Tudo bem?`;
+  
+  const servicosTexto = (plano.servicosOferecidos || [])
+    .map((s, idx) => `${idx + 1}. *${s.item}:*\n• ${s.detalhe}`)
+    .join('\n\n');
+
+  const acrescimoQuarto = plano.acrescimoPorQuartoExtra 
+    ? `👉 *3 dormitórios:* acrescer +R$ ${Number(plano.acrescimoPorQuartoExtra).toFixed(2).replace('.', ',')}\n` 
+    : '';
+
+  return `${saudacao} Seguem os detalhes do nosso pacote de limpeza residencial pela *Limpeza Express SP* ✨:
+
+✨ *${(plano.nome || 'Plano de Limpeza').toUpperCase()}*
+💰 *Valor:* R$ ${Number(plano.valorBase || 0).toFixed(2).replace('.', ',')}
+${acrescimoQuarto}⏱️ *Tempo estimado:* ${plano.tempoEstimado || '3 a 5hs'}
+👥 *Equipe:* Faxina completa com ${plano.profissionais || 2} profissionais
+
+📋 *Serviços Oferecidos neste pacote:*
+
+${servicosTexto}
+
+Estamos à disposição para atender às suas necessidades de limpeza! 🏡✨
+
+⚠️ *Aviso importante:*
+${plano.avisoCancelamento || 'No caso de cancelamento avisar com 48hs de antecedência ou será cobrado 50% da sua reserva!!!'}`;
+};
+

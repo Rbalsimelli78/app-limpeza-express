@@ -1,38 +1,62 @@
 // Dados iniciais e catálogo oficial da Limpeza Express SP
 
+export const SERVICOS_CATALOGO_PADRAO = [
+  { id: 1, item: 'Varrer e Passar Pano no Piso', detalhe: 'Remoção eficiente de poeira, sujeira e detritos em todo apartamento.' },
+  { id: 2, item: 'Limpeza de Móveis e Eletrônicos', detalhe: 'Remoção cuidadosa do pó exterior de móveis.' },
+  { id: 3, item: 'Cozinha', detalhe: 'Lavagem do piso, limpeza de pia e bancadas, higienização de fogão e parte externa do forno, limpeza externa de armários, geladeira e micro-ondas.' },
+  { id: 4, item: 'Banheiro', detalhe: 'Lavagem piso, higienização de vaso sanitário, pia e espelhos, limpeza de box e piso.' },
+  { id: 5, item: 'Organização de Quarto', detalhe: 'Arrumação da cama ou troca de lençóis.' },
+  { id: 6, item: 'Janelas', detalhe: 'Limpeza interna e externa dos vidros acessíveis.' },
+  { id: 7, item: 'Varanda', detalhe: 'Limpeza piso e vidros de sacada/proteção.' },
+  { id: 8, item: 'Gestão do Lixo', detalhe: 'Retirada e reposição de sacos de lixo.' },
+  { id: 9, item: 'Organização de Itens Diários', detalhe: 'Arrumação de itens do dia a dia para evitar desordem (vassoura, rodo, aspirador de pó etc).' }
+];
+
 export const PLANOS_CATALOGO = [
   {
     id: 'plano-semanal',
-    nome: 'Plano Semanal',
+    nome: 'Plano Semanal 2 dormitórios',
     dormitoriosBase: 2,
     valorBase: 170.00,
+    acrescimoPorQuartoExtra: 30.00,
+    taxaSemManutencao: 50.00,
     frequencia: 'Semanal (1x por semana)',
-    tempoEstimado: '3 a 5 horas',
+    tempoEstimado: '3 a 5hs',
     profissionais: 2,
     destaque: 'Mais Econômico',
-    descricao: 'Faxina completa e contínua com 2 profissionais, ideal para manter o apartamento sempre impecável.'
+    descricao: 'Faxina completa 2 profissionais, ideal para manter o apartamento sempre impecável.',
+    avisoCancelamento: 'No caso de cancelamento avisar com 48hs de antecedência ou será cobrado 50% da sua reserva!!!',
+    servicosOferecidos: SERVICOS_CATALOGO_PADRAO
   },
   {
     id: 'plano-quinzenal',
-    nome: 'Plano Quinzenal',
+    nome: 'Plano Quinzenal 2 dormitórios',
     dormitoriosBase: 2,
     valorBase: 190.00,
+    acrescimoPorQuartoExtra: 30.00,
+    taxaSemManutencao: 50.00,
     frequencia: 'Quinzenal (a cada 15 dias)',
-    tempoEstimado: '3 a 5 horas',
+    tempoEstimado: '3 a 5hs',
     profissionais: 2,
     destaque: 'Mais Popular',
-    descricao: 'Equilíbrio perfeito de frequência para quem busca manutenção constante da casa.'
+    descricao: 'Faxina completa 2 profissionais, equilíbrio perfeito para manutenção contínua.',
+    avisoCancelamento: 'No caso de cancelamento avisar com 48hs de antecedência ou será cobrado 50% da sua reserva!!!',
+    servicosOferecidos: SERVICOS_CATALOGO_PADRAO
   },
   {
     id: 'plano-mensal',
-    nome: 'Plano Mensal',
+    nome: 'Plano Mensal 2 dormitórios',
     dormitoriosBase: 2,
     valorBase: 200.00,
+    acrescimoPorQuartoExtra: 30.00,
+    taxaSemManutencao: 50.00,
     frequencia: 'Mensal (1x por mês)',
-    tempoEstimado: '3 a 5 horas',
+    tempoEstimado: '3 a 5hs',
     profissionais: 2,
     destaque: 'Faxina Completa',
-    descricao: 'Limpeza profunda e minuciosa com 2 profissionais para renovar o apartamento todo.'
+    descricao: 'Faxina profunda e detalhada com 2 profissionais para renovar o apartamento.',
+    avisoCancelamento: 'No caso de cancelamento avisar com 48hs de antecedência ou será cobrado 50% da sua reserva!!!',
+    servicosOferecidos: SERVICOS_CATALOGO_PADRAO
   }
 ];
 

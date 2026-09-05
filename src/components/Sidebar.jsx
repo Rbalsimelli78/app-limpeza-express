@@ -8,7 +8,8 @@ import {
   Calculator, 
   DollarSign, 
   Settings,
-  Sparkles
+  Sparkles,
+  Layers
 } from 'lucide-react';
 
 export const Sidebar = () => {
@@ -19,6 +20,7 @@ export const Sidebar = () => {
     { id: 'agenda', label: 'Agenda & Google Cal', icon: Calendar },
     { id: 'clientes', label: 'Clientes', icon: Users },
     { id: 'ajudantes', label: 'Ajudantes & Diárias', icon: UserCheck },
+    { id: 'planos', label: 'Planos & Catálogo', icon: Layers },
     { id: 'orcamento', label: 'Calculadora WhatsApp', icon: Calculator },
     { id: 'financeiro', label: 'Financeiro & Lucro', icon: DollarSign },
     { id: 'config', label: 'Configurações', icon: Settings },
