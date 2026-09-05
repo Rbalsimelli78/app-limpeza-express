@@ -160,35 +160,13 @@ export const AppProvider = ({ children }) => {
   useEffect(() => {
     const unsubs = [];
 
-    // Função para fazer o primeiro upload caso a nuvem ainda esteja vazia
-    const checkAndBootstrapCloud = (isColEmpty) => {
-      if (isColEmpty && !initialUploadDoneRef.current) {
-        initialUploadDoneRef.current = true;
-        subirBaseParaNuvem({
-          clientes,
-          ajudantes,
-          agendamentos,
-          planos
-        }).then(ok => {
-          if (ok) {
-            setCloudStatus('sincronizado');
-            setCloudLastSync(new Date());
-          }
-        });
-      }
-    };
-
     try {
-      // 1. Escuta Clientes
+      // 1. Escuta Clientes em Tempo Real (reflete adições, edições e exclusões)
       const unsubCli = listenClientes(
-        (docs, empty) => {
+        (docs) => {
           setCloudStatus('sincronizado');
           setCloudLastSync(new Date());
-          if (!empty) {
-            setClientes(docs);
-          } else {
-            checkAndBootstrapCloud(true);
-          }
+          setClientes(docs);
         },
         (err) => {
           console.warn('[Cloud] Firestore offline ou ainda não iniciado:', err?.message);
@@ -197,38 +175,34 @@ export const AppProvider = ({ children }) => {
       );
       unsubs.push(unsubCli);
 
-      // 2. Escuta Ajudantes
+      // 2. Escuta Ajudantes em Tempo Real
       const unsubAjud = listenAjudantes(
-        (docs, empty) => {
+        (docs) => {
           setCloudStatus('sincronizado');
           setCloudLastSync(new Date());
-          if (!empty) {
-            setAjudantes(docs);
-          }
+          setAjudantes(docs);
         },
         (err) => setCloudStatus('offline')
       );
       unsubs.push(unsubAjud);
 
-      // 3. Escuta Agendamentos
+      // 3. Escuta Agendamentos em Tempo Real
       const unsubAgend = listenAgendamentos(
-        (docs, empty) => {
+        (docs) => {
           setCloudStatus('sincronizado');
           setCloudLastSync(new Date());
-          if (!empty) {
-            setAgendamentos(docs);
-          }
+          setAgendamentos(docs);
         },
         (err) => setCloudStatus('offline')
       );
       unsubs.push(unsubAgend);
 
-      // 4. Escuta Planos
+      // 4. Escuta Planos em Tempo Real
       const unsubPlanos = listenPlanos(
-        (docs, empty) => {
+        (docs) => {
           setCloudStatus('sincronizado');
           setCloudLastSync(new Date());
-          if (!empty) {
+          if (docs && docs.length > 0) {
             setPlanos(docs);
           }
         },
@@ -513,24 +487,26 @@ export const AppProvider = ({ children }) => {
   };
 
   // Limpar Todos os Dados (Para Iniciar do Zero em Produção)
-  const limparTodosOsDados = () => {
+  const limparTodosOsDados = async () => {
     setClientes([]);
     setAjudantes([]);
     setAgendamentos([]);
     localStorage.setItem(`${STORAGE_KEY}_clientes`, JSON.stringify([]));
     localStorage.setItem(`${STORAGE_KEY}_ajudantes`, JSON.stringify([]));
     localStorage.setItem(`${STORAGE_KEY}_agendamentos`, JSON.stringify([]));
-    limparColecaoNuvem('clientes');
-    limparColecaoNuvem('ajudantes');
-    limparColecaoNuvem('agendamentos');
+    await Promise.all([
+      limparColecaoNuvem('clientes'),
+      limparColecaoNuvem('ajudantes'),
+      limparColecaoNuvem('agendamentos')
+    ]);
     showToast('Base 100% limpa no celular, micro e na nuvem!', 'info');
   };
 
   // Limpar apenas as faxinas e histórico de caixa
-  const limparApenasAgendamentos = () => {
+  const limparApenasAgendamentos = async () => {
     setAgendamentos([]);
     localStorage.setItem(`${STORAGE_KEY}_agendamentos`, JSON.stringify([]));
-    limparColecaoNuvem('agendamentos');
+    await limparColecaoNuvem('agendamentos');
     showToast('Agenda e financeiro zerados no micro e na nuvem!', 'info');
   };
 

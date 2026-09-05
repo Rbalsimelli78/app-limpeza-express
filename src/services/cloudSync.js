@@ -206,6 +206,7 @@ export const subirBaseParaNuvem = async ({ clientes = [], ajudantes = [], agenda
 export const limparColecaoNuvem = async (nomeColecao) => {
   try {
     const snapshot = await getDocs(collection(db, nomeColecao));
+    if (snapshot.empty) return;
     const batch = writeBatch(db);
     snapshot.docs.forEach(d => {
       batch.delete(doc(db, nomeColecao, d.id));
