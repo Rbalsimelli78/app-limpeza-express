@@ -242,6 +242,24 @@ export const AppProvider = ({ children }) => {
     }
   };
 
+  // Limpar Todos os Dados (Para Iniciar do Zero em Produção)
+  const limparTodosOsDados = () => {
+    setClientes([]);
+    setAjudantes([]);
+    setAgendamentos([]);
+    localStorage.setItem(`${STORAGE_KEY}_clientes`, JSON.stringify([]));
+    localStorage.setItem(`${STORAGE_KEY}_ajudantes`, JSON.stringify([]));
+    localStorage.setItem(`${STORAGE_KEY}_agendamentos`, JSON.stringify([]));
+    showToast('Base 100% limpa! O aplicativo está pronto para uso real.', 'info');
+  };
+
+  // Limpar apenas as faxinas e histórico de caixa
+  const limparApenasAgendamentos = () => {
+    setAgendamentos([]);
+    localStorage.setItem(`${STORAGE_KEY}_agendamentos`, JSON.stringify([]));
+    showToast('Agenda e financeiro zerados! Clientes e ajudantes mantidos.', 'info');
+  };
+
   // Resetar para dados de demonstração
   const resetDemo = () => {
     setClientes(CLIENTES_INICIAIS);
@@ -279,7 +297,9 @@ export const AppProvider = ({ children }) => {
       getFinanceiroGeral,
       exportBackup,
       importBackup,
-      resetDemo
+      resetDemo,
+      limparTodosOsDados,
+      limparApenasAgendamentos
     }}>
       {children}
     </AppContext.Provider>

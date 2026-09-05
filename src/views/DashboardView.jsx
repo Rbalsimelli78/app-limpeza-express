@@ -30,6 +30,7 @@ export const DashboardView = ({ onNovoAgendamento, onEditarAgendamento }) => {
     setStatusPagamentoCliente,
     setStatusPagamentoAjudante,
     setActiveTab,
+    limparTodosOsDados,
     showToast 
   } = useApp();
 
@@ -47,6 +48,38 @@ export const DashboardView = ({ onNovoAgendamento, onEditarAgendamento }) => {
 
   return (
     <div className="page-wrapper">
+      {/* Banner Informativo quando ainda houver dados de exemplo */}
+      {clientes.some(c => c.id === 'cli-1') && (
+        <div style={{
+          background: 'rgba(245, 158, 11, 0.1)',
+          border: '1px solid rgba(245, 158, 11, 0.35)',
+          borderRadius: 'var(--radius-md)',
+          padding: '0.75rem 1.25rem',
+          marginBottom: '1.25rem',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '0.75rem'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--text-primary)' }}>
+            <span style={{ fontSize: '1.1rem' }}>🧹</span>
+            <span>Você está visualizando <strong>dados de demonstração</strong>.</span>
+          </div>
+          <button 
+            onClick={() => {
+              if (confirm('Deseja limpar todos os dados de exemplo para sua esposa começar com o sistema 100% zerado?')) {
+                limparTodosOsDados();
+              }
+            }}
+            className="btn btn-secondary btn-sm"
+            style={{ borderColor: 'rgba(245, 158, 11, 0.4)', color: 'var(--accent-gold)' }}
+          >
+            Limpar Dados e Começar do Zero
+          </button>
+        </div>
+      )}
+
       {/* Banner de Boas-Vindas com Visual Premium */}
       <div 
         className="glass-card" 

@@ -11,11 +11,19 @@ import {
   Copy, 
   Check,
   ShieldCheck,
-  Building
+  Building,
+  Trash2
 } from 'lucide-react';
 
 export const ConfigView = () => {
-  const { exportBackup, importBackup, resetDemo, showToast } = useApp();
+  const { 
+    exportBackup, 
+    importBackup, 
+    resetDemo, 
+    limparTodosOsDados, 
+    limparApenasAgendamentos, 
+    showToast 
+  } = useApp();
   const [copiadoSql, setCopiadoSql] = useState(false);
 
   const handleFileUpload = (e) => {
@@ -144,6 +152,45 @@ CREATE TABLE IF NOT EXISTS agendamentos (
               <span>Restaurar Backup do Arquivo</span>
               <input type="file" accept=".json" onChange={handleFileUpload} style={{ display: 'none' }} />
             </label>
+          </div>
+        </div>
+
+        {/* Card de Limpeza para Uso Real da Esposa */}
+        <div className="glass-card" style={{ borderLeft: '4px solid var(--accent-rose)' }}>
+          <h3 style={{ fontSize: '1.15rem', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+            <Trash2 size={20} color="var(--accent-rose)" />
+            <span>Limpar Dados de Exemplo (Uso Real)</span>
+          </h3>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1rem', lineHeight: '1.5' }}>
+            Pronto para colocar sua esposa no controle? Use os botões abaixo para limpar os dados fictícios e iniciar com a base 100% limpa:
+          </p>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <button 
+              onClick={() => {
+                if (confirm('Atenção: Deseja apagar todos os clientes, ajudantes e faxinas de teste para começar do zero?')) {
+                  limparTodosOsDados();
+                }
+              }} 
+              className="btn btn-danger" 
+              style={{ width: '100%', justifyContent: 'flex-start', padding: '0.75rem 1rem' }}
+            >
+              <Trash2 size={16} />
+              <span>Limpar Base Completa (Zerar Tudo para Produção)</span>
+            </button>
+
+            <button 
+              onClick={() => {
+                if (confirm('Deseja apagar apenas as faxinas e histórico financeiro de teste? (Seus clientes e ajudantes cadastrados serão mantidos)')) {
+                  limparApenasAgendamentos();
+                }
+              }} 
+              className="btn btn-secondary" 
+              style={{ width: '100%', justifyContent: 'flex-start', padding: '0.75rem 1rem' }}
+            >
+              <RotateCcw size={16} />
+              <span>Limpar Apenas Faxinas de Teste (Manter Clientes/Ajudantes)</span>
+            </button>
 
             <button 
               onClick={() => {
@@ -151,8 +198,8 @@ CREATE TABLE IF NOT EXISTS agendamentos (
                   resetDemo();
                 }
               }} 
-              className="btn btn-danger btn-sm" 
-              style={{ marginTop: '0.5rem' }}
+              className="btn btn-secondary btn-sm" 
+              style={{ width: '100%', justifyContent: 'flex-start', color: 'var(--text-muted)' }}
             >
               <RotateCcw size={14} />
               <span>Recarregar Dados de Demonstração</span>
