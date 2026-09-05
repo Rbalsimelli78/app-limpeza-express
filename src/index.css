@@ -522,7 +522,7 @@ h1, h2, h3, h4, .brand-title {
   color: var(--text-secondary);
 }
 
-.form-input, .form-select, .form-textarea {
+.form-input, .form-select, .form-textarea, .input {
   width: 100%;
   padding: 0.75rem 1rem;
   background: var(--bg-input);
@@ -535,13 +535,20 @@ h1, h2, h3, h4, .brand-title {
   outline: none;
 }
 
-.form-input:focus, .form-select:focus, .form-textarea:focus {
+.form-input:focus, .form-select:focus, .form-textarea:focus, .input:focus {
   border-color: var(--primary-500);
   box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
 }
 
-.form-input::placeholder, .form-textarea::placeholder {
+.form-input::placeholder, .form-textarea::placeholder, .input::placeholder {
   color: var(--text-muted);
+}
+
+.input-lg {
+  height: 54px;
+  font-size: 1.05rem;
+  padding: 0.875rem 1.25rem;
+  border-radius: var(--radius-md);
 }
 
 /* Modais */

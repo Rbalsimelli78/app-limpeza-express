@@ -81,10 +81,10 @@ export const LoginView = () => {
         </button>
       </div>
 
-      <div style={{ width: '100%', maxWidth: '420px' }}>
+      <div style={{ width: '100%', maxWidth: '480px' }}>
         {/* Cartão de Login */}
         <div className="glass-card" style={{
-          padding: '2.25rem 2rem',
+          padding: '2.5rem 2.25rem',
           borderRadius: 'var(--radius-lg)',
           boxShadow: '0 20px 40px rgba(0, 0, 0, 0.35)',
           border: '1px solid rgba(255, 255, 255, 0.12)'
@@ -92,9 +92,9 @@ export const LoginView = () => {
           {/* Logo e Cabeçalho */}
           <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
             <div style={{
-              width: '80px',
-              height: '80px',
-              borderRadius: '20px',
+              width: '84px',
+              height: '84px',
+              borderRadius: '22px',
               margin: '0 auto 1rem',
               overflow: 'hidden',
               boxShadow: '0 8px 24px rgba(16, 185, 129, 0.3)',
@@ -107,26 +107,26 @@ export const LoginView = () => {
               />
             </div>
 
-            <h1 style={{ fontSize: '1.6rem', fontWeight: '800', marginBottom: '0.25rem', letterSpacing: '-0.02em' }}>
+            <h1 style={{ fontSize: '1.75rem', fontWeight: '800', marginBottom: '0.25rem', letterSpacing: '-0.02em' }}>
               Limpeza Express
             </h1>
-            <p style={{ fontSize: '0.85rem', color: 'var(--primary-400)', fontWeight: '600' }}>
+            <p style={{ fontSize: '0.9rem', color: 'var(--primary-400)', fontWeight: '600' }}>
               São Paulo • SP • Gestão Operacional
             </p>
 
             <div style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '0.35rem',
+              gap: '0.4rem',
               background: 'rgba(16, 185, 129, 0.12)',
               border: '1px solid rgba(16, 185, 129, 0.25)',
-              padding: '0.25rem 0.75rem',
+              padding: '0.35rem 0.85rem',
               borderRadius: '100px',
-              marginTop: '0.75rem',
-              fontSize: '0.75rem',
+              marginTop: '0.85rem',
+              fontSize: '0.8rem',
               color: 'var(--primary-400)'
             }}>
-              <ShieldCheck size={14} />
+              <ShieldCheck size={16} />
               <span>Painel Administrativo Restrito</span>
             </div>
           </div>
@@ -137,9 +137,9 @@ export const LoginView = () => {
               background: 'rgba(244, 63, 94, 0.15)',
               border: '1px solid rgba(244, 63, 94, 0.3)',
               color: 'var(--accent-rose)',
-              padding: '0.75rem 1rem',
+              padding: '0.85rem 1.15rem',
               borderRadius: 'var(--radius-md)',
-              fontSize: '0.825rem',
+              fontSize: '0.9rem',
               marginBottom: '1.25rem',
               display: 'flex',
               alignItems: 'center',
@@ -151,14 +151,14 @@ export const LoginView = () => {
           )}
 
           {/* Formulário */}
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.15rem' }}>
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.35rem' }}>
             {/* Campo Usuário */}
             <div>
               <label style={{ 
                 display: 'block', 
-                fontSize: '0.825rem', 
+                fontSize: '0.95rem', 
                 fontWeight: '600', 
-                marginBottom: '0.4rem', 
+                marginBottom: '0.5rem', 
                 color: 'var(--text-secondary)' 
               }}>
                 Usuário ou E-mail
@@ -166,22 +166,30 @@ export const LoginView = () => {
               <div style={{ position: 'relative' }}>
                 <div style={{
                   position: 'absolute',
-                  left: '0.875rem',
+                  left: '1.1rem',
                   top: '50%',
                   transform: 'translateY(-50%)',
                   color: 'var(--text-muted)',
                   display: 'flex',
-                  alignItems: 'center'
+                  alignItems: 'center',
+                  pointerEvents: 'none'
                 }}>
-                  <User size={18} />
+                  <User size={22} />
                 </div>
                 <input
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder="Ex: admin"
-                  className="input"
-                  style={{ paddingLeft: '2.5rem', width: '100%' }}
+                  className="input form-input"
+                  style={{ 
+                    height: '56px', 
+                    paddingLeft: '3.4rem', 
+                    paddingRight: '1.1rem', 
+                    fontSize: '1.05rem',
+                    borderRadius: '12px',
+                    width: '100%' 
+                  }}
                   autoComplete="username"
                   required
                 />
@@ -190,9 +198,9 @@ export const LoginView = () => {
 
             {/* Campo Senha */}
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                 <label style={{ 
-                  fontSize: '0.825rem', 
+                  fontSize: '0.95rem', 
                   fontWeight: '600', 
                   color: 'var(--text-secondary)' 
                 }}>
@@ -204,7 +212,7 @@ export const LoginView = () => {
                   style={{
                     background: 'none',
                     border: 'none',
-                    fontSize: '0.75rem',
+                    fontSize: '0.825rem',
                     color: 'var(--primary-400)',
                     cursor: 'pointer',
                     padding: 0
@@ -217,22 +225,30 @@ export const LoginView = () => {
               <div style={{ position: 'relative' }}>
                 <div style={{
                   position: 'absolute',
-                  left: '0.875rem',
+                  left: '1.1rem',
                   top: '50%',
                   transform: 'translateY(-50%)',
                   color: 'var(--text-muted)',
                   display: 'flex',
-                  alignItems: 'center'
+                  alignItems: 'center',
+                  pointerEvents: 'none'
                 }}>
-                  <Lock size={18} />
+                  <Lock size={22} />
                 </div>
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Digite sua senha"
-                  className="input"
-                  style={{ paddingLeft: '2.5rem', paddingRight: '2.5rem', width: '100%' }}
+                  className="input form-input"
+                  style={{ 
+                    height: '56px', 
+                    paddingLeft: '3.4rem', 
+                    paddingRight: '3.4rem', 
+                    fontSize: '1.05rem',
+                    borderRadius: '12px',
+                    width: '100%' 
+                  }}
                   autoComplete="current-password"
                   required
                 />
@@ -241,7 +257,7 @@ export const LoginView = () => {
                   onClick={() => setShowPassword(!showPassword)}
                   style={{
                     position: 'absolute',
-                    right: '0.875rem',
+                    right: '1rem',
                     top: '50%',
                     transform: 'translateY(-50%)',
                     background: 'none',
@@ -250,11 +266,11 @@ export const LoginView = () => {
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
-                    padding: 0
+                    padding: '0.35rem'
                   }}
                   title={showPassword ? 'Ocultar senha' : 'Exibir senha'}
                 >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  {showPassword ? <EyeOff size={22} /> : <Eye size={22} />}
                 </button>
               </div>
             </div>
@@ -263,16 +279,17 @@ export const LoginView = () => {
             <label style={{ 
               display: 'flex', 
               alignItems: 'center', 
-              gap: '0.5rem', 
+              gap: '0.6rem', 
               cursor: 'pointer',
-              fontSize: '0.825rem',
-              color: 'var(--text-secondary)'
+              fontSize: '0.9rem',
+              color: 'var(--text-secondary)',
+              userSelect: 'none'
             }}>
               <input
                 type="checkbox"
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
-                style={{ cursor: 'pointer', accentColor: 'var(--primary-500)', width: '16px', height: '16px' }}
+                style={{ cursor: 'pointer', accentColor: 'var(--primary-500)', width: '18px', height: '18px' }}
               />
               <span>Manter conectado neste celular/computador</span>
             </label>
@@ -284,15 +301,16 @@ export const LoginView = () => {
               className="btn btn-primary"
               style={{
                 width: '100%',
-                padding: '0.875rem',
-                fontSize: '0.95rem',
+                height: '56px',
+                fontSize: '1.05rem',
                 fontWeight: '700',
+                borderRadius: '12px',
                 marginTop: '0.5rem',
                 boxShadow: '0 4px 14px rgba(16, 185, 129, 0.4)'
               }}
             >
               <span>{loading ? 'Validando...' : 'Entrar no Sistema'}</span>
-              <ArrowRight size={18} />
+              <ArrowRight size={20} />
             </button>
           </form>
 
