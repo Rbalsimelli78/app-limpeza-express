@@ -711,3 +711,125 @@ h1, h2, h3, h4, .brand-title {
   from { transform: translateX(100%); opacity: 0; }
   to { transform: translateX(0); opacity: 1; }
 }
+
+/* ===================================================
+   Extrato Financeiro - Modal, Cards e Gráfico Responsivo
+   =================================================== */
+.modal-extrato-content {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  max-width: 850px;
+  width: 95%;
+  max-height: 92vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  box-shadow: var(--shadow-lg);
+  animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+}
+
+@media (min-width: 641px) {
+  .modal-extrato-content {
+    padding: 1.5rem;
+  }
+}
+
+.extrato-kpis-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+
+@media (min-width: 641px) {
+  .extrato-kpis-grid {
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+  }
+}
+
+.extrato-kpi-box {
+  padding: 0.5rem 0.35rem;
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 64px;
+}
+
+@media (min-width: 641px) {
+  .extrato-kpi-box {
+    padding: 0.875rem;
+    text-align: left;
+    min-height: auto;
+  }
+}
+
+.extrato-kpi-title {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 500;
+}
+
+@media (min-width: 641px) {
+  .extrato-kpi-title {
+    font-size: 0.75rem;
+  }
+}
+
+.extrato-kpi-number {
+  font-size: 0.95rem;
+  font-weight: 700;
+  display: block;
+  line-height: 1.2;
+  margin: 0.15rem 0;
+  white-space: nowrap;
+}
+
+@media (min-width: 641px) {
+  .extrato-kpi-number {
+    font-size: 1.3rem;
+    margin: 0.25rem 0;
+  }
+}
+
+.extrato-kpi-subtitle {
+  font-size: 0.6rem;
+  color: var(--text-secondary);
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (min-width: 641px) {
+  .extrato-kpi-subtitle {
+    font-size: 0.7rem;
+  }
+}
+
+.chart-container-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+@media (min-width: 641px) {
+  .chart-container-box {
+    padding: 1rem;
+    margin-bottom: 1.25rem;
+  }
+}
+

@@ -185,29 +185,28 @@ export const ModalExtratoCliente = ({ isOpen, onClose, cliente }) => {
   if (!isOpen || !cliente) return null;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={onClose} style={{ padding: '0.5rem' }}>
       <div 
-        className="modal-content" 
-        style={{ maxWidth: '850px', width: '95%', maxHeight: '90vh', overflowY: 'auto' }}
+        className="modal-extrato-content" 
         onClick={e => e.stopPropagation()}
       >
         {/* Cabeçalho do Extrato */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem', marginBottom: '1.25rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem', marginBottom: '0.85rem' }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-              <span className="badge badge-info">Extrato Financeiro</span>
-              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Limpeza Express SP</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.2rem' }}>
+              <span className="badge badge-info" style={{ fontSize: '0.725rem' }}>Extrato Financeiro</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Limpeza Express SP</span>
             </div>
-            <h2 style={{ fontSize: '1.4rem', color: 'var(--text-primary)' }}>
+            <h2 style={{ fontSize: '1.25rem', color: 'var(--text-primary)' }}>
               {cliente.nome}
             </h2>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                <Phone size={13} color="var(--primary-400)" />
+                <Phone size={12} color="var(--primary-400)" />
                 {cliente.telefone || 'Sem telefone'}
               </span>
               <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                <MapPin size={13} color="var(--accent-cyan)" />
+                <MapPin size={12} color="var(--accent-cyan)" />
                 {cliente.endereco} {cliente.apartamento ? `, Apto ${cliente.apartamento}` : ''} - {cliente.bairro}
               </span>
             </div>
@@ -217,21 +216,22 @@ export const ModalExtratoCliente = ({ isOpen, onClose, cliente }) => {
             onClick={onClose}
             className="btn btn-secondary btn-icon btn-sm"
             title="Fechar"
+            style={{ width: '32px', height: '32px' }}
           >
-            <X size={18} />
+            <X size={16} />
           </button>
         </div>
 
         {/* Filtros de Período */}
-        <div style={{ marginBottom: '1.25rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-            <Calendar size={16} color="var(--primary-400)" />
-            <span style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-secondary)' }}>
+        <div style={{ marginBottom: '0.85rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.4rem' }}>
+            <Calendar size={14} color="var(--primary-400)" />
+            <span style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-secondary)' }}>
               Selecione o Período:
             </span>
           </div>
 
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
             {[
               { id: 'todos', label: 'Todo o Histórico' },
               { id: 'mes_atual', label: 'Este Mês' },
@@ -245,7 +245,7 @@ export const ModalExtratoCliente = ({ isOpen, onClose, cliente }) => {
                 type="button"
                 onClick={() => setPeriodoTipo(p.id)}
                 className={`btn btn-sm ${periodoTipo === p.id ? 'btn-primary' : 'btn-secondary'}`}
-                style={{ fontSize: '0.775rem' }}
+                style={{ fontSize: '0.75rem', padding: '0.3rem 0.55rem', height: 'auto', minHeight: '28px' }}
               >
                 {p.label}
               </button>
@@ -257,85 +257,85 @@ export const ModalExtratoCliente = ({ isOpen, onClose, cliente }) => {
             <div style={{ 
               display: 'flex', 
               alignItems: 'center', 
-              gap: '0.75rem', 
-              marginTop: '0.75rem', 
+              gap: '0.5rem', 
+              marginTop: '0.5rem', 
               background: 'var(--bg-input)', 
-              padding: '0.75rem', 
+              padding: '0.5rem 0.75rem', 
               borderRadius: 'var(--radius-md)',
               border: '1px solid var(--border-color)',
               flexWrap: 'wrap'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>De:</span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>De:</span>
                 <input 
                   type="date" 
                   value={dataInicio} 
                   onChange={e => setDataInicio(e.target.value)} 
                   className="input form-input"
-                  style={{ padding: '0.4rem 0.6rem', fontSize: '0.85rem', height: '36px' }}
+                  style={{ padding: '0.3rem 0.5rem', fontSize: '0.8rem', height: '32px' }}
                 />
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Até:</span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Até:</span>
                 <input 
                   type="date" 
                   value={dataFim} 
                   onChange={e => setDataFim(e.target.value)} 
                   className="input form-input"
-                  style={{ padding: '0.4rem 0.6rem', fontSize: '0.85rem', height: '36px' }}
+                  style={{ padding: '0.3rem 0.5rem', fontSize: '0.8rem', height: '32px' }}
                 />
               </div>
 
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                Filtro ativo: {periodoDesc}
+              <span style={{ fontSize: '0.725rem', color: 'var(--text-muted)' }}>
+                {periodoDesc}
               </span>
             </div>
           )}
         </div>
 
-        {/* Cards de KPIs do Período */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '0.75rem', marginBottom: '1.25rem' }}>
-          <div className="glass-card" style={{ padding: '0.875rem' }}>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>Total no Período</span>
-            <strong style={{ fontSize: '1.3rem', color: 'var(--primary-400)' }}>
+        {/* Cards de KPIs do Período (1 Linha com 3 colunas) */}
+        <div className="extrato-kpis-grid">
+          <div className="extrato-kpi-box" style={{ borderLeft: '3px solid var(--primary-400)' }}>
+            <span className="extrato-kpi-title">Total Período</span>
+            <strong className="extrato-kpi-number" style={{ color: 'var(--primary-400)' }}>
               {formatCurrency(totalGeral)}
             </strong>
-            <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', display: 'block', marginTop: '0.2rem' }}>
+            <span className="extrato-kpi-subtitle">
               {agendamentosFiltrados.length} faxina(s)
             </span>
           </div>
 
-          <div className="glass-card" style={{ padding: '0.875rem', borderLeft: '3px solid var(--primary-500)' }}>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>Total Quitado / Pago</span>
-            <strong style={{ fontSize: '1.3rem', color: 'var(--primary-500)' }}>
+          <div className="extrato-kpi-box" style={{ borderLeft: '3px solid var(--primary-500)' }}>
+            <span className="extrato-kpi-title">Total Quitado</span>
+            <strong className="extrato-kpi-number" style={{ color: 'var(--primary-500)' }}>
               {formatCurrency(totalPago)}
             </strong>
-            <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', display: 'block', marginTop: '0.2rem' }}>
-              Entrada confirmada
+            <span className="extrato-kpi-subtitle">
+              Confirmado
             </span>
           </div>
 
-          <div className="glass-card" style={{ padding: '0.875rem', borderLeft: totalPendente > 0 ? '3px solid var(--accent-gold)' : '3px solid var(--border-color)' }}>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>Saldo Pendente</span>
-            <strong style={{ fontSize: '1.3rem', color: totalPendente > 0 ? 'var(--accent-gold)' : 'var(--text-muted)' }}>
+          <div className="extrato-kpi-box" style={{ borderLeft: totalPendente > 0 ? '3px solid var(--accent-gold)' : '3px solid var(--border-color)' }}>
+            <span className="extrato-kpi-title">Saldo Pendente</span>
+            <strong className="extrato-kpi-number" style={{ color: totalPendente > 0 ? 'var(--accent-gold)' : 'var(--text-muted)' }}>
               {formatCurrency(totalPendente)}
             </strong>
-            <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', display: 'block', marginTop: '0.2rem' }}>
-              {totalPendente > 0 ? 'Aguardando cliente' : 'Tudo em dia'}
+            <span className="extrato-kpi-subtitle">
+              {totalPendente > 0 ? 'Aguardando' : 'Tudo em dia'}
             </span>
           </div>
         </div>
 
-        {/* Gráfico de Linha: Dia x Valor */}
-        <div className="glass-card" style={{ padding: '1rem', marginBottom: '1.25rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-            <h3 style={{ fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text-primary)' }}>
-              <TrendingUp size={16} color="var(--primary-400)" />
+        {/* Gráfico de Linha: Imediatamente Visível na Tela */}
+        <div className="chart-container-box">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+            <h3 style={{ fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text-primary)' }}>
+              <TrendingUp size={15} color="var(--primary-400)" />
               <span>Evolução dos Pagamentos ({periodoDesc})</span>
             </h3>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              Eixo X: Data • Eixo Y: Valor (R$)
+            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+              Eixo X: Data • Eixo Y: R$
             </span>
           </div>
 

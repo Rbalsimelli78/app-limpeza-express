@@ -77,15 +77,34 @@ export const LineChart = ({
   };
 
   return (
-    <div style={{ position: 'relative', width: '100%', overflow: 'hidden' }}>
+    <div 
+      style={{ 
+        position: 'relative', 
+        width: '100%', 
+        minHeight: `${height}px`,
+        aspectRatio: `${width} / ${height}`,
+        overflow: 'visible',
+        touchAction: 'manipulation'
+      }}
+      onClick={() => setHoveredPoint(null)}
+    >
       <svg 
         viewBox={`0 0 ${width} ${height}`} 
-        style={{ width: '100%', height: 'auto', display: 'block', overflow: 'visible' }}
+        width="100%"
+        height={height}
+        preserveAspectRatio="xMidYMid meet"
+        style={{ 
+          width: '100%', 
+          height: '100%', 
+          minHeight: `${height}px`, 
+          display: 'block', 
+          overflow: 'visible' 
+        }}
       >
         <defs>
           <linearGradient id={`grad-${color.replace('#', '')}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={color} stopOpacity="0.35" />
-            <stop offset="100%" stopColor={gradientColor} stopOpacity="0.0" />
+            <stop offset="0%" stopColor={color} stopOpacity="0.38" />
+            <stop offset="100%" stopColor={gradientColor} stopOpacity="0.02" />
           </linearGradient>
         </defs>
 
@@ -108,7 +127,8 @@ export const LineChart = ({
                 x={padding.left - 8} 
                 y={y + 4} 
                 textAnchor="end" 
-                fontSize="10" 
+                fontSize="11" 
+                fontWeight="500"
                 fill="var(--text-muted)"
                 fontFamily="var(--font-sans)"
               >
@@ -129,7 +149,7 @@ export const LineChart = ({
           d={pathD} 
           fill="none" 
           stroke={color} 
-          strokeWidth="3" 
+          strokeWidth="3.5" 
           strokeLinecap="round" 
           strokeLinejoin="round" 
         />
@@ -137,7 +157,7 @@ export const LineChart = ({
         {/* Pontos Interativos e Etiquetas X */}
         {points.map((pt, i) => (
           <g key={i}>
-            {/* Linha vertical do ponto até o chão ao passar o mouse */}
+            {/* Linha vertical do ponto até o chão ao passar o mouse / tocar */}
             {hoveredPoint?.index === i && (
               <line 
                 x1={pt.x} 
@@ -150,15 +170,32 @@ export const LineChart = ({
               />
             )}
 
-            {/* Círculo com halo ao hover */}
+            {/* Círculo visível */}
             <circle 
               cx={pt.x} 
               cy={pt.y} 
-              r={hoveredPoint?.index === i ? 7 : 4.5} 
+              r={hoveredPoint?.index === i ? 7 : 5} 
               fill={hoveredPoint?.index === i ? color : 'var(--bg-card)'} 
               stroke={color} 
-              strokeWidth={hoveredPoint?.index === i ? 3 : 2}
-              style={{ cursor: 'pointer', transition: 'all 0.15s ease' }}
+              strokeWidth={hoveredPoint?.index === i ? 3 : 2.5}
+              style={{ transition: 'all 0.15s ease' }}
+            />
+
+            {/* Área invisível maior de toque/clique para celular (touch target de 44px) */}
+            <circle 
+              cx={pt.x} 
+              cy={pt.y} 
+              r={22} 
+              fill="transparent" 
+              style={{ cursor: 'pointer' }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setHoveredPoint(hoveredPoint?.index === i ? null : { ...pt, index: i });
+              }}
+              onTouchStart={(e) => {
+                e.stopPropagation();
+                setHoveredPoint(hoveredPoint?.index === i ? null : { ...pt, index: i });
+              }}
               onMouseEnter={() => setHoveredPoint({ ...pt, index: i })}
               onMouseLeave={() => setHoveredPoint(null)}
             />
@@ -168,9 +205,9 @@ export const LineChart = ({
               x={pt.x} 
               y={padding.top + chartHeight + 18} 
               textAnchor="middle" 
-              fontSize="10" 
+              fontSize="11" 
               fill={hoveredPoint?.index === i ? 'var(--text-primary)' : 'var(--text-muted)'}
-              fontWeight={hoveredPoint?.index === i ? '700' : '500'}
+              fontWeight={hoveredPoint?.index === i ? '700' : '600'}
               fontFamily="var(--font-sans)"
             >
               {pt.label}
@@ -183,24 +220,24 @@ export const LineChart = ({
       {hoveredPoint && (
         <div style={{
           position: 'absolute',
-          left: `${(hoveredPoint.x / width) * 100}%`,
+          left: `${Math.max(16, Math.min(84, (hoveredPoint.x / width) * 100))}%`,
           top: `${(hoveredPoint.y / height) * 100}%`,
           transform: 'translate(-50%, -125%)',
-          background: 'rgba(15, 23, 42, 0.95)',
+          background: 'rgba(15, 23, 42, 0.96)',
           color: '#ffffff',
-          padding: '0.4rem 0.65rem',
+          padding: '0.45rem 0.75rem',
           borderRadius: 'var(--radius-sm)',
-          fontSize: '0.75rem',
+          fontSize: '0.78rem',
           pointerEvents: 'none',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
           border: `1px solid ${color}`,
-          zIndex: 10,
+          zIndex: 20,
           whiteSpace: 'nowrap'
         }}>
           <div style={{ fontWeight: '700', color: color }}>
             {valuePrefix}{new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(hoveredPoint.value)}
           </div>
-          <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
+          <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '2px' }}>
             {hoveredPoint.tooltip || hoveredPoint.label}
           </div>
         </div>
