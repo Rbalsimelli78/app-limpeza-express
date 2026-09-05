@@ -12,7 +12,12 @@ import {
   Check,
   ShieldCheck,
   Building,
-  Trash2
+  Trash2,
+  Lock,
+  KeyRound,
+  User,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 export const ConfigView = () => {
@@ -22,9 +27,55 @@ export const ConfigView = () => {
     resetDemo, 
     limparTodosOsDados, 
     limparApenasAgendamentos, 
-    showToast 
+    showToast,
+    authCredentials,
+    currentUser,
+    updateCredentials,
+    resetCredentialsToDefault,
+    logout
   } = useApp();
+
   const [copiadoSql, setCopiadoSql] = useState(false);
+
+  // Estados do formulário de troca de senha
+  const [formNome, setFormNome] = useState(authCredentials?.name || 'Administradora');
+  const [formUser, setFormUser] = useState(authCredentials?.username || 'admin');
+  const [senhaAtual, setSenhaAtual] = useState('');
+  const [novaSenha, setNovaSenha] = useState('');
+  const [confirmaNovaSenha, setConfirmaNovaSenha] = useState('');
+  const [mostrarSenhas, setMostrarSenhas] = useState(false);
+  const [salvandoCreds, setSalvandoCreds] = useState(false);
+
+  const handleSalvarCredenciais = (e) => {
+    e.preventDefault();
+
+    if (!senhaAtual) {
+      showToast('Por favor, informe a senha atual para confirmar a alteração.', 'danger');
+      return;
+    }
+
+    if (novaSenha && novaSenha !== confirmaNovaSenha) {
+      showToast('A nova senha e a confirmação estão diferentes!', 'danger');
+      return;
+    }
+
+    setSalvandoCreds(true);
+    setTimeout(() => {
+      const res = updateCredentials({
+        currentPassword: senhaAtual,
+        newUsername: formUser,
+        newPassword: novaSenha,
+        newName: formNome
+      });
+
+      if (res.success) {
+        setSenhaAtual('');
+        setNovaSenha('');
+        setConfirmaNovaSenha('');
+      }
+      setSalvandoCreds(false);
+    }, 200);
+  };
 
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
@@ -104,6 +155,153 @@ CREATE TABLE IF NOT EXISTS agendamentos (
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
+        {/* Controle de Acesso e Alterar Senha */}
+        <div className="glass-card" style={{ borderLeft: '4px solid var(--primary-400)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+            <h3 style={{ fontSize: '1.15rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Lock size={20} color="var(--primary-400)" />
+              <span>Segurança & Senha de Acesso</span>
+            </h3>
+            <span style={{ 
+              fontSize: '0.725rem', 
+              background: 'rgba(16, 185, 129, 0.15)', 
+              color: 'var(--primary-400)', 
+              padding: '0.2rem 0.5rem', 
+              borderRadius: '100px',
+              fontWeight: '600'
+            }}>
+              Protegido
+            </span>
+          </div>
+
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1rem', lineHeight: '1.5' }}>
+            Altere o usuário e a senha da sua esposa para garantir privacidade total dos clientes e faturamento:
+          </p>
+
+          <form onSubmit={handleSalvarCredenciais} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
+                Nome de Exibição
+              </label>
+              <input
+                type="text"
+                value={formNome}
+                onChange={(e) => setFormNome(e.target.value)}
+                placeholder="Ex: Administradora ou Nome da Esposa"
+                className="input"
+                style={{ width: '100%', fontSize: '0.85rem' }}
+                required
+              />
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
+                Usuário / E-mail de Login
+              </label>
+              <input
+                type="text"
+                value={formUser}
+                onChange={(e) => setFormUser(e.target.value)}
+                placeholder="Ex: admin ou seu email"
+                className="input"
+                style={{ width: '100%', fontSize: '0.85rem' }}
+                required
+              />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
+                  Nova Senha (Opcional)
+                </label>
+                <input
+                  type={mostrarSenhas ? 'text' : 'password'}
+                  value={novaSenha}
+                  onChange={(e) => setNovaSenha(e.target.value)}
+                  placeholder="Nova senha"
+                  className="input"
+                  style={{ width: '100%', fontSize: '0.85rem' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
+                  Confirmar Nova
+                </label>
+                <input
+                  type={mostrarSenhas ? 'text' : 'password'}
+                  value={confirmaNovaSenha}
+                  onChange={(e) => setConfirmaNovaSenha(e.target.value)}
+                  placeholder="Repita a senha"
+                  className="input"
+                  style={{ width: '100%', fontSize: '0.85rem' }}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--accent-gold)', fontWeight: '600', marginBottom: '0.25rem' }}>
+                Senha Atual (Obrigatória para Salvar)
+              </label>
+              <input
+                type={mostrarSenhas ? 'text' : 'password'}
+                value={senhaAtual}
+                onChange={(e) => setSenhaAtual(e.target.value)}
+                placeholder="Digite a senha atual"
+                className="input"
+                style={{ width: '100%', fontSize: '0.85rem' }}
+                required
+              />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                <input 
+                  type="checkbox" 
+                  checked={mostrarSenhas} 
+                  onChange={(e) => setMostrarSenhas(e.target.checked)} 
+                  style={{ accentColor: 'var(--primary-500)' }}
+                />
+                <span>Mostrar senhas</span>
+              </label>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (confirm('Deseja restaurar as credenciais para o padrão (admin / 123456)?')) {
+                    resetCredentialsToDefault();
+                    setFormUser('admin');
+                    setFormNome('Administradora');
+                    setSenhaAtual('');
+                    setNovaSenha('');
+                    setConfirmaNovaSenha('');
+                  }
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-muted)',
+                  fontSize: '0.75rem',
+                  cursor: 'pointer',
+                  textDecoration: 'underline'
+                }}
+              >
+                Restaurar padrão de fábrica
+              </button>
+            </div>
+
+            <button 
+              type="submit" 
+              disabled={salvandoCreds} 
+              className="btn btn-primary" 
+              style={{ width: '100%', marginTop: '0.25rem' }}
+            >
+              <KeyRound size={16} />
+              <span>{salvandoCreds ? 'Salvando...' : 'Salvar Novas Credenciais'}</span>
+            </button>
+          </form>
+        </div>
+
         {/* Como instalar no Celular */}
         <div className="glass-card">
           <h3 style={{ fontSize: '1.15rem', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>

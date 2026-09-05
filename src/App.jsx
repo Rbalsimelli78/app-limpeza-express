@@ -13,6 +13,7 @@ import { OrcamentoView } from './views/OrcamentoView';
 import { FinanceiroView } from './views/FinanceiroView';
 import { ConfigView } from './views/ConfigView';
 import { PlanosView } from './views/PlanosView';
+import { LoginView } from './views/LoginView';
 
 import { ModalAgendamento } from './components/ModalAgendamento';
 import { ModalCliente } from './components/ModalCliente';
@@ -20,7 +21,7 @@ import { ModalAjudante } from './components/ModalAjudante';
 import { ModalPlano } from './components/ModalPlano';
 
 const MainAppContent = () => {
-  const { activeTab, setActiveTab, addCliente } = useApp();
+  const { activeTab, setActiveTab, addCliente, isAuthenticated } = useApp();
 
   // Estados dos Modais
   const [modalAgendamentoOpen, setModalAgendamentoOpen] = useState(false);
@@ -116,6 +117,15 @@ const MainAppContent = () => {
     setPlanoEdicao(plano);
     setModalPlanoOpen(true);
   };
+
+  if (!isAuthenticated) {
+    return (
+      <>
+        <Toast />
+        <LoginView />
+      </>
+    );
+  }
 
   return (
     <div className="app-container">

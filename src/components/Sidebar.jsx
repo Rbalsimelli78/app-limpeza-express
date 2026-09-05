@@ -9,11 +9,13 @@ import {
   DollarSign, 
   Settings,
   Sparkles,
-  Layers
+  Layers,
+  LogOut,
+  ShieldCheck
 } from 'lucide-react';
 
 export const Sidebar = () => {
-  const { activeTab, setActiveTab } = useApp();
+  const { activeTab, setActiveTab, currentUser, logout } = useApp();
 
   const menuItems = [
     { id: 'dashboard', label: 'Painel Geral', icon: LayoutDashboard },
@@ -54,19 +56,68 @@ export const Sidebar = () => {
       </nav>
 
       <div style={{ 
-        padding: '1rem', 
-        background: 'rgba(16, 185, 129, 0.08)', 
-        border: '1px solid rgba(16, 185, 129, 0.2)',
+        padding: '0.875rem', 
+        background: 'var(--bg-input)', 
+        border: '1px solid var(--border-color)',
         borderRadius: 'var(--radius-md)',
-        marginTop: 'auto'
+        marginTop: 'auto',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '0.625rem'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-          <Sparkles size={16} color="var(--primary-400)" />
-          <strong style={{ fontSize: '0.8125rem', color: 'var(--text-primary)' }}>Limpeza Express</strong>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div style={{
+              width: '28px',
+              height: '28px',
+              borderRadius: '50%',
+              background: 'rgba(16, 185, 129, 0.2)',
+              color: 'var(--primary-400)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 'bold',
+              fontSize: '0.75rem'
+            }}>
+              {(currentUser?.name || 'A')[0].toUpperCase()}
+            </div>
+            <div>
+              <div style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--text-primary)', lineHeight: 1.2 }}>
+                {currentUser?.name || 'Administradora'}
+              </div>
+              <span style={{ fontSize: '0.675rem', color: 'var(--text-muted)' }}>
+                @{currentUser?.username || 'admin'}
+              </span>
+            </div>
+          </div>
+
+          <button
+            onClick={() => {
+              if (confirm('Deseja sair e bloquear o sistema?')) {
+                logout();
+              }
+            }}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--accent-rose)',
+              cursor: 'pointer',
+              padding: '0.35rem',
+              borderRadius: 'var(--radius-sm)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+            title="Sair e Bloquear"
+          >
+            <LogOut size={16} />
+          </button>
         </div>
-        <p style={{ fontSize: '0.725rem', color: 'var(--text-secondary)' }}>
-          Aptos de 80 a 100m² com 2 profissionais em SP.
-        </p>
+
+        <div style={{ fontSize: '0.7rem', color: 'var(--primary-400)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+          <ShieldCheck size={12} />
+          <span>Acesso Administrativo Seguro</span>
+        </div>
       </div>
     </aside>
   );

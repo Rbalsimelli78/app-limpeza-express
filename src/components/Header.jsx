@@ -1,9 +1,9 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
-import { Moon, Sun, Plus, Sparkles } from 'lucide-react';
+import { Moon, Sun, Plus, LogOut, Lock } from 'lucide-react';
 
 export const Header = ({ onOpenNovoAgendamento }) => {
-  const { theme, toggleTheme, activeTab } = useApp();
+  const { theme, toggleTheme, activeTab, logout, currentUser } = useApp();
 
   const getPageTitle = () => {
     switch (activeTab) {
@@ -39,6 +39,22 @@ export const Header = ({ onOpenNovoAgendamento }) => {
 
       {/* Actions */}
       <div className="header-actions">
+        {/* Identificação da Usuária Logada (Desktop) */}
+        <div className="hide-on-mobile" style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.45rem',
+          background: 'var(--bg-input)',
+          padding: '0.35rem 0.75rem',
+          borderRadius: '100px',
+          border: '1px solid var(--border-color)',
+          fontSize: '0.8rem',
+          color: 'var(--text-secondary)'
+        }}>
+          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--primary-400)', display: 'inline-block' }} />
+          <span style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{currentUser?.name || 'Administradora'}</span>
+        </div>
+
         <button 
           onClick={onOpenNovoAgendamento}
           className="btn btn-primary btn-sm"
@@ -55,7 +71,21 @@ export const Header = ({ onOpenNovoAgendamento }) => {
         >
           {theme === 'dark' ? <Sun size={18} color="#f59e0b" /> : <Moon size={18} color="#6366f1" />}
         </button>
+
+        <button 
+          onClick={() => {
+            if (confirm('Deseja sair e bloquear o aplicativo agora?')) {
+              logout();
+            }
+          }}
+          className="btn btn-secondary btn-icon"
+          title="Sair e Bloquear Aplicativo"
+          style={{ color: 'var(--accent-rose)' }}
+        >
+          <LogOut size={18} />
+        </button>
       </div>
     </header>
   );
 };
+

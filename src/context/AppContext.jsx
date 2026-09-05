@@ -12,8 +12,49 @@ const AppContext = createContext();
 
 const STORAGE_KEY = 'limpeza_express_sp_v1';
 const THEME_KEY = 'limpeza_express_theme';
+const AUTH_CREDS_KEY = 'limpeza_express_auth_creds';
+const AUTH_SESSION_KEY = 'limpeza_express_session';
+const AUTH_PERSISTENT_KEY = 'limpeza_express_persistent_session';
+
+const CREDENCIAIS_PADRAO = {
+  username: 'admin',
+  password: '123456',
+  name: 'Administradora'
+};
 
 export const AppProvider = ({ children }) => {
+  // Credenciais de Acesso (Salvas em localStorage)
+  const [authCredentials, setAuthCredentials] = useState(() => {
+    try {
+      const saved = localStorage.getItem(AUTH_CREDS_KEY);
+      return saved ? JSON.parse(saved) : CREDENCIAIS_PADRAO;
+    } catch (e) {
+      return CREDENCIAIS_PADRAO;
+    }
+  });
+
+  // Sessão de Autenticação Ativa
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const persistent = localStorage.getItem(AUTH_PERSISTENT_KEY);
+      if (persistent) return JSON.parse(persistent);
+      const session = sessionStorage.getItem(AUTH_SESSION_KEY);
+      if (session) return JSON.parse(session);
+      return null;
+    } catch (e) {
+      return null;
+    }
+  });
+
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    return currentUser !== null;
+  });
+
+  // Salvar credenciais no localStorage sempre que alteradas
+  useEffect(() => {
+    localStorage.setItem(AUTH_CREDS_KEY, JSON.stringify(authCredentials));
+  }, [authCredentials]);
+
   // Tema (Dark / Light)
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem(THEME_KEY) || 'dark';
@@ -300,13 +341,101 @@ export const AppProvider = ({ children }) => {
     showToast('Agenda e financeiro zerados! Clientes e ajudantes mantidos.', 'info');
   };
 
-  // Resetar para dados de demonstração
-  const resetDemo = () => {
-    setClientes(CLIENTES_INICIAIS);
-    setAjudantes(AJUDANTES_INICIAIS);
-    setAgendamentos(AGENDAMENTOS_INICIAIS);
-    setPlanos(PLANOS_CATALOGO);
-    showToast('Dados de demonstração recarregados!');
+  // --- MÓDULO DE AUTENTICAÇÃO E SEGURANÇA ---
+  const login = (username, password, rememberMe = true) => {
+    const cleanUser = (username || '').trim().toLowerCase();
+    const cleanCredUser = (authCredentials.username || '').trim().toLowerCase();
+
+    // Validação de usuário e senha
+    const isUserValid = cleanUser === cleanCredUser;
+    // Aceita a senha cadastrada ou "123" se a senha for "123456" para comodidade inicial
+    const isPasswordValid = password === authCredentials.password || 
+      (authCredentials.password === '123456' && password === '123');
+
+    if (isUserValid && isPasswordValid) {
+      const userData = {
+        username: authCredentials.username,
+        name: authCredentials.name || 'Administradora',
+        loginAt: new Date().toISOString()
+      };
+
+      setIsAuthenticated(true);
+      setCurrentUser(userData);
+
+      if (rememberMe) {
+        localStorage.setItem(AUTH_PERSISTENT_KEY, JSON.stringify(userData));
+      } else {
+        localStorage.removeItem(AUTH_PERSISTENT_KEY);
+      }
+      sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(userData));
+
+      showToast(`Bem-vinda, ${userData.name}!`, 'success');
+      return { success: true };
+    } else {
+      showToast('Usuário ou senha incorretos!', 'danger');
+      return { success: false, error: 'Usuário ou senha incorretos' };
+    }
+  };
+
+  const logout = () => {
+    localStorage.removeItem(AUTH_PERSISTENT_KEY);
+    sessionStorage.removeItem(AUTH_SESSION_KEY);
+    setIsAuthenticated(false);
+    setCurrentUser(null);
+    showToast('Sessão bloqueada com segurança.', 'info');
+  };
+
+  const updateCredentials = ({ currentPassword, newUsername, newPassword, newName }) => {
+    // Validação da senha atual
+    const isCurrentValid = currentPassword === authCredentials.password || 
+      (authCredentials.password === '123456' && currentPassword === '123');
+
+    if (!isCurrentValid) {
+      showToast('Senha atual incorreta!', 'danger');
+      return { success: false, error: 'Senha atual incorreta' };
+    }
+
+    if (!newUsername || newUsername.trim().length < 3) {
+      showToast('O usuário deve ter pelo menos 3 caracteres.', 'danger');
+      return { success: false, error: 'Usuário inválido' };
+    }
+
+    if (newPassword && newPassword.length < 4) {
+      showToast('A nova senha deve ter pelo menos 4 caracteres.', 'danger');
+      return { success: false, error: 'Senha curta' };
+    }
+
+    const updatedCreds = {
+      username: newUsername.trim(),
+      password: newPassword ? newPassword : authCredentials.password,
+      name: newName && newName.trim() ? newName.trim() : (authCredentials.name || 'Administradora')
+    };
+
+    setAuthCredentials(updatedCreds);
+    localStorage.setItem(AUTH_CREDS_KEY, JSON.stringify(updatedCreds));
+
+    // Atualiza dados da sessão ativa
+    if (currentUser) {
+      const updatedUser = {
+        ...currentUser,
+        username: updatedCreds.username,
+        name: updatedCreds.name
+      };
+      setCurrentUser(updatedUser);
+      if (localStorage.getItem(AUTH_PERSISTENT_KEY)) {
+        localStorage.setItem(AUTH_PERSISTENT_KEY, JSON.stringify(updatedUser));
+      }
+      sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(updatedUser));
+    }
+
+    showToast('Credenciais atualizadas com sucesso!', 'success');
+    return { success: true };
+  };
+
+  const resetCredentialsToDefault = () => {
+    setAuthCredentials(CREDENCIAIS_PADRAO);
+    localStorage.setItem(AUTH_CREDS_KEY, JSON.stringify(CREDENCIAIS_PADRAO));
+    showToast('Credenciais redefinidas para o padrão: admin / 123456', 'info');
   };
 
   return (
@@ -317,6 +446,15 @@ export const AppProvider = ({ children }) => {
       setActiveTab,
       toasts,
       showToast,
+      // Autenticação
+      isAuthenticated,
+      currentUser,
+      authCredentials,
+      login,
+      logout,
+      updateCredentials,
+      resetCredentialsToDefault,
+      // Dados
       clientes,
       ajudantes,
       agendamentos,
