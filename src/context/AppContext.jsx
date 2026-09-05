@@ -7,6 +7,22 @@ import {
   REGRAS_ADICIONAIS, 
   CHECKLIST_PADRAO 
 } from '../data/initialData';
+import {
+  listenClientes,
+  listenAjudantes,
+  listenAgendamentos,
+  listenPlanos,
+  salvarClienteNuvem,
+  excluirClienteNuvem,
+  salvarAjudanteNuvem,
+  excluirAjudanteNuvem,
+  salvarAgendamentoNuvem,
+  excluirAgendamentoNuvem,
+  salvarPlanoNuvem,
+  excluirPlanoNuvem,
+  subirBaseParaNuvem,
+  limparColecaoNuvem
+} from '../services/cloudSync';
 
 const AppContext = createContext();
 
@@ -66,6 +82,11 @@ export const AppProvider = ({ children }) => {
   // Notificações Toast
   const [toasts, setToasts] = useState([]);
 
+  // Status da Nuvem Firebase ('conectando' | 'sincronizado' | 'offline')
+  const [cloudStatus, setCloudStatus] = useState('conectando');
+  const [cloudLastSync, setCloudLastSync] = useState(null);
+  const initialUploadDoneRef = React.useRef(false);
+
   // Estado dos Dados
   const [clientes, setClientes] = useState(() => {
     try {
@@ -103,7 +124,7 @@ export const AppProvider = ({ children }) => {
     }
   });
 
-  // Efeito para persistência automática
+  // Persistência automática no localStorage (cache offline)
   useEffect(() => {
     localStorage.setItem(`${STORAGE_KEY}_planos`, JSON.stringify(planos));
   }, [planos]);
@@ -133,11 +154,119 @@ export const AppProvider = ({ children }) => {
     }, 3500);
   };
 
+  // =========================================================================
+  // SINCRONIZAÇÃO EM TEMPO REAL COM GOOGLE FIREBASE CLOUD FIRESTORE
+  // =========================================================================
+  useEffect(() => {
+    const unsubs = [];
+
+    // Função para fazer o primeiro upload caso a nuvem ainda esteja vazia
+    const checkAndBootstrapCloud = (isColEmpty) => {
+      if (isColEmpty && !initialUploadDoneRef.current) {
+        initialUploadDoneRef.current = true;
+        subirBaseParaNuvem({
+          clientes,
+          ajudantes,
+          agendamentos,
+          planos
+        }).then(ok => {
+          if (ok) {
+            setCloudStatus('sincronizado');
+            setCloudLastSync(new Date());
+          }
+        });
+      }
+    };
+
+    try {
+      // 1. Escuta Clientes
+      const unsubCli = listenClientes(
+        (docs, empty) => {
+          setCloudStatus('sincronizado');
+          setCloudLastSync(new Date());
+          if (!empty) {
+            setClientes(docs);
+          } else {
+            checkAndBootstrapCloud(true);
+          }
+        },
+        (err) => {
+          console.warn('[Cloud] Firestore offline ou ainda não iniciado:', err?.message);
+          setCloudStatus('offline');
+        }
+      );
+      unsubs.push(unsubCli);
+
+      // 2. Escuta Ajudantes
+      const unsubAjud = listenAjudantes(
+        (docs, empty) => {
+          setCloudStatus('sincronizado');
+          setCloudLastSync(new Date());
+          if (!empty) {
+            setAjudantes(docs);
+          }
+        },
+        (err) => setCloudStatus('offline')
+      );
+      unsubs.push(unsubAjud);
+
+      // 3. Escuta Agendamentos
+      const unsubAgend = listenAgendamentos(
+        (docs, empty) => {
+          setCloudStatus('sincronizado');
+          setCloudLastSync(new Date());
+          if (!empty) {
+            setAgendamentos(docs);
+          }
+        },
+        (err) => setCloudStatus('offline')
+      );
+      unsubs.push(unsubAgend);
+
+      // 4. Escuta Planos
+      const unsubPlanos = listenPlanos(
+        (docs, empty) => {
+          setCloudStatus('sincronizado');
+          setCloudLastSync(new Date());
+          if (!empty) {
+            setPlanos(docs);
+          }
+        },
+        (err) => setCloudStatus('offline')
+      );
+      unsubs.push(unsubPlanos);
+
+    } catch (e) {
+      console.warn('[Cloud] Erro ao iniciar sincronização:', e);
+      setCloudStatus('offline');
+    }
+
+    return () => {
+      unsubs.forEach(unsub => {
+        if (typeof unsub === 'function') unsub();
+      });
+    };
+  }, []);
+
+  // Forçar Sincronização Completa com a Nuvem
+  const forcarSincronizacaoNuvem = async () => {
+    showToast('Sincronizando dados com a nuvem...', 'info');
+    const ok = await subirBaseParaNuvem({ clientes, ajudantes, agendamentos, planos });
+    if (ok) {
+      setCloudStatus('sincronizado');
+      setCloudLastSync(new Date());
+      showToast('☁️ Nuvem 100% atualizada em tempo real!', 'success');
+    } else {
+      setCloudStatus('offline');
+      showToast('Não foi possível conectar ao Firebase. Verifique sua conexão.', 'danger');
+    }
+  };
+
   const toggleTheme = () => {
     setTheme(prev => prev === 'dark' ? 'light' : 'dark');
   };
 
-  // Funções de Clientes
+  // Funções de Clientes com Sincronização em Nuvem
   const addCliente = (clienteData) => {
     const novo = {
       ...clienteData,
@@ -145,101 +274,159 @@ export const AppProvider = ({ children }) => {
       criadoEm: new Date().toISOString().split('T')[0]
     };
     setClientes(prev => [novo, ...prev]);
+    salvarClienteNuvem(novo);
     showToast(`Cliente ${novo.nome} cadastrado com sucesso!`);
     return novo;
   };
 
   const updateCliente = (id, clienteData) => {
-    setClientes(prev => prev.map(c => c.id === id ? { ...c, ...clienteData } : c));
+    let atualizado = null;
+    setClientes(prev => prev.map(c => {
+      if (c.id === id) {
+        atualizado = { ...c, ...clienteData };
+        return atualizado;
+      }
+      return c;
+    }));
+    if (atualizado) salvarClienteNuvem(atualizado);
     showToast('Dados do cliente atualizados!');
   };
 
   const deleteCliente = (id) => {
     setClientes(prev => prev.filter(c => c.id !== id));
+    excluirClienteNuvem(id);
     showToast('Cliente removido.');
   };
 
-  // Funções de Ajudantes
+  // Funções de Ajudantes com Sincronização em Nuvem
   const addAjudante = (ajudanteData) => {
     const nova = {
       ...ajudanteData,
       id: `ajud-${Date.now()}`
     };
     setAjudantes(prev => [...prev, nova]);
+    salvarAjudanteNuvem(nova);
     showToast(`Ajudante ${nova.nome} cadastrada!`);
     return nova;
   };
 
   const updateAjudante = (id, ajudanteData) => {
-    setAjudantes(prev => prev.map(a => a.id === id ? { ...a, ...ajudanteData } : a));
+    let atualizada = null;
+    setAjudantes(prev => prev.map(a => {
+      if (a.id === id) {
+        atualizada = { ...a, ...ajudanteData };
+        return atualizada;
+      }
+      return a;
+    }));
+    if (atualizada) salvarAjudanteNuvem(atualizada);
     showToast('Dados da colaboradora atualizados!');
   };
 
   const deleteAjudante = (id) => {
     setAjudantes(prev => prev.filter(a => a.id !== id));
+    excluirAjudanteNuvem(id);
     showToast('Colaboradora removida.');
   };
 
-  // Funções de Planos de Limpeza
+  // Funções de Planos de Limpeza com Sincronização em Nuvem
   const addPlano = (planoData) => {
     const novo = {
       ...planoData,
       id: `plano-${Date.now()}`
     };
     setPlanos(prev => [...prev, novo]);
+    salvarPlanoNuvem(novo);
     showToast(`Plano "${novo.nome}" cadastrado com sucesso!`);
     return novo;
   };
 
   const updatePlano = (id, planoData) => {
-    setPlanos(prev => prev.map(p => p.id === id ? { ...p, ...planoData } : p));
+    let atualizado = null;
+    setPlanos(prev => prev.map(p => {
+      if (p.id === id) {
+        atualizado = { ...p, ...planoData };
+        return atualizado;
+      }
+      return p;
+    }));
+    if (atualizado) salvarPlanoNuvem(atualizado);
     showToast('Plano de limpeza atualizado!');
   };
 
   const deletePlano = (id) => {
     setPlanos(prev => prev.filter(p => p.id !== id));
+    excluirPlanoNuvem(id);
     showToast('Plano de limpeza excluído.');
   };
 
   const resetPlanosPadrao = () => {
     setPlanos(PLANOS_CATALOGO);
     localStorage.setItem(`${STORAGE_KEY}_planos`, JSON.stringify(PLANOS_CATALOGO));
+    PLANOS_CATALOGO.forEach(p => salvarPlanoNuvem(p));
     showToast('Planos restaurados para o catálogo oficial Limpeza Express SP!');
   };
 
-  // Funções de Agendamentos
+  // Funções de Agendamentos com Sincronização em Nuvem
   const addAgendamento = (agendamentoData) => {
     const novo = {
       ...agendamentoData,
       id: `agend-${Date.now()}`
     };
     setAgendamentos(prev => [novo, ...prev]);
+    salvarAgendamentoNuvem(novo);
     showToast('Faxina agendada com sucesso!');
     return novo;
   };
 
   const updateAgendamento = (id, agendamentoData) => {
-    setAgendamentos(prev => prev.map(a => a.id === id ? { ...a, ...agendamentoData } : a));
+    let atualizado = null;
+    setAgendamentos(prev => prev.map(a => {
+      if (a.id === id) {
+        atualizado = { ...a, ...agendamentoData };
+        return atualizado;
+      }
+      return a;
+    }));
+    if (atualizado) salvarAgendamentoNuvem(atualizado);
     showToast('Agendamento atualizado!');
   };
 
   const deleteAgendamento = (id) => {
     setAgendamentos(prev => prev.filter(a => a.id !== id));
+    excluirAgendamentoNuvem(id);
     showToast('Agendamento excluído.');
   };
 
-  // Atalhos Rápidos de Status
+  // Atalhos Rápidos de Status com Gravação na Nuvem
   const setStatusServico = (id, statusServico) => {
-    setAgendamentos(prev => prev.map(a => a.id === id ? { ...a, statusServico } : a));
+    let atualizado = null;
+    setAgendamentos(prev => prev.map(a => {
+      if (a.id === id) {
+        atualizado = { ...a, statusServico };
+        return atualizado;
+      }
+      return a;
+    }));
+    if (atualizado) salvarAgendamentoNuvem(atualizado);
     showToast(`Status alterado para "${statusServico}"!`);
   };
 
   const setStatusPagamentoCliente = (id, statusClientePagamento) => {
-    setAgendamentos(prev => prev.map(a => a.id === id ? { ...a, statusClientePagamento } : a));
+    let atualizado = null;
+    setAgendamentos(prev => prev.map(a => {
+      if (a.id === id) {
+        atualizado = { ...a, statusClientePagamento };
+        return atualizado;
+      }
+      return a;
+    }));
+    if (atualizado) salvarAgendamentoNuvem(atualizado);
     showToast(`Pagamento do cliente marcado como "${statusClientePagamento}"!`);
   };
 
   const setStatusPagamentoAjudante = (agendamentoId, ajudanteId, statusPagamento) => {
+    let atualizado = null;
     setAgendamentos(prev => prev.map(ag => {
       if (ag.id !== agendamentoId) return ag;
       const novasEscaladas = (ag.ajudantesEscaladas || []).map(ae => {
@@ -248,8 +435,10 @@ export const AppProvider = ({ children }) => {
         }
         return ae;
       });
-      return { ...ag, ajudantesEscaladas: novasEscaladas };
+      atualizado = { ...ag, ajudantesEscaladas: novasEscaladas };
+      return atualizado;
     }));
+    if (atualizado) salvarAgendamentoNuvem(atualizado);
     showToast('Pagamento da ajudante atualizado!');
   };
 
@@ -331,14 +520,18 @@ export const AppProvider = ({ children }) => {
     localStorage.setItem(`${STORAGE_KEY}_clientes`, JSON.stringify([]));
     localStorage.setItem(`${STORAGE_KEY}_ajudantes`, JSON.stringify([]));
     localStorage.setItem(`${STORAGE_KEY}_agendamentos`, JSON.stringify([]));
-    showToast('Base 100% limpa! O aplicativo está pronto para uso real.', 'info');
+    limparColecaoNuvem('clientes');
+    limparColecaoNuvem('ajudantes');
+    limparColecaoNuvem('agendamentos');
+    showToast('Base 100% limpa no celular, micro e na nuvem!', 'info');
   };
 
   // Limpar apenas as faxinas e histórico de caixa
   const limparApenasAgendamentos = () => {
     setAgendamentos([]);
     localStorage.setItem(`${STORAGE_KEY}_agendamentos`, JSON.stringify([]));
-    showToast('Agenda e financeiro zerados! Clientes e ajudantes mantidos.', 'info');
+    limparColecaoNuvem('agendamentos');
+    showToast('Agenda e financeiro zerados no micro e na nuvem!', 'info');
   };
 
   // --- MÓDULO DE AUTENTICAÇÃO E SEGURANÇA ---
@@ -444,7 +637,13 @@ export const AppProvider = ({ children }) => {
     setAjudantes(AJUDANTES_INICIAIS);
     setAgendamentos(AGENDAMENTOS_INICIAIS);
     setPlanos(PLANOS_CATALOGO);
-    showToast('Dados de demonstração recarregados!');
+    subirBaseParaNuvem({
+      clientes: CLIENTES_INICIAIS,
+      ajudantes: AJUDANTES_INICIAIS,
+      agendamentos: AGENDAMENTOS_INICIAIS,
+      planos: PLANOS_CATALOGO
+    });
+    showToast('Dados de demonstração recarregados na nuvem!');
   };
 
   return (
@@ -455,6 +654,10 @@ export const AppProvider = ({ children }) => {
       setActiveTab,
       toasts,
       showToast,
+      // Sincronização em Nuvem Firebase
+      cloudStatus,
+      cloudLastSync,
+      forcarSincronizacaoNuvem,
       // Autenticação
       isAuthenticated,
       currentUser,

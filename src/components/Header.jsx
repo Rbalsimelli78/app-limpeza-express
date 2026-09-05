@@ -1,9 +1,9 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
-import { Moon, Sun, Plus, LogOut, Lock } from 'lucide-react';
+import { Moon, Sun, Plus, LogOut, Lock, Cloud, CloudOff, RefreshCw } from 'lucide-react';
 
 export const Header = ({ onOpenNovoAgendamento }) => {
-  const { theme, toggleTheme, activeTab, logout, currentUser } = useApp();
+  const { theme, toggleTheme, activeTab, logout, currentUser, cloudStatus, forcarSincronizacaoNuvem } = useApp();
 
   const getPageTitle = () => {
     switch (activeTab) {
@@ -39,6 +39,56 @@ export const Header = ({ onOpenNovoAgendamento }) => {
 
       {/* Actions */}
       <div className="header-actions">
+        {/* Status da Nuvem Firebase em Tempo Real */}
+        <button
+          onClick={forcarSincronizacaoNuvem}
+          title={
+            cloudStatus === 'sincronizado' 
+              ? 'Nuvem Conectada e Sincronizada em Tempo Real (Clique para sincronizar)' 
+              : cloudStatus === 'conectando'
+              ? 'Conectando ao banco de dados na nuvem...'
+              : 'Modo Offline / Local ativo (Clique para tentar conectar à Nuvem)'
+          }
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.4rem',
+            background: cloudStatus === 'sincronizado' ? 'rgba(16, 185, 129, 0.12)' : 'var(--bg-input)',
+            border: cloudStatus === 'sincronizado' ? '1px solid rgba(16, 185, 129, 0.35)' : '1px solid var(--border-color)',
+            padding: '0.35rem 0.65rem',
+            borderRadius: '100px',
+            fontSize: '0.75rem',
+            cursor: 'pointer',
+            color: cloudStatus === 'sincronizado' ? 'var(--primary-400)' : 'var(--text-muted)',
+            transition: 'all 0.2s ease'
+          }}
+        >
+          {cloudStatus === 'sincronizado' ? (
+            <>
+              <span style={{ 
+                width: '7px', 
+                height: '7px', 
+                borderRadius: '50%', 
+                background: '#10b981', 
+                display: 'inline-block',
+                boxShadow: '0 0 6px #10b981'
+              }} />
+              <Cloud size={14} color="#10b981" />
+              <span className="hide-on-mobile-extra" style={{ fontWeight: '600', color: '#10b981' }}>Nuvem Ativa</span>
+            </>
+          ) : cloudStatus === 'conectando' ? (
+            <>
+              <RefreshCw size={13} className="spin" color="#f59e0b" />
+              <span className="hide-on-mobile-extra" style={{ color: '#f59e0b' }}>Conectando...</span>
+            </>
+          ) : (
+            <>
+              <CloudOff size={14} color="var(--text-muted)" />
+              <span className="hide-on-mobile-extra">Local</span>
+            </>
+          )}
+        </button>
+
         {/* Identificação da Usuária Logada (Desktop) */}
         <div className="hide-on-mobile" style={{
           display: 'flex',

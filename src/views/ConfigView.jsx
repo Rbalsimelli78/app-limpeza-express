@@ -17,7 +17,11 @@ import {
   KeyRound,
   User,
   Eye,
-  EyeOff
+  EyeOff,
+  Cloud,
+  CloudOff,
+  RefreshCw,
+  ExternalLink
 } from 'lucide-react';
 
 export const ConfigView = () => {
@@ -32,7 +36,10 @@ export const ConfigView = () => {
     currentUser,
     updateCredentials,
     resetCredentialsToDefault,
-    logout
+    logout,
+    cloudStatus,
+    cloudLastSync,
+    forcarSincronizacaoNuvem
   } = useApp();
 
   const [copiadoSql, setCopiadoSql] = useState(false);
@@ -155,6 +162,110 @@ CREATE TABLE IF NOT EXISTS agendamentos (
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
+        {/* Sincronização em Nuvem Google Firebase */}
+        <div className="glass-card" style={{ 
+          borderLeft: cloudStatus === 'sincronizado' ? '4px solid #10b981' : '4px solid #f59e0b',
+          gridColumn: '1 / -1'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <h3 style={{ fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Cloud size={22} color={cloudStatus === 'sincronizado' ? '#10b981' : '#f59e0b'} />
+              <span>Sincronização em Tempo Real (Google Firebase Cloud Firestore)</span>
+            </h3>
+            <span style={{ 
+              fontSize: '0.75rem', 
+              background: cloudStatus === 'sincronizado' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)', 
+              color: cloudStatus === 'sincronizado' ? '#10b981' : '#f59e0b', 
+              padding: '0.25rem 0.65rem', 
+              borderRadius: '100px',
+              fontWeight: '700',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.35rem'
+            }}>
+              <span style={{ 
+                width: '8px', 
+                height: '8px', 
+                borderRadius: '50%', 
+                background: cloudStatus === 'sincronizado' ? '#10b981' : '#f59e0b',
+                boxShadow: cloudStatus === 'sincronizado' ? '0 0 6px #10b981' : 'none'
+              }} />
+              {cloudStatus === 'sincronizado' ? 'Nuvem Conectada & Sincronizada' : cloudStatus === 'conectando' ? 'Conectando à Nuvem...' : 'Aguardando Ativação do Firestore'}
+            </span>
+          </div>
+
+          <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '1rem', lineHeight: '1.5' }}>
+            Com a nuvem ativada, <strong>tudo o que você cadastrar ou alterar no computador aparece instantaneamente no celular da sua esposa</strong> e vice-versa, sem precisar exportar arquivos!
+          </p>
+
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', 
+            gap: '0.85rem',
+            marginBottom: '1rem' 
+          }}>
+            <div style={{ background: 'var(--bg-input)', padding: '0.75rem', borderRadius: 'var(--radius-md)' }}>
+              <div style={{ fontSize: '0.725rem', color: 'var(--text-muted)' }}>Projeto Firebase</div>
+              <div style={{ fontSize: '0.9rem', fontWeight: '600', color: 'var(--primary-400)', marginTop: '0.2rem' }}>
+                limpeza-express-sp
+              </div>
+            </div>
+
+            <div style={{ background: 'var(--bg-input)', padding: '0.75rem', borderRadius: 'var(--radius-md)' }}>
+              <div style={{ fontSize: '0.725rem', color: 'var(--text-muted)' }}>Modo de Funcionamento</div>
+              <div style={{ fontSize: '0.9rem', fontWeight: '600', color: 'var(--text-primary)', marginTop: '0.2rem' }}>
+                Tempo Real com Cache Offline
+              </div>
+            </div>
+
+            <div style={{ background: 'var(--bg-input)', padding: '0.75rem', borderRadius: 'var(--radius-md)' }}>
+              <div style={{ fontSize: '0.725rem', color: 'var(--text-muted)' }}>Última Sincronização</div>
+              <div style={{ fontSize: '0.9rem', fontWeight: '600', color: 'var(--text-primary)', marginTop: '0.2rem' }}>
+                {cloudLastSync ? cloudLastSync.toLocaleTimeString() : 'Em andamento'}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <button 
+              onClick={forcarSincronizacaoNuvem} 
+              className="btn btn-primary btn-sm"
+              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+            >
+              <RefreshCw size={15} />
+              <span>Forçar Sincronização Completa</span>
+            </button>
+
+            <a 
+              href="https://console.firebase.google.com/project/limpeza-express-sp/firestore" 
+              target="_blank" 
+              rel="noreferrer"
+              className="btn btn-secondary btn-sm"
+              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none' }}
+            >
+              <ExternalLink size={15} />
+              <span>Abrir Firestore no Firebase Console</span>
+            </a>
+          </div>
+
+          {cloudStatus !== 'sincronizado' && (
+            <div style={{ 
+              marginTop: '1rem', 
+              padding: '0.75rem 1rem', 
+              background: 'rgba(245, 158, 11, 0.1)', 
+              borderRadius: 'var(--radius-md)',
+              border: '1px solid rgba(245, 158, 11, 0.25)',
+              fontSize: '0.8rem',
+              color: 'var(--text-secondary)'
+            }}>
+              <strong style={{ color: '#f59e0b' }}>⚠️ Atenção - 1 Passo Restante no Firebase Console:</strong>
+              <p style={{ marginTop: '0.35rem' }}>
+                Se você acabou de registrar o app no Firebase, clique no link acima <strong>"Abrir Firestore no Firebase Console"</strong>, clique em <strong>"Criar banco de dados"</strong>, marque a opção <strong>"Iniciar no modo de teste"</strong> e clique em <strong>"Ativar"</strong>. Assim que fizer isso, o status mudará para <span style={{ color: '#10b981', fontWeight: '600' }}>Nuvem Conectada</span> automaticamente!
+              </p>
+            </div>
+          )}
+        </div>
+
         {/* Controle de Acesso e Alterar Senha */}
         <div className="glass-card" style={{ borderLeft: '4px solid var(--primary-400)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
