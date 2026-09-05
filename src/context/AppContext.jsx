@@ -438,6 +438,15 @@ export const AppProvider = ({ children }) => {
     showToast('Credenciais redefinidas para o padrão: admin / 123456', 'info');
   };
 
+  // Resetar para dados de demonstração
+  const resetDemo = () => {
+    setClientes(CLIENTES_INICIAIS);
+    setAjudantes(AJUDANTES_INICIAIS);
+    setAgendamentos(AGENDAMENTOS_INICIAIS);
+    setPlanos(PLANOS_CATALOGO);
+    showToast('Dados de demonstração recarregados!');
+  };
+
   return (
     <AppContext.Provider value={{
       theme,
