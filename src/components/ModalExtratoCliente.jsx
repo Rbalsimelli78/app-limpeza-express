@@ -27,6 +27,9 @@ export const ModalExtratoCliente = ({ isOpen, onClose, cliente }) => {
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim] = useState('');
 
+  // Modo de Exibição: 'extrato' (foco nos lançamentos) | 'grafico' (foco no gráfico) | 'ambos' (ambos visíveis)
+  const [modoVisualizacao, setModoVisualizacao] = useState('extrato');
+
   // Formatação de Valores
   const formatCurrency = (val) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(val) || 0);
@@ -327,161 +330,226 @@ export const ModalExtratoCliente = ({ isOpen, onClose, cliente }) => {
           </div>
         </div>
 
-        {/* Gráfico de Linha: Imediatamente Visível na Tela */}
-        <div className="chart-container-box">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-            <h3 style={{ fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text-primary)' }}>
-              <TrendingUp size={15} color="var(--primary-400)" />
-              <span>Evolução dos Pagamentos ({periodoDesc})</span>
-            </h3>
-            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-              Eixo X: Data • Eixo Y: R$
-            </span>
-          </div>
-
-          <LineChart 
-            data={dadosGrafico} 
-            height={180} 
-            color="#10b981" 
-            gradientColor="#06b6d4" 
-            valuePrefix="R$ " 
-            emptyMessage="Nenhuma faxina registrada no período selecionado."
-          />
-        </div>
-
-        {/* Barra de Ações: Exportar Excel, WhatsApp, Imprimir */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-          <h3 style={{ fontSize: '0.95rem', color: 'var(--text-primary)' }}>
-            Lançamentos Discriminados ({agendamentosFiltrados.length})
-          </h3>
-
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-            <button 
-              type="button" 
-              onClick={handleExportExcel}
-              className="btn btn-secondary btn-sm"
-              title="Baixar planilha para o Microsoft Excel"
+        {/* Alternador de Abas / Visualização: Extrato vs Gráfico */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '0.5rem',
+          margin: '0.85rem 0 1rem 0',
+          padding: '0.4rem 0.6rem',
+          background: 'var(--bg-input)',
+          borderRadius: 'var(--radius-md)',
+          border: '1px solid var(--border-color)'
+        }}>
+          <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => setModoVisualizacao('extrato')}
+              className={`btn btn-sm ${modoVisualizacao === 'extrato' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem', height: 'auto', minHeight: '30px', fontWeight: '600' }}
             >
-              <FileSpreadsheet size={15} color="#10b981" />
-              <span>Exportar Excel (.csv)</span>
+              📋 Extrato & Lançamentos ({agendamentosFiltrados.length})
             </button>
-
-            <button 
-              type="button" 
-              onClick={handleEncaminharWhatsApp}
-              className="btn btn-whatsapp btn-sm"
-              title="Enviar extrato para o cliente pelo WhatsApp"
+            <button
+              type="button"
+              onClick={() => setModoVisualizacao('grafico')}
+              className={`btn btn-sm ${modoVisualizacao === 'grafico' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem', height: 'auto', minHeight: '30px', fontWeight: '600' }}
             >
-              <MessageCircle size={15} />
-              <span>Encaminhar WhatsApp</span>
+              📈 Gráfico de Evolução
             </button>
-
-            <button 
-              type="button" 
-              onClick={handleImprimir}
-              className="btn btn-secondary btn-sm"
-              title="Imprimir ou Salvar PDF"
+            <button
+              type="button"
+              onClick={() => setModoVisualizacao('ambos')}
+              className={`btn btn-sm ${modoVisualizacao === 'ambos' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem', height: 'auto', minHeight: '30px', fontWeight: '600' }}
             >
-              <Printer size={15} />
-              <span>Imprimir / PDF</span>
+              👁️ Ver Ambos (Gráfico + Extrato)
             </button>
           </div>
+
+          <span style={{ fontSize: '0.725rem', color: 'var(--text-muted)' }}>
+            {modoVisualizacao === 'extrato' 
+              ? 'Lançamentos detalhados em destaque' 
+              : modoVisualizacao === 'grafico' 
+                ? 'Curva visual dos pagamentos' 
+                : 'Exibindo gráfico e extrato completo'}
+          </span>
         </div>
 
-        {/* Tabela de Agendamentos */}
-        <div style={{ overflowX: 'auto', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.825rem', textAlign: 'left' }}>
-            <thead>
-              <tr style={{ background: 'var(--bg-input)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
-                <th style={{ padding: '0.625rem 0.875rem' }}>Data & Horário</th>
-                <th style={{ padding: '0.625rem 0.875rem' }}>Plano / Pacote</th>
-                <th style={{ padding: '0.625rem 0.875rem' }}>Dormitórios</th>
-                <th style={{ padding: '0.625rem 0.875rem' }}>Valor Cobrado</th>
-                <th style={{ padding: '0.625rem 0.875rem' }}>Status</th>
-                <th style={{ padding: '0.625rem 0.875rem', textAlign: 'right' }}>Ação</th>
-              </tr>
-            </thead>
-            <tbody>
-              {agendamentosFiltrados.length === 0 ? (
-                <tr>
-                  <td colSpan="6" style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                    Nenhuma faxina encontrada para o período selecionado.
-                  </td>
-                </tr>
-              ) : (
-                agendamentosFiltrados.map((ag) => {
-                  const p = planos.find(pl => pl.id === ag.planoId);
-                  const isPago = ag.statusClientePagamento === 'pago';
+        {/* Gráfico de Linha: exibido se modo for 'grafico' ou 'ambos' */}
+        {(modoVisualizacao === 'grafico' || modoVisualizacao === 'ambos') && (
+          <div className="chart-container-box" style={{ marginBottom: modoVisualizacao === 'ambos' ? '1rem' : '1.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+              <h3 style={{ fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text-primary)' }}>
+                <TrendingUp size={15} color="var(--primary-400)" />
+                <span>Evolução dos Pagamentos ({periodoDesc})</span>
+              </h3>
+              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                Eixo X: Data • Eixo Y: R$
+              </span>
+            </div>
 
-                  return (
-                    <tr 
-                      key={ag.id} 
-                      style={{ 
-                        borderBottom: '1px solid var(--border-color)',
-                        background: isPago ? 'transparent' : 'rgba(245, 158, 11, 0.03)'
-                      }}
-                    >
-                      <td style={{ padding: '0.625rem 0.875rem', fontWeight: '500' }}>
-                        {formatDate(ag.dataHoraInicio)}
-                        <span style={{ fontSize: '0.725rem', color: 'var(--text-muted)', display: 'block' }}>
-                          {new Date(ag.dataHoraInicio).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </td>
+            <LineChart 
+              data={dadosGrafico} 
+              height={modoVisualizacao === 'ambos' ? 140 : 220} 
+              color="#10b981" 
+              gradientColor="#06b6d4" 
+              valuePrefix="R$ " 
+              emptyMessage="Nenhuma faxina registrada no período selecionado."
+            />
+          </div>
+        )}
 
-                      <td style={{ padding: '0.625rem 0.875rem' }}>
-                        <span style={{ fontWeight: '600', color: 'var(--text-primary)' }}>
-                          {p?.nome || 'Plano de Limpeza'}
-                        </span>
-                        {ag.semManutencao2Meses && (
-                          <span style={{ fontSize: '0.7rem', color: 'var(--accent-gold)', display: 'block' }}>
-                            + R$ 50 taxa sem manutenção
-                          </span>
-                        )}
-                      </td>
+        {/* Seção da Tabela / Lançamentos: exibida se modo for 'extrato' ou 'ambos' */}
+        {(modoVisualizacao === 'extrato' || modoVisualizacao === 'ambos') && (
+          <>
+            {/* Barra de Ações: Exportar Excel, WhatsApp, Imprimir */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
+              <h3 style={{ fontSize: '0.95rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <span>Lançamentos Discriminados</span>
+                <span className="badge badge-info" style={{ fontSize: '0.75rem' }}>
+                  {agendamentosFiltrados.length}
+                </span>
+              </h3>
 
-                      <td style={{ padding: '0.625rem 0.875rem', color: 'var(--text-secondary)' }}>
-                        {ag.dormitorios || 2} dorms
-                      </td>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                <button 
+                  type="button" 
+                  onClick={handleExportExcel}
+                  className="btn btn-secondary btn-sm"
+                  title="Baixar planilha para o Microsoft Excel"
+                >
+                  <FileSpreadsheet size={15} color="#10b981" />
+                  <span>Exportar Excel (.csv)</span>
+                </button>
 
-                      <td style={{ padding: '0.625rem 0.875rem', fontWeight: '700', color: 'var(--text-primary)' }}>
-                        {formatCurrency(ag.valorCliente)}
-                      </td>
+                <button 
+                  type="button" 
+                  onClick={handleEncaminharWhatsApp}
+                  className="btn btn-whatsapp btn-sm"
+                  title="Enviar extrato para o cliente pelo WhatsApp"
+                >
+                  <MessageCircle size={15} />
+                  <span>Encaminhar WhatsApp</span>
+                </button>
 
-                      <td style={{ padding: '0.625rem 0.875rem' }}>
-                        {isPago ? (
-                          <span className="badge badge-success" style={{ fontSize: '0.7rem' }}>
-                            <CheckCircle2 size={12} />
-                            <span>Pago</span>
-                          </span>
-                        ) : (
-                          <span className="badge badge-warning" style={{ fontSize: '0.7rem' }}>
-                            <Clock size={12} />
-                            <span>Pendente</span>
-                          </span>
-                        )}
-                      </td>
+                <button 
+                  type="button" 
+                  onClick={handleImprimir}
+                  className="btn btn-secondary btn-sm"
+                  title="Imprimir ou Salvar PDF"
+                >
+                  <Printer size={15} />
+                  <span>Imprimir / PDF</span>
+                </button>
+              </div>
+            </div>
 
-                      <td style={{ padding: '0.625rem 0.875rem', textAlign: 'right' }}>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const novoStatus = isPago ? 'pendente' : 'pago';
-                            setStatusPagamentoCliente(ag.id, novoStatus);
-                            showToast(`Status alterado para: ${novoStatus === 'pago' ? 'Pago' : 'Pendente'}`);
-                          }}
-                          className={`btn btn-sm ${isPago ? 'btn-secondary' : 'btn-primary'}`}
-                          style={{ padding: '0.25rem 0.5rem', fontSize: '0.725rem' }}
-                        >
-                          {isPago ? 'Marcar Pendente' : 'Marcar como Pago'}
-                        </button>
+            {/* Tabela de Agendamentos */}
+            <div style={{ 
+              overflowX: 'auto', 
+              borderRadius: 'var(--radius-md)', 
+              border: '1px solid var(--border-color)',
+              background: 'var(--bg-card)',
+              marginBottom: '1rem'
+            }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.825rem', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ background: 'var(--bg-input)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
+                    <th style={{ padding: '0.625rem 0.875rem' }}>Data & Horário</th>
+                    <th style={{ padding: '0.625rem 0.875rem' }}>Plano / Pacote</th>
+                    <th style={{ padding: '0.625rem 0.875rem' }}>Dormitórios</th>
+                    <th style={{ padding: '0.625rem 0.875rem' }}>Valor Cobrado</th>
+                    <th style={{ padding: '0.625rem 0.875rem' }}>Status</th>
+                    <th style={{ padding: '0.625rem 0.875rem', textAlign: 'right' }}>Ação</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {agendamentosFiltrados.length === 0 ? (
+                    <tr>
+                      <td colSpan="6" style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                        Nenhuma faxina encontrada para o período selecionado.
                       </td>
                     </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                  ) : (
+                    agendamentosFiltrados.map((ag) => {
+                      const p = planos.find(pl => pl.id === ag.planoId);
+                      const isPago = ag.statusClientePagamento === 'pago';
+
+                      return (
+                        <tr 
+                          key={ag.id} 
+                          style={{ 
+                            borderBottom: '1px solid var(--border-color)',
+                            background: isPago ? 'transparent' : 'rgba(245, 158, 11, 0.03)'
+                          }}
+                        >
+                          <td style={{ padding: '0.625rem 0.875rem', fontWeight: '500' }}>
+                            {formatDate(ag.dataHoraInicio)}
+                            <span style={{ fontSize: '0.725rem', color: 'var(--text-muted)', display: 'block' }}>
+                              {new Date(ag.dataHoraInicio).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </td>
+
+                          <td style={{ padding: '0.625rem 0.875rem' }}>
+                            <span style={{ fontWeight: '600', color: 'var(--text-primary)' }}>
+                              {p?.nome || 'Plano de Limpeza'}
+                            </span>
+                            {ag.semManutencao2Meses && (
+                              <span style={{ fontSize: '0.7rem', color: 'var(--accent-gold)', display: 'block' }}>
+                                + R$ 50 taxa sem manutenção
+                              </span>
+                            )}
+                          </td>
+
+                          <td style={{ padding: '0.625rem 0.875rem', color: 'var(--text-secondary)' }}>
+                            {ag.dormitorios || 2} dorms
+                          </td>
+
+                          <td style={{ padding: '0.625rem 0.875rem', fontWeight: '700', color: 'var(--text-primary)' }}>
+                            {formatCurrency(ag.valorCliente)}
+                          </td>
+
+                          <td style={{ padding: '0.625rem 0.875rem' }}>
+                            {isPago ? (
+                              <span className="badge badge-success" style={{ fontSize: '0.7rem' }}>
+                                <CheckCircle2 size={12} />
+                                <span>Pago</span>
+                              </span>
+                            ) : (
+                              <span className="badge badge-warning" style={{ fontSize: '0.7rem' }}>
+                                <Clock size={12} />
+                                <span>Pendente</span>
+                              </span>
+                            )}
+                          </td>
+
+                          <td style={{ padding: '0.625rem 0.875rem', textAlign: 'right' }}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const novoStatus = isPago ? 'pendente' : 'pago';
+                                setStatusPagamentoCliente(ag.id, novoStatus);
+                                showToast(`Status alterado para: ${novoStatus === 'pago' ? 'Pago' : 'Pendente'}`);
+                              }}
+                              className={`btn btn-sm ${isPago ? 'btn-secondary' : 'btn-primary'}`}
+                              style={{ padding: '0.25rem 0.5rem', fontSize: '0.725rem' }}
+                            >
+                              {isPago ? 'Marcar Pendente' : 'Marcar como Pago'}
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
 
         {/* Rodapé de Fechamento */}
         <div style={{ marginTop: '1.25rem', display: 'flex', justifyContent: 'flex-end' }}>

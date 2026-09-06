@@ -727,16 +727,30 @@ h1, h2, h3, h4, .brand-title {
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
-  max-width: 850px;
+  max-width: 880px;
   width: 95%;
   max-height: 92vh;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   box-shadow: var(--shadow-lg);
   animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  display: flex;
-  flex-direction: column;
+  display: block; /* NOTE: display block evita que o flexbox encolha a tabela do extrato */
   padding: 1rem;
+}
+
+.modal-extrato-content::-webkit-scrollbar {
+  width: 8px;
+}
+.modal-extrato-content::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: var(--radius-full);
+}
+.modal-extrato-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: var(--radius-full);
+}
+.modal-extrato-content::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-400);
 }
 
 @media (min-width: 641px) {
