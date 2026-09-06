@@ -21,7 +21,9 @@ import {
   Navigation,
   Sparkles,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  FileText,
+  Building
 } from 'lucide-react';
 import { formatCurrency, formatTime } from '../utils/formatters';
 import { generateGoogleCalendarUrl, downloadIcsFile } from '../utils/calendar';
@@ -199,6 +201,20 @@ export const ModalDiaAgenda = ({
                           {plano?.nome || 'Plano de Limpeza'}
                         </span>
 
+                        {cliente?.tipoCliente === 'PJ' && (
+                          <span className="badge" style={{ fontSize: '0.725rem', background: 'rgba(168, 85, 247, 0.2)', color: '#e9d5ff', border: '1px solid rgba(168, 85, 247, 0.4)', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                            <Building size={11} />
+                            <span>PJ</span>
+                          </span>
+                        )}
+
+                        {cliente?.emiteNF && (
+                          <span className="badge" style={{ fontSize: '0.725rem', background: 'rgba(99, 102, 241, 0.25)', color: '#c7d2fe', border: '1px solid rgba(99, 102, 241, 0.45)', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }} title={`Emitir NF: CNPJ ${cliente?.cnpj || 'Ver cadastro'}`}>
+                            <FileText size={11} />
+                            <span>Emitir NF</span>
+                          </span>
+                        )}
+
                         <span className={`badge ${
                           ag.statusServico === 'concluido' ? 'badge-success' : 
                           ag.statusServico === 'confirmado' ? 'badge-info' : 
@@ -209,7 +225,7 @@ export const ModalDiaAgenda = ({
 
                         {ag.dormitorios > 2 && (
                           <span className="badge badge-warning" style={{ fontSize: '0.725rem' }}>
-                            {ag.dormitorios} dorms (+R$30)
+                            {cliente?.tipoCliente === 'PJ' ? `${ag.dormitorios} salas (+R$30)` : `${ag.dormitorios} dorms (+R$30)`}
                           </span>
                         )}
 
@@ -234,6 +250,31 @@ export const ModalDiaAgenda = ({
                           {cliente?.bairro}
                         </span>
                       </div>
+
+                      {cliente?.emiteNF && (
+                        <div style={{
+                          marginTop: '0.4rem',
+                          background: 'rgba(99, 102, 241, 0.08)',
+                          border: '1px solid rgba(99, 102, 241, 0.25)',
+                          borderRadius: 'var(--radius-sm)',
+                          padding: '0.35rem 0.6rem',
+                          fontSize: '0.75rem',
+                          color: '#c7d2fe',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          flexWrap: 'wrap',
+                          gap: '0.25rem'
+                        }}>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                            <FileText size={12} />
+                            <strong>NF Requerida:</strong> {cliente.razaoSocial || cliente.nome} {cliente.cnpj ? `(CNPJ: ${cliente.cnpj})` : ''}
+                          </span>
+                          {cliente.emailFaturamento && (
+                            <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>NF para: {cliente.emailFaturamento}</span>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     <div style={{ textAlign: 'right' }}>

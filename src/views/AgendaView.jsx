@@ -17,7 +17,9 @@ import {
   List,
   Sparkles,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  FileText,
+  Building
 } from 'lucide-react';
 import { formatCurrency, formatDate, formatTime } from '../utils/formatters';
 import { generateGoogleCalendarUrl, downloadIcsFile } from '../utils/calendar';
@@ -211,6 +213,18 @@ export const AgendaView = ({ onNovoAgendamento, onEditarAgendamento }) => {
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.375rem', flexWrap: 'wrap' }}>
                         <span className="badge badge-info">{plano?.nome || 'Plano de Limpeza'}</span>
+                        {cliente?.tipoCliente === 'PJ' && (
+                          <span className="badge" style={{ background: 'rgba(168, 85, 247, 0.2)', color: '#e9d5ff', border: '1px solid rgba(168, 85, 247, 0.4)', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                            <Building size={11} />
+                            <span>PJ</span>
+                          </span>
+                        )}
+                        {cliente?.emiteNF && (
+                          <span className="badge" style={{ background: 'rgba(99, 102, 241, 0.25)', color: '#c7d2fe', border: '1px solid rgba(99, 102, 241, 0.45)', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }} title={`Emitir Nota Fiscal: CNPJ ${cliente?.cnpj || 'Ver cadastro'}`}>
+                            <FileText size={11} />
+                            <span>Emitir NF</span>
+                          </span>
+                        )}
                         <span className={`badge ${
                           ag.statusServico === 'concluido' ? 'badge-success' : 
                           ag.statusServico === 'confirmado' ? 'badge-info' : 
@@ -219,7 +233,9 @@ export const AgendaView = ({ onNovoAgendamento, onEditarAgendamento }) => {
                           {ag.statusServico}
                         </span>
                         {ag.dormitorios > 2 && (
-                          <span className="badge badge-warning">{ag.dormitorios} Dorms (+R$30)</span>
+                          <span className="badge badge-warning">
+                            {cliente?.tipoCliente === 'PJ' ? `${ag.dormitorios} Salas (+R$30)` : `${ag.dormitorios} Dorms (+R$30)`}
+                          </span>
                         )}
                         {ag.semManutencao2Meses && (
                           <span className="badge badge-danger">Sem manutenção (+R$50)</span>

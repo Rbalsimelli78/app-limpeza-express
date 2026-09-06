@@ -23,12 +23,17 @@ export const generateGoogleCalendarUrl = (agendamento, cliente, plano, ajudantes
     ? ajudantesNomes.join(' e ') 
     : '2 Profissionais Limpeza Express';
 
+  const nfLine = cliente?.emiteNF 
+    ? `📄 NOTA FISCAL (NF): SIM, EMITIR NOTA FISCAL! (CNPJ: ${cliente.cnpj || 'Ver cadastro'} | Razão: ${cliente.razaoSocial || cliente.nome}${cliente.emailFaturamento ? ` | Enviar para: ${cliente.emailFaturamento}` : ''})`
+    : null;
+
   const details = [
-    `🏢 CLIENTE: ${cliente.nome}`,
+    `🏢 CLIENTE: ${cliente.nome}${cliente.tipoCliente === 'PJ' ? ' (ESCRITÓRIO PJ)' : ''}`,
+    ...(nfLine ? [nfLine] : []),
     `📱 WHATSAPP: ${cliente.telefone || 'Não informado'}`,
     `📍 ENDEREÇO: ${location}`,
     `📋 PLANO: ${plano?.nome || 'Limpeza Residencial'}`,
-    `🛏️ DORMITÓRIOS: ${agendamento.dormitorios || 2} dorms`,
+    `🛏️ ESPAÇO: ${agendamento.dormitorios || 2} ${cliente.tipoCliente === 'PJ' ? 'salas/ambientes' : 'dorms'}`,
     `👥 EQUIPE ESCALADA: ${equipeStr}`,
     `💰 VALOR TOTAL: R$ ${Number(agendamento.valorCliente || 0).toFixed(2)}`,
     `ℹ️ OBSERVAÇÕES: ${agendamento.observacoes || cliente.observacoes || 'Nenhuma'}`,
@@ -65,7 +70,8 @@ export const downloadIcsFile = (agendamento, cliente, plano, ajudantesNomes = []
   const endIso = formatToGoogleUtc(endDate);
   const title = `Limpeza Express SP - ${cliente.nome}`;
   const location = `${cliente.endereco || ''}, ${cliente.apartamento || ''} - ${cliente.bairro || 'São Paulo'}`;
-  const description = `Plano: ${plano?.nome || 'Express'} | Equipe: ${ajudantesNomes.join(', ')} | Tel: ${cliente.telefone}`;
+  const nfDesc = cliente?.emiteNF ? ` | EMITIR NF (CNPJ: ${cliente.cnpj || 'Ver cadastro'})` : '';
+  const description = `Plano: ${plano?.nome || 'Express'} | Equipe: ${ajudantesNomes.join(', ')} | Tel: ${cliente.telefone}${nfDesc}`;
 
   const icsContent = [
     'BEGIN:VCALENDAR',

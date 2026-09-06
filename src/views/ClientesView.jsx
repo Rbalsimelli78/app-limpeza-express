@@ -17,7 +17,8 @@ import {
   Filter,
   UserCheck,
   UserX,
-  CheckCircle2
+  CheckCircle2,
+  FileText
 } from 'lucide-react';
 import { formatPhone, formatCurrency } from '../utils/formatters';
 import { getWhatsAppUrl } from '../utils/whatsapp';
@@ -27,12 +28,13 @@ export const ClientesView = ({ onNovoCliente, onEditarCliente, onAgendarParaClie
   const { clientes, agendamentos, planos, deleteCliente, updateCliente } = useApp();
   const [busca, setBusca] = useState('');
   const [filtroCondominio, setFiltroCondominio] = useState('todos');
-  const [filtroStatus, setFiltroStatus] = useState('todos'); // 'todos', 'ativo', 'inativo'
+  const [filtroStatus, setFiltroStatus] = useState('todos'); // 'todos', 'ativo', 'inativo', 'pj'
   const [clienteExtrato, setClienteExtrato] = useState(null);
 
   // Contagens para os botões de status
   const qtdAtivos = clientes.filter(c => c.status !== 'inativo').length;
   const qtdInativos = clientes.filter(c => c.status === 'inativo').length;
+  const qtdPJ = clientes.filter(c => c.tipoCliente === 'PJ' || c.emiteNF || c.cnpj).length;
 
   // Lista de condomínios únicos cadastrados para filtro rápido
   const condominiosUnicos = Array.from(
@@ -43,11 +45,15 @@ export const ClientesView = ({ onNovoCliente, onEditarCliente, onAgendarParaClie
     // 1. Filtro de Status
     if (filtroStatus === 'ativo' && c.status === 'inativo') return false;
     if (filtroStatus === 'inativo' && c.status !== 'inativo') return false;
+    if (filtroStatus === 'pj' && !(c.tipoCliente === 'PJ' || c.emiteNF || c.cnpj)) return false;
 
     // 2. Filtro de Busca em Texto
     const termo = busca.toLowerCase();
     const matchBusca = (
       c.nome?.toLowerCase().includes(termo) ||
+      c.razaoSocial?.toLowerCase().includes(termo) ||
+      c.cnpj?.toLowerCase().includes(termo) ||
+      c.emailFaturamento?.toLowerCase().includes(termo) ||
       c.condominio?.toLowerCase().includes(termo) ||
       c.torre?.toLowerCase().includes(termo) ||
       c.bairro?.toLowerCase().includes(termo) ||
@@ -135,6 +141,26 @@ export const ClientesView = ({ onNovoCliente, onEditarCliente, onAgendarParaClie
             <UserX size={12} />
             <span>Inativos / Pausados ({qtdInativos})</span>
           </button>
+
+          <button
+            type="button"
+            onClick={() => setFiltroStatus('pj')}
+            className={`badge ${filtroStatus === 'pj' ? 'badge-purple' : 'badge-neutral'}`}
+            style={{ 
+              cursor: 'pointer', 
+              border: 'none', 
+              padding: '0.35rem 0.75rem', 
+              fontSize: '0.75rem', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '0.35rem',
+              background: filtroStatus === 'pj' ? 'rgba(168, 85, 247, 0.25)' : undefined,
+              color: filtroStatus === 'pj' ? '#e9d5ff' : undefined
+            }}
+          >
+            <Building size={12} />
+            <span>Escritórios / PJ ({qtdPJ})</span>
+          </button>
         </div>
 
         {/* Filtro Rápido por Condomínio */}
@@ -200,6 +226,18 @@ export const ClientesView = ({ onNovoCliente, onEditarCliente, onAgendarParaClie
                       <span className={`badge ${c.status === 'inativo' ? 'badge-danger' : 'badge-success'}`} style={{ fontSize: '0.7rem' }}>
                         {c.status === 'inativo' ? 'Inativo' : 'Ativo'}
                       </span>
+                      {c.tipoCliente === 'PJ' && (
+                        <span className="badge" style={{ fontSize: '0.7rem', background: 'rgba(168, 85, 247, 0.2)', color: '#e9d5ff', border: '1px solid rgba(168, 85, 247, 0.4)', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                          <Building size={11} />
+                          <span>Escritório PJ</span>
+                        </span>
+                      )}
+                      {c.emiteNF && (
+                        <span className="badge" style={{ fontSize: '0.7rem', background: 'rgba(99, 102, 241, 0.2)', color: '#c7d2fe', border: '1px solid rgba(99, 102, 241, 0.4)', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                          <FileText size={11} />
+                          <span>Emite NF</span>
+                        </span>
+                      )}
                       <span className="badge badge-info" style={{ fontSize: '0.7rem' }}>
                         {planoPadrao?.nome || 'Plano Quinzenal'}
                       </span>
@@ -209,11 +247,68 @@ export const ClientesView = ({ onNovoCliente, onEditarCliente, onAgendarParaClie
                     </h4>
                   </div>
                   <span className="badge badge-neutral">
-                    {c.dormitorios || 2} Dorms • {c.metragem || '80-100m²'}
+                    {c.tipoCliente === 'PJ' ? `${c.dormitorios || 2} Salas • ${c.metragem || 'Comercial'}` : `${c.dormitorios || 2} Dorms • ${c.metragem || '80-100m²'}`}
                   </span>
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+                  {/* Bloco de Dados PJ e Nota Fiscal */}
+                  {(c.cnpj || c.razaoSocial || c.emiteNF) && (
+                    <div style={{ 
+                      background: 'rgba(168, 85, 247, 0.08)', 
+                      border: '1px solid rgba(168, 85, 247, 0.25)', 
+                      borderRadius: 'var(--radius-sm)', 
+                      padding: '0.5rem 0.75rem', 
+                      fontSize: '0.8rem',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.25rem'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ fontWeight: '600', color: '#c084fc', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                          <FileText size={13} />
+                          <span>{c.razaoSocial || 'Dados para Nota Fiscal (NF)'}</span>
+                        </span>
+                        {c.emiteNF && (
+                          <span className="badge" style={{ fontSize: '0.65rem', background: 'rgba(168, 85, 247, 0.25)', color: '#f3e8ff' }}>
+                            Obrigatório NF
+                          </span>
+                        )}
+                      </div>
+                      {c.cnpj && (
+                        <div style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>
+                          <strong>CNPJ:</strong> {c.cnpj} {c.inscricaoEstadual ? `• IE: ${c.inscricaoEstadual}` : ''}
+                        </div>
+                      )}
+                      {c.emailFaturamento && (
+                        <div style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>
+                          <strong>E-mail NF:</strong> {c.emailFaturamento}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Valor Fechado Combinado */}
+                  {c.valorFechado !== null && c.valorFechado !== undefined && Number(c.valorFechado) > 0 && (
+                    <div style={{
+                      background: 'rgba(16, 185, 129, 0.1)',
+                      border: '1px solid rgba(16, 185, 129, 0.3)',
+                      borderRadius: 'var(--radius-sm)',
+                      padding: '0.45rem 0.75rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      fontSize: '0.825rem',
+                      color: 'var(--primary-400)',
+                      fontWeight: '600'
+                    }}>
+                      <span>💰 Valor Fechado Combinado:</span>
+                      <span style={{ fontSize: '0.95rem', fontWeight: '700' }}>
+                        {formatCurrency(c.valorFechado)}
+                      </span>
+                    </div>
+                  )}
+
                   {/* Destaque para Condomínio e Torre */}
                   {(c.condominio || c.torre) && (
                     <div style={{ 

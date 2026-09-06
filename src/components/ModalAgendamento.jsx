@@ -52,13 +52,24 @@ export const ModalAgendamento = ({ isOpen, onClose, agendamentoEdicao = null }) 
       const fimDate = new Date(agora.getTime() + 4 * 60 * 60 * 1000);
       const fim = fimDate.toISOString().slice(0, 16);
 
-      setClienteId(clientes[0]?.id || '');
-      setPlanoId('plano-quinzenal');
+      const primeiroCli = clientes[0];
+      const dormsInit = primeiroCli?.dormitorios || 2;
+      const planoInit = primeiroCli?.planoPadraoId || 'plano-quinzenal';
+      let valorInit = 190;
+      if (primeiroCli?.valorFechado !== null && primeiroCli?.valorFechado !== undefined && Number(primeiroCli?.valorFechado) > 0) {
+        valorInit = Number(primeiroCli.valorFechado);
+      } else {
+        const pObj = planos.find(p => p.id === planoInit) || planos[0];
+        valorInit = pObj ? pObj.valorBase : 190;
+      }
+
+      setClienteId(primeiroCli?.id || '');
+      setPlanoId(planoInit);
       setDataHoraInicio(inicio);
       setDataHoraFim(fim);
-      setDormitorios(2);
+      setDormitorios(dormsInit);
       setSemManutencao(false);
-      setValorCliente(190);
+      setValorCliente(valorInit);
       setStatusClientePagamento('pendente');
       setFormaPagamentoCliente('PIX');
       setStatusServico('confirmado');
@@ -81,12 +92,19 @@ export const ModalAgendamento = ({ isOpen, onClose, agendamentoEdicao = null }) 
   }, [agendamentoEdicao, isOpen, clientes, ajudantes]);
 
   // Recálculo automático do valor do cliente conforme plano e adicionais
-  const recalcularValor = (pId, numDorms, semManut) => {
-    const plano = planos.find(p => p.id === pId) || planos[0];
-    let total = plano.valorBase;
+  const recalcularValor = (pId, numDorms, semManut, cId = clienteId) => {
+    const cli = clientes.find(c => c.id === cId);
+    // Se o cliente possui um valor fechado cadastrado e está no plano comercial ou customizado, usa o valor fechado
+    if (cli?.valorFechado !== null && cli?.valorFechado !== undefined && Number(cli?.valorFechado) > 0 && (pId === 'plano-customizado' || pId === 'plano-comercial-pj' || pId === cli?.planoPadraoId)) {
+      setValorCliente(Number(cli.valorFechado));
+      return;
+    }
 
-    // +R$ 30 se 3 ou mais quartos
-    if (numDorms > 2) {
+    const plano = planos.find(p => p.id === pId) || planos[0];
+    let total = plano ? plano.valorBase : 190;
+
+    // +R$ 30 se 3 ou mais quartos para planos padrão
+    if (numDorms > 2 && pId !== 'plano-customizado' && pId !== 'plano-comercial-pj') {
       total += (numDorms - 2) * regras.acrescimoPorQuartoExtra;
     }
 
@@ -101,7 +119,12 @@ export const ModalAgendamento = ({ isOpen, onClose, agendamentoEdicao = null }) 
   const handlePlanoChange = (e) => {
     const newId = e.target.value;
     setPlanoId(newId);
-    recalcularValor(newId, dormitorios, semManutencao);
+    const cli = clientes.find(c => c.id === clienteId);
+    if (cli?.valorFechado !== null && cli?.valorFechado !== undefined && Number(cli?.valorFechado) > 0 && (newId === 'plano-customizado' || newId === 'plano-comercial-pj' || newId === cli?.planoPadraoId)) {
+      setValorCliente(Number(cli.valorFechado));
+    } else {
+      recalcularValor(newId, dormitorios, semManutencao);
+    }
   };
 
   const handleDormitoriosChange = (e) => {
@@ -121,12 +144,15 @@ export const ModalAgendamento = ({ isOpen, onClose, agendamentoEdicao = null }) 
     setClienteId(cId);
     const cli = clientes.find(c => c.id === cId);
     if (cli) {
-      if (cli.dormitorios) {
-        setDormitorios(cli.dormitorios);
-      }
-      if (cli.planoPadraoId) {
-        setPlanoId(cli.planoPadraoId);
-        recalcularValor(cli.planoPadraoId, cli.dormitorios || 2, semManutencao);
+      const dorms = cli.dormitorios || 2;
+      const planoCli = cli.planoPadraoId || planoId;
+      setDormitorios(dorms);
+      setPlanoId(planoCli);
+
+      if (cli.valorFechado !== null && cli.valorFechado !== undefined && Number(cli.valorFechado) > 0) {
+        setValorCliente(Number(cli.valorFechado));
+      } else {
+        recalcularValor(planoCli, dorms, semManutencao, cId);
       }
     }
   };
@@ -202,6 +228,8 @@ export const ModalAgendamento = ({ isOpen, onClose, agendamentoEdicao = null }) 
 
   if (!isOpen) return null;
 
+  const clienteSelecionado = clientes.find(c => c.id === clienteId);
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={e => e.stopPropagation()}>
@@ -231,14 +259,51 @@ export const ModalAgendamento = ({ isOpen, onClose, agendamentoEdicao = null }) 
                 <option value="">Selecione um cliente...</option>
                 {clientes.map(c => (
                   <option key={c.id} value={c.id}>
-                    {c.status === 'inativo' ? '⚠️ [INATIVO] ' : ''}{c.nome} {c.condominio ? `• ${c.condominio}` : ''} {c.torre ? `(${c.torre} - ${c.apartamento})` : c.apartamento ? `(${c.apartamento})` : ''} - {c.bairro}
+                    {c.status === 'inativo' ? '⚠️ [INATIVO] ' : ''}
+                    {c.tipoCliente === 'PJ' ? '🏢 [PJ] ' : ''}
+                    {c.emiteNF ? '📄 [NF] ' : ''}
+                    {c.nome} {c.condominio ? `• ${c.condominio}` : ''} {c.torre ? `(${c.torre} - ${c.apartamento})` : c.apartamento ? `(${c.apartamento})` : ''} - {c.bairro}
+                    {c.valorFechado ? ` [Valor Fixo: R$ ${c.valorFechado}]` : ''}
                   </option>
                 ))}
               </select>
             </div>
 
+            {/* Aviso em Destaque de Nota Fiscal (NF) & PJ */}
+            {clienteSelecionado && (clienteSelecionado.emiteNF || clienteSelecionado.tipoCliente === 'PJ') && (
+              <div style={{
+                background: 'rgba(168, 85, 247, 0.1)',
+                border: '1px solid rgba(168, 85, 247, 0.35)',
+                borderRadius: 'var(--radius-md)',
+                padding: '0.75rem 1rem',
+                marginBottom: '1rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '0.5rem'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+                  <span style={{ fontSize: '1.25rem' }}>📄</span>
+                  <div>
+                    <div style={{ fontSize: '0.85rem', fontWeight: '700', color: '#c084fc', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <span>CLIENTE PJ / ESCRITÓRIO - EMITIR NOTA FISCAL (NF)</span>
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>
+                      {clienteSelecionado.cnpj ? `CNPJ: ${clienteSelecionado.cnpj}` : 'CNPJ não informado'}
+                      {clienteSelecionado.razaoSocial ? ` • Razão: ${clienteSelecionado.razaoSocial}` : ''}
+                      {clienteSelecionado.emailFaturamento ? ` • Email NF: ${clienteSelecionado.emailFaturamento}` : ''}
+                    </div>
+                  </div>
+                </div>
+                <span className="badge badge-purple" style={{ background: 'rgba(168, 85, 247, 0.25)', color: '#f3e8ff', border: '1px solid rgba(168, 85, 247, 0.45)', fontSize: '0.75rem' }}>
+                  Emitir NF
+                </span>
+              </div>
+            )}
+
             {/* Plano de Faxina */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '1rem' }}>
               <div className="form-group">
                 <label className="form-label">Plano de Faxina *</label>
                 <select 
@@ -248,23 +313,25 @@ export const ModalAgendamento = ({ isOpen, onClose, agendamentoEdicao = null }) 
                 >
                   {planos.map(p => (
                     <option key={p.id} value={p.id}>
-                      {p.nome} (R$ {p.valorBase},00)
+                      {p.nome} {p.valorBase > 0 ? `(R$ ${p.valorBase},00)` : ''}
                     </option>
                   ))}
                 </select>
               </div>
 
               <div className="form-group">
-                <label className="form-label">Dormitórios</label>
+                <label className="form-label">
+                  {clienteSelecionado?.tipoCliente === 'PJ' ? 'Salas / Ambientes' : 'Dormitórios'}
+                </label>
                 <select 
                   className="form-select" 
                   value={dormitorios} 
                   onChange={handleDormitoriosChange}
                 >
-                  <option value={1}>1 Dormitório</option>
-                  <option value={2}>2 Dormitórios (Padrão)</option>
-                  <option value={3}>3 Dormitórios (+R$ 30,00)</option>
-                  <option value={4}>4 Dormitórios (+R$ 60,00)</option>
+                  <option value={1}>{clienteSelecionado?.tipoCliente === 'PJ' ? '1 Sala / Recepção' : '1 Dormitório'}</option>
+                  <option value={2}>{clienteSelecionado?.tipoCliente === 'PJ' ? '2 Salas (Padrão)' : '2 Dormitórios (Padrão)'}</option>
+                  <option value={3}>{clienteSelecionado?.tipoCliente === 'PJ' ? '3 Salas (+R$ 30,00)' : '3 Dormitórios (+R$ 30,00)'}</option>
+                  <option value={4}>{clienteSelecionado?.tipoCliente === 'PJ' ? '4 Salas ou mais (+R$ 60,00)' : '4 Dormitórios (+R$ 60,00)'}</option>
                 </select>
               </div>
             </div>
@@ -390,7 +457,16 @@ export const ModalAgendamento = ({ isOpen, onClose, agendamentoEdicao = null }) 
                   className="form-input" 
                   value={valorCliente} 
                   onChange={e => setValorCliente(e.target.value)} 
+                  style={{ 
+                    borderColor: clienteSelecionado?.valorFechado ? 'var(--primary-500)' : 'var(--border-color)',
+                    background: clienteSelecionado?.valorFechado ? 'rgba(16, 185, 129, 0.06)' : 'var(--bg-input)'
+                  }}
                 />
+                {clienteSelecionado?.valorFechado && (
+                  <span style={{ fontSize: '0.7rem', color: 'var(--primary-400)', display: 'block', marginTop: '0.25rem' }}>
+                    ✨ Valor fixo/acordado do cliente: R$ {Number(clienteSelecionado.valorFechado).toFixed(2).replace('.', ',')}
+                  </span>
+                )}
               </div>
 
               <div className="form-group">

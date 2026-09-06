@@ -57,6 +57,36 @@ export const PLANOS_CATALOGO = [
     descricao: 'Faxina profunda e detalhada com 2 profissionais para renovar o apartamento.',
     avisoCancelamento: 'No caso de cancelamento avisar com 48hs de antecedência ou será cobrado 50% da sua reserva!!!',
     servicosOferecidos: SERVICOS_CATALOGO_PADRAO
+  },
+  {
+    id: 'plano-comercial-pj',
+    nome: 'Plano Escritório Comercial / PJ',
+    dormitoriosBase: 0,
+    valorBase: 250.00,
+    acrescimoPorQuartoExtra: 0,
+    taxaSemManutencao: 0,
+    frequencia: 'Personalizada (Semanal / Quinzenal)',
+    tempoEstimado: '3 a 5hs',
+    profissionais: 2,
+    destaque: 'PJ & Nota Fiscal',
+    descricao: 'Limpeza corporativa de salas, recepções, mesas, copas e sanitários para empresas.',
+    avisoCancelamento: 'No caso de cancelamento avisar com 48hs de antecedência.',
+    servicosOferecidos: SERVICOS_CATALOGO_PADRAO
+  },
+  {
+    id: 'plano-customizado',
+    nome: 'Plano Customizado (Valor Fechado)',
+    dormitoriosBase: 0,
+    valorBase: 0,
+    acrescimoPorQuartoExtra: 0,
+    taxaSemManutencao: 0,
+    frequencia: 'Sob Medida',
+    tempoEstimado: 'Conforme Negociado',
+    profissionais: 2,
+    destaque: 'Personalizado',
+    descricao: 'Valor e escopo acordados diretamente com o cliente.',
+    avisoCancelamento: 'Avisar com antecedência mínima de 48hs.',
+    servicosOferecidos: SERVICOS_CATALOGO_PADRAO
   }
 ];
 
