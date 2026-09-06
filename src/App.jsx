@@ -21,11 +21,12 @@ import { ModalAjudante } from './components/ModalAjudante';
 import { ModalPlano } from './components/ModalPlano';
 
 const MainAppContent = () => {
-  const { activeTab, setActiveTab, addCliente, isAuthenticated } = useApp();
+  const { activeTab, setActiveTab, addCliente, isAuthenticated, planos, regras } = useApp();
 
   // Estados dos Modais
   const [modalAgendamentoOpen, setModalAgendamentoOpen] = useState(false);
   const [agendamentoEdicao, setAgendamentoEdicao] = useState(null);
+  const [dadosIniciaisAgendamento, setDadosIniciaisAgendamento] = useState(null);
 
   const [modalClienteOpen, setModalClienteOpen] = useState(false);
   const [clienteEdicao, setClienteEdicao] = useState(null);
@@ -37,23 +38,41 @@ const MainAppContent = () => {
   const [planoEdicao, setPlanoEdicao] = useState(null);
 
   // Ações de Agendamento
-  const handleNovoAgendamento = () => {
+  const handleNovoAgendamento = (dadosIniciais = null) => {
     setAgendamentoEdicao(null);
+    setDadosIniciaisAgendamento(dadosIniciais);
     setModalAgendamentoOpen(true);
   };
 
   const handleEditarAgendamento = (ag) => {
+    setDadosIniciaisAgendamento(null);
     setAgendamentoEdicao(ag);
     setModalAgendamentoOpen(true);
   };
 
   const handleAgendarParaCliente = (cliente) => {
-    setAgendamentoEdicao({
+    setAgendamentoEdicao(null);
+
+    // Prioriza o valor fechado acordado com o cliente
+    let valor = 190;
+    if (cliente.valorFechado !== null && cliente.valorFechado !== undefined && Number(cliente.valorFechado) > 0) {
+      valor = Number(cliente.valorFechado);
+    } else {
+      const pId = cliente.planoPadraoId || 'plano-quinzenal';
+      const plano = planos.find(p => p.id === pId) || planos[0];
+      valor = plano ? plano.valorBase : 190;
+      const dorms = cliente.dormitorios || 2;
+      if (dorms > 2 && pId !== 'plano-customizado' && pId !== 'plano-comercial-pj') {
+        valor += (dorms - 2) * (regras?.acrescimoPorQuartoExtra || 30);
+      }
+    }
+
+    setDadosIniciaisAgendamento({
       clienteId: cliente.id,
       planoId: cliente.planoPadraoId || 'plano-quinzenal',
       dormitorios: cliente.dormitorios || 2,
       semManutencao2Meses: false,
-      valorCliente: 190
+      valorCliente: valor
     });
     setModalAgendamentoOpen(true);
   };
@@ -75,7 +94,8 @@ const MainAppContent = () => {
       targetClienteId = novoCli.id;
     }
 
-    setAgendamentoEdicao({
+    setAgendamentoEdicao(null);
+    setDadosIniciaisAgendamento({
       clienteId: targetClienteId,
       planoId: dados.planoId,
       dormitorios: dados.dormitorios,
@@ -198,8 +218,13 @@ const MainAppContent = () => {
       {/* Modais Globais */}
       <ModalAgendamento 
         isOpen={modalAgendamentoOpen} 
-        onClose={() => setModalAgendamentoOpen(false)}
+        onClose={() => {
+          setModalAgendamentoOpen(false);
+          setAgendamentoEdicao(null);
+          setDadosIniciaisAgendamento(null);
+        }}
         agendamentoEdicao={agendamentoEdicao}
+        dadosIniciais={dadosIniciaisAgendamento}
       />
 
       <ModalCliente 

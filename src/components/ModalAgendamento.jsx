@@ -2,12 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { X, Calendar, User, Clock, DollarSign, Sparkles, AlertTriangle, Users, Repeat } from 'lucide-react';
 import { generateGoogleCalendarUrl } from '../utils/calendar';
-import { generateRecurrenceDates } from '../utils/recurrence';
+import { generateRecurrenceDates, toDatetimeLocalString } from '../utils/recurrence';
 import { formatCurrency } from '../utils/formatters';
 
-export const ModalAgendamento = ({ isOpen, onClose, agendamentoEdicao = null }) => {
+export const ModalAgendamento = ({ 
+  isOpen, 
+  onClose, 
+  agendamentoEdicao = null,
+  dadosIniciais = null
+}) => {
   const { 
     clientes, 
+    agendamentos,
     ajudantes, 
     planos, 
     regras, 
@@ -16,6 +22,10 @@ export const ModalAgendamento = ({ isOpen, onClose, agendamentoEdicao = null }) 
     updateAgendamento, 
     showToast 
   } = useApp();
+
+  // É edição real apenas se existir ID cadastrado no banco
+  const isEdicao = Boolean(agendamentoEdicao && agendamentoEdicao.id);
+  const dadosIniciaisEfetivos = dadosIniciais || (!isEdicao && agendamentoEdicao ? agendamentoEdicao : null);
 
   const [clienteId, setClienteId] = useState('');
   const [planoId, setPlanoId] = useState('plano-quinzenal');
@@ -26,7 +36,7 @@ export const ModalAgendamento = ({ isOpen, onClose, agendamentoEdicao = null }) 
   const [valorCliente, setValorCliente] = useState(190);
   const [statusClientePagamento, setStatusClientePagamento] = useState('pendente');
   const [formaPagamentoCliente, setFormaPagamentoCliente] = useState('PIX');
-  const [statusServico, setStatusServico] = useState('agendado');
+  const [statusServico, setStatusServico] = useState('confirmado');
   const [observacoes, setObservacoes] = useState('');
   const [ajudantesSelecionadas, setAjudantesSelecionadas] = useState([]);
 
@@ -38,7 +48,9 @@ export const ModalAgendamento = ({ isOpen, onClose, agendamentoEdicao = null }) 
 
   // Inicialização ao abrir modal
   useEffect(() => {
-    if (agendamentoEdicao) {
+    if (!isOpen) return;
+
+    if (isEdicao) {
       setClienteId(agendamentoEdicao.clienteId || '');
       setPlanoId(agendamentoEdicao.planoId || 'plano-quinzenal');
       setDataHoraInicio(agendamentoEdicao.dataHoraInicio || '');
@@ -48,63 +60,126 @@ export const ModalAgendamento = ({ isOpen, onClose, agendamentoEdicao = null }) 
       setValorCliente(agendamentoEdicao.valorCliente || 190);
       setStatusClientePagamento(agendamentoEdicao.statusClientePagamento || 'pendente');
       setFormaPagamentoCliente(agendamentoEdicao.formaPagamentoCliente || 'PIX');
-      setStatusServico(agendamentoEdicao.statusServico || 'agendado');
+      setStatusServico(agendamentoEdicao.statusServico || 'confirmado');
       setObservacoes(agendamentoEdicao.observacoes || '');
       setAjudantesSelecionadas(agendamentoEdicao.ajudantesEscaladas || []);
+      setAgendarMesTodo(false);
     } else {
-      // Padrão novo agendamento
-      const agora = new Date();
-      agora.setMinutes(0, 0, 0);
-      agora.setHours(agora.getHours() + 2); // daqui 2h
-      const inicio = agora.toISOString().slice(0, 16);
-      
-      const fimDate = new Date(agora.getTime() + 4 * 60 * 60 * 1000);
-      const fim = fimDate.toISOString().slice(0, 16);
+      // Novo agendamento (pode vir pré-definido pelo botão Agendar da tela de Clientes)
+      const cId = dadosIniciaisEfetivos?.clienteId || (clientes.length > 0 ? clientes[0].id : '');
+      const cli = clientes.find(c => c.id === cId);
 
-      const primeiroCli = clientes[0];
-      const dormsInit = primeiroCli?.dormitorios || 2;
-      const planoInit = primeiroCli?.planoPadraoId || 'plano-quinzenal';
+      const dormsInit = dadosIniciaisEfetivos?.dormitorios || cli?.dormitorios || 2;
+      const planoInit = dadosIniciaisEfetivos?.planoId || cli?.planoPadraoId || 'plano-quinzenal';
+      const semManutInit = dadosIniciaisEfetivos?.semManutencao2Meses || false;
+
+      // CÁLCULO PRECISO DO VALOR:
+      // Se o cliente tem valor fixo acordado, PREENCHE O VALOR ACORDADO AUTOMATICAMENTE!
       let valorInit = 190;
-      if (primeiroCli?.valorFechado !== null && primeiroCli?.valorFechado !== undefined && Number(primeiroCli?.valorFechado) > 0) {
-        valorInit = Number(primeiroCli.valorFechado);
+      if (cli?.valorFechado !== null && cli?.valorFechado !== undefined && Number(cli?.valorFechado) > 0) {
+        valorInit = Number(cli.valorFechado);
+      } else if (dadosIniciaisEfetivos?.valorCliente !== null && dadosIniciaisEfetivos?.valorCliente !== undefined && Number(dadosIniciaisEfetivos?.valorCliente) > 0) {
+        valorInit = Number(dadosIniciaisEfetivos.valorCliente);
       } else {
         const pObj = planos.find(p => p.id === planoInit) || planos[0];
-        valorInit = pObj ? pObj.valorBase : 190;
+        let total = pObj ? pObj.valorBase : 190;
+        if (dormsInit > 2 && planoInit !== 'plano-customizado' && planoInit !== 'plano-comercial-pj') {
+          total += (dormsInit - 2) * (regras?.acrescimoPorQuartoExtra || 30);
+        }
+        if (semManutInit) {
+          total += (regras?.taxaSemManutencao2Meses || 50);
+        }
+        valorInit = total;
       }
 
-      setClienteId(primeiroCli?.id || '');
+      // Horário inicial
+      let inicio = '';
+      let fim = '';
+      if (dadosIniciaisEfetivos?.dataHoraInicio) {
+        inicio = dadosIniciaisEfetivos.dataHoraInicio;
+        fim = dadosIniciaisEfetivos.dataHoraFim || '';
+      } else {
+        // Verifica se cliente já tem histórico de agendamentos para manter mesmo dia da semana e horário habitual
+        const agsCli = agendamentos.filter(a => a.clienteId === cId);
+        const ultimoAg = agsCli.sort((a, b) => new Date(b.dataHoraInicio) - new Date(a.dataHoraInicio))[0];
+
+        const agora = new Date();
+        agora.setMinutes(0, 0, 0);
+
+        if (ultimoAg?.dataHoraInicio) {
+          const uDate = new Date(ultimoAg.dataHoraInicio);
+          const horaHabitual = uDate.getHours();
+          const minutoHabitual = uDate.getMinutes();
+          const diaSemanaHabitual = uDate.getDay();
+
+          const prox = new Date(agora);
+          prox.setHours(horaHabitual, minutoHabitual, 0, 0);
+          let diasAte = (diaSemanaHabitual - agora.getDay() + 7) % 7;
+          if (diasAte === 0 && prox.getTime() <= agora.getTime()) {
+            diasAte = 7;
+          }
+          prox.setDate(prox.getDate() + diasAte);
+          inicio = toDatetimeLocalString(prox);
+          const proxFim = new Date(prox.getTime() + 4 * 60 * 60 * 1000);
+          fim = toDatetimeLocalString(proxFim);
+        } else {
+          agora.setHours(agora.getHours() + 2);
+          inicio = toDatetimeLocalString(agora);
+          const fimDate = new Date(agora.getTime() + 4 * 60 * 60 * 1000);
+          fim = toDatetimeLocalString(fimDate);
+        }
+      }
+
+      setClienteId(cId);
       setPlanoId(planoInit);
       setDataHoraInicio(inicio);
       setDataHoraFim(fim);
       setDormitorios(dormsInit);
-      setSemManutencao(false);
+      setSemManutencao(semManutInit);
       setValorCliente(valorInit);
-      setStatusClientePagamento('pendente');
-      setFormaPagamentoCliente('PIX');
-      setStatusServico('confirmado');
-      setObservacoes('');
+      setStatusClientePagamento(dadosIniciaisEfetivos?.statusClientePagamento || 'pendente');
+      setFormaPagamentoCliente(dadosIniciaisEfetivos?.formaPagamentoCliente || 'PIX');
+      setStatusServico(dadosIniciaisEfetivos?.statusServico || 'confirmado');
+      setObservacoes(dadosIniciaisEfetivos?.observacoes || '');
 
-      // Pré-selecionar as 2 primeiras ajudantes padrão
-      if (ajudantes.length >= 2) {
+      // Recorrência
+      let recTipo = 'semanal';
+      if (planoInit.includes('quinzenal')) recTipo = 'quinzenal';
+      else if (planoInit.includes('mensal')) recTipo = 'mensal';
+      else if (planoInit.includes('semanal')) recTipo = 'semanal';
+      setTipoRecorrencia(recTipo);
+      setLimiteRecorrencia('fim_mes');
+
+      // Se for plano regular, já deixa o mês todo ativado para visualização e agendamento instantâneo!
+      const isPlanoRec = planoInit.includes('semanal') || planoInit.includes('quinzenal') || planoInit.includes('mensal');
+      setAgendarMesTodo(isPlanoRec);
+
+      // Ajudantes: seleciona ajudantes habituais do cliente se existirem
+      const agsCli = agendamentos.filter(a => a.clienteId === cId);
+      const ultimoAg = agsCli.sort((a, b) => new Date(b.dataHoraInicio) - new Date(a.dataHoraInicio))[0];
+
+      if (ultimoAg && ultimoAg.ajudantesEscaladas && ultimoAg.ajudantesEscaladas.length > 0) {
+        setAjudantesSelecionadas(ultimoAg.ajudantesEscaladas.map(a => ({ ...a, statusPagamento: 'pendente' })));
+      } else if (ajudantes.length >= 2) {
         setAjudantesSelecionadas([
-          { ajudanteId: ajudantes[0].id, tipo: 'diaria', valorAPagar: 85, statusPagamento: 'pendente' },
-          { ajudanteId: ajudantes[1].id, tipo: 'diaria', valorAPagar: 85, statusPagamento: 'pendente' }
+          { ajudanteId: ajudantes[0].id, tipo: 'diaria', valorAPagar: ajudantes[0].valorPadrao || 85, statusPagamento: 'pendente' },
+          { ajudanteId: ajudantes[1].id, tipo: 'diaria', valorAPagar: ajudantes[1].valorPadrao || 85, statusPagamento: 'pendente' }
         ]);
       } else if (ajudantes.length === 1) {
         setAjudantesSelecionadas([
-          { ajudanteId: ajudantes[0].id, tipo: 'diaria', valorAPagar: 85, statusPagamento: 'pendente' }
+          { ajudanteId: ajudantes[0].id, tipo: 'diaria', valorAPagar: ajudantes[0].valorPadrao || 85, statusPagamento: 'pendente' }
         ]);
       } else {
         setAjudantesSelecionadas([]);
       }
     }
-  }, [agendamentoEdicao, isOpen, clientes, ajudantes]);
+  }, [isOpen, agendamentoEdicao, dadosIniciais, isEdicao, clientes, agendamentos, ajudantes, planos, regras]);
 
   // Recálculo automático do valor do cliente conforme plano e adicionais
   const recalcularValor = (pId, numDorms, semManut, cId = clienteId) => {
     const cli = clientes.find(c => c.id === cId);
-    // Se o cliente possui um valor fechado cadastrado e está no plano comercial ou customizado, usa o valor fechado
-    if (cli?.valorFechado !== null && cli?.valorFechado !== undefined && Number(cli?.valorFechado) > 0 && (pId === 'plano-customizado' || pId === 'plano-comercial-pj' || pId === cli?.planoPadraoId)) {
+    // Se o cliente possui um valor fixo/acordado cadastrado, mantém o valor fechado
+    if (cli?.valorFechado !== null && cli?.valorFechado !== undefined && Number(cli?.valorFechado) > 0) {
       setValorCliente(Number(cli.valorFechado));
       return;
     }
@@ -132,14 +207,17 @@ export const ModalAgendamento = ({ isOpen, onClose, agendamentoEdicao = null }) 
     // Ajusta tipo de recorrência automaticamente com base no plano
     if (newId.includes('semanal')) {
       setTipoRecorrencia('semanal');
+      setAgendarMesTodo(true);
     } else if (newId.includes('quinzenal')) {
       setTipoRecorrencia('quinzenal');
+      setAgendarMesTodo(true);
     } else if (newId.includes('mensal')) {
       setTipoRecorrencia('mensal');
+      setAgendarMesTodo(true);
     }
 
     const cli = clientes.find(c => c.id === clienteId);
-    if (cli?.valorFechado !== null && cli?.valorFechado !== undefined && Number(cli?.valorFechado) > 0 && (newId === 'plano-customizado' || newId === 'plano-comercial-pj' || newId === cli?.planoPadraoId)) {
+    if (cli?.valorFechado !== null && cli?.valorFechado !== undefined && Number(cli?.valorFechado) > 0) {
       setValorCliente(Number(cli.valorFechado));
     } else {
       recalcularValor(newId, dormitorios, semManutencao);
@@ -169,25 +247,35 @@ export const ModalAgendamento = ({ isOpen, onClose, agendamentoEdicao = null }) 
       setPlanoId(planoCli);
 
       // Ajusta tipo de recorrência automaticamente com base no plano do cliente
-      if (planoCli.includes('semanal')) {
-        setTipoRecorrencia('semanal');
-      } else if (planoCli.includes('quinzenal')) {
-        setTipoRecorrencia('quinzenal');
-      } else if (planoCli.includes('mensal')) {
-        setTipoRecorrencia('mensal');
-      }
+      let recTipo = 'semanal';
+      if (planoCli.includes('quinzenal')) recTipo = 'quinzenal';
+      else if (planoCli.includes('mensal')) recTipo = 'mensal';
+      else if (planoCli.includes('semanal')) recTipo = 'semanal';
+      setTipoRecorrencia(recTipo);
 
+      // Se for plano regular, já ativa a opção de programar o mês
+      const isPlanoRec = planoCli.includes('semanal') || planoCli.includes('quinzenal') || planoCli.includes('mensal');
+      setAgendarMesTodo(isPlanoRec);
+
+      // Preenche o valor acordado com prioridade máxima
       if (cli.valorFechado !== null && cli.valorFechado !== undefined && Number(cli.valorFechado) > 0) {
         setValorCliente(Number(cli.valorFechado));
       } else {
         recalcularValor(planoCli, dorms, semManutencao, cId);
+      }
+
+      // Reaproveita ajudantes habituais do cliente se houver
+      const agsCli = agendamentos.filter(a => a.clienteId === cId);
+      const ultimoAg = agsCli.sort((a, b) => new Date(b.dataHoraInicio) - new Date(a.dataHoraInicio))[0];
+      if (ultimoAg && ultimoAg.ajudantesEscaladas && ultimoAg.ajudantesEscaladas.length > 0) {
+        setAjudantesSelecionadas(ultimoAg.ajudantesEscaladas.map(a => ({ ...a, statusPagamento: 'pendente' })));
       }
     }
   };
 
   // Recalcular datas da recorrência quando parâmetros mudam
   useEffect(() => {
-    if (!agendamentoEdicao && agendarMesTodo && dataHoraInicio) {
+    if (!isEdicao && agendarMesTodo && dataHoraInicio) {
       try {
         const datas = generateRecurrenceDates({
           dataHoraInicio,
@@ -202,7 +290,7 @@ export const ModalAgendamento = ({ isOpen, onClose, agendamentoEdicao = null }) 
     } else if (!agendarMesTodo) {
       setDatasRecorrentes([]);
     }
-  }, [agendarMesTodo, dataHoraInicio, dataHoraFim, tipoRecorrencia, limiteRecorrencia, agendamentoEdicao]);
+  }, [agendarMesTodo, dataHoraInicio, dataHoraFim, tipoRecorrencia, limiteRecorrencia, isEdicao]);
 
   const toggleDataRecorrente = (index) => {
     setDatasRecorrentes(prev => prev.map((item, idx) => 
@@ -242,7 +330,7 @@ export const ModalAgendamento = ({ isOpen, onClose, agendamentoEdicao = null }) 
     }
 
     // Se optou por agendar o mês todo / recorrente em um novo agendamento
-    if (agendarMesTodo && !agendamentoEdicao && datasRecorrentes.length > 0) {
+    if (agendarMesTodo && !isEdicao && datasRecorrentes.length > 0) {
       const selecionadas = datasRecorrentes.filter(d => d.selecionada);
       if (selecionadas.length === 0) {
         showToast('Selecione pelo menos uma data para agendar.', 'danger');
@@ -298,7 +386,7 @@ export const ModalAgendamento = ({ isOpen, onClose, agendamentoEdicao = null }) 
     };
 
     let savedAgendamento;
-    if (agendamentoEdicao) {
+    if (isEdicao) {
       updateAgendamento(agendamentoEdicao.id, payload);
       savedAgendamento = { ...agendamentoEdicao, ...payload };
     } else {
@@ -331,7 +419,7 @@ export const ModalAgendamento = ({ isOpen, onClose, agendamentoEdicao = null }) 
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
             <Calendar size={20} color="var(--primary-400)" />
             <h3 style={{ fontSize: '1.125rem' }}>
-              {agendamentoEdicao ? 'Editar Faxina' : 'Novo Agendamento de Faxina'}
+              {isEdicao ? 'Editar Faxina' : 'Novo Agendamento de Faxina'}
             </h3>
           </div>
           <button onClick={onClose} className="btn btn-secondary btn-icon" style={{ width: '32px', height: '32px' }}>
@@ -477,7 +565,7 @@ export const ModalAgendamento = ({ isOpen, onClose, agendamentoEdicao = null }) 
             </div>
 
             {/* Recorrência / Programação do Mês Todo */}
-            {!agendamentoEdicao && (
+            {!isEdicao && (
               <div style={{
                 background: agendarMesTodo ? 'rgba(59, 130, 246, 0.08)' : 'var(--bg-input)',
                 border: agendarMesTodo ? '1px solid rgba(59, 130, 246, 0.35)' : '1px solid var(--border-color)',
@@ -770,7 +858,7 @@ export const ModalAgendamento = ({ isOpen, onClose, agendamentoEdicao = null }) 
                 Cancelar
               </button>
               <button type="submit" className="btn btn-primary btn-sm">
-                {agendamentoEdicao ? 'Salvar Alterações' : (agendarMesTodo && datasRecorrentes.filter(d => d.selecionada).length > 1) ? `Salvar ${datasRecorrentes.filter(d => d.selecionada).length} Faxinas do Mês` : 'Salvar Faxina'}
+                {isEdicao ? 'Salvar Alterações' : (agendarMesTodo && datasRecorrentes.filter(d => d.selecionada).length > 1) ? `Salvar ${datasRecorrentes.filter(d => d.selecionada).length} Faxinas do Mês` : 'Salvar Faxina'}
               </button>
             </div>
           </div>
