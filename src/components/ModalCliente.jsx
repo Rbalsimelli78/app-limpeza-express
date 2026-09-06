@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { X, User, MapPin, Phone, Home } from 'lucide-react';
+import { X, User, MapPin, Phone, Home, Building } from 'lucide-react';
 
 export const ModalCliente = ({ isOpen, onClose, clienteEdicao = null }) => {
   const { planos, addCliente, updateCliente, showToast } = useApp();
 
   const [nome, setNome] = useState('');
   const [telefone, setTelefone] = useState('');
+  const [condominio, setCondominio] = useState('');
+  const [torre, setTorre] = useState('');
   const [endereco, setEndereco] = useState('');
   const [apartamento, setApartamento] = useState('');
   const [bairro, setBairro] = useState('');
@@ -19,6 +21,8 @@ export const ModalCliente = ({ isOpen, onClose, clienteEdicao = null }) => {
     if (clienteEdicao) {
       setNome(clienteEdicao.nome || '');
       setTelefone(clienteEdicao.telefone || '');
+      setCondominio(clienteEdicao.condominio || '');
+      setTorre(clienteEdicao.torre || '');
       setEndereco(clienteEdicao.endereco || '');
       setApartamento(clienteEdicao.apartamento || '');
       setBairro(clienteEdicao.bairro || '');
@@ -29,6 +33,8 @@ export const ModalCliente = ({ isOpen, onClose, clienteEdicao = null }) => {
     } else {
       setNome('');
       setTelefone('');
+      setCondominio('');
+      setTorre('');
       setEndereco('');
       setApartamento('');
       setBairro('');
@@ -49,9 +55,11 @@ export const ModalCliente = ({ isOpen, onClose, clienteEdicao = null }) => {
     const payload = {
       nome: nome.trim(),
       telefone: telefone.replace(/\D/g, ''),
-      endereco,
-      apartamento,
-      bairro,
+      condominio: condominio.trim(),
+      torre: torre.trim(),
+      endereco: endereco.trim(),
+      apartamento: apartamento.trim(),
+      bairro: bairro.trim(),
       cidade: 'São Paulo - SP',
       dormitorios: Number(dormitorios),
       metragem,
@@ -111,23 +119,50 @@ export const ModalCliente = ({ isOpen, onClose, clienteEdicao = null }) => {
               />
             </div>
 
+            {/* Condomínio e Torre */}
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '0.75rem' }}>
+              <div className="form-group">
+                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <Building size={14} color="var(--primary-400)" />
+                  <span>Nome do Condomínio</span>
+                </label>
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  placeholder="Ex: Condomínio Bragantino, Spazio..."
+                  value={condominio} 
+                  onChange={e => setCondominio(e.target.value)} 
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Torre / Bloco</label>
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  placeholder="Ex: Torre 5, Bloco B"
+                  value={torre} 
+                  onChange={e => setTorre(e.target.value)} 
+                />
+              </div>
+            </div>
+
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '0.75rem' }}>
               <div className="form-group">
                 <label className="form-label">Endereço (Rua/Av e Número)</label>
                 <input 
                   type="text" 
                   className="form-input" 
-                  placeholder="Ex: Rua Oscar Freire, 1420"
+                  placeholder="Ex: Rua Luziano Ribas, 113"
                   value={endereco} 
                   onChange={e => setEndereco(e.target.value)} 
                 />
               </div>
               <div className="form-group">
-                <label className="form-label">Apto / Bloco</label>
+                <label className="form-label">Apto / Unidade</label>
                 <input 
                   type="text" 
                   className="form-input" 
-                  placeholder="Ex: Apto 82 B"
+                  placeholder="Ex: Apto 1204"
                   value={apartamento} 
                   onChange={e => setApartamento(e.target.value)} 
                 />

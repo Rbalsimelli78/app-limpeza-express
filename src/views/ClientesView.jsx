@@ -12,7 +12,9 @@ import {
   Edit2, 
   Trash2,
   Sparkles,
-  TrendingUp
+  TrendingUp,
+  Building,
+  Filter
 } from 'lucide-react';
 import { formatPhone, formatCurrency } from '../utils/formatters';
 import { getWhatsAppUrl } from '../utils/whatsapp';
@@ -21,17 +23,33 @@ import { ModalExtratoCliente } from '../components/ModalExtratoCliente';
 export const ClientesView = ({ onNovoCliente, onEditarCliente, onAgendarParaCliente }) => {
   const { clientes, agendamentos, planos, deleteCliente } = useApp();
   const [busca, setBusca] = useState('');
+  const [filtroCondominio, setFiltroCondominio] = useState('todos');
   const [clienteExtrato, setClienteExtrato] = useState(null);
+
+  // Lista de condomínios únicos cadastrados para filtro rápido
+  const condominiosUnicos = Array.from(
+    new Set(clientes.map(c => c.condominio?.trim()).filter(Boolean))
+  ).sort();
 
   const clientesFiltrados = clientes.filter(c => {
     const termo = busca.toLowerCase();
-    return (
+    const matchBusca = (
       c.nome?.toLowerCase().includes(termo) ||
+      c.condominio?.toLowerCase().includes(termo) ||
+      c.torre?.toLowerCase().includes(termo) ||
       c.bairro?.toLowerCase().includes(termo) ||
       c.endereco?.toLowerCase().includes(termo) ||
       c.apartamento?.toLowerCase().includes(termo) ||
       c.telefone?.includes(termo)
     );
+
+    if (!matchBusca) return false;
+
+    if (filtroCondominio !== 'todos') {
+      return c.condominio?.trim().toLowerCase() === filtroCondominio.toLowerCase();
+    }
+
+    return true;
   });
 
   return (
@@ -44,7 +62,7 @@ export const ClientesView = ({ onNovoCliente, onEditarCliente, onAgendarParaClie
             <span>Cadastro de Clientes</span>
           </h2>
           <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-            Controle de endereços, preferências e histórico de faxinas em São Paulo
+            Controle de clientes, condomínios, torres, endereços e histórico de faxinas em São Paulo
           </p>
         </div>
 
@@ -54,19 +72,56 @@ export const ClientesView = ({ onNovoCliente, onEditarCliente, onAgendarParaClie
         </button>
       </div>
 
-      {/* Busca */}
+      {/* Busca e Filtros */}
       <div className="glass-card" style={{ padding: '1rem', marginBottom: '1.5rem' }}>
         <div style={{ position: 'relative' }}>
           <Search size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
           <input 
             type="text" 
             className="form-input" 
-            placeholder="Buscar por nome, bairro (Jardins, Moema...), endereço ou WhatsApp..."
+            placeholder="Buscar por nome, condomínio (Bragantino...), torre, bairro ou WhatsApp..."
             style={{ paddingLeft: '36px' }}
             value={busca}
             onChange={e => setBusca(e.target.value)}
           />
         </div>
+
+        {/* Filtro Rápido por Condomínio */}
+        {condominiosUnicos.length > 0 && (
+          <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap', marginTop: '0.85rem', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.25rem', marginRight: '0.25rem' }}>
+              <Building size={13} color="var(--primary-400)" />
+              <span>Condomínios:</span>
+            </span>
+
+            <button
+              type="button"
+              onClick={() => setFiltroCondominio('todos')}
+              className={`badge ${filtroCondominio === 'todos' ? 'badge-info' : 'badge-neutral'}`}
+              style={{ cursor: 'pointer', border: 'none', padding: '0.3rem 0.65rem' }}
+            >
+              Todos ({clientes.length})
+            </button>
+
+            {condominiosUnicos.map(condo => {
+              const qtd = clientes.filter(c => c.condominio?.trim().toLowerCase() === condo.toLowerCase()).length;
+              const isAtivo = filtroCondominio.toLowerCase() === condo.toLowerCase();
+
+              return (
+                <button
+                  key={condo}
+                  type="button"
+                  onClick={() => setFiltroCondominio(isAtivo ? 'todos' : condo)}
+                  className={`badge ${isAtivo ? 'badge-success' : 'badge-neutral'}`}
+                  style={{ cursor: 'pointer', border: 'none', padding: '0.3rem 0.65rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                >
+                  <Building size={11} />
+                  <span>{condo} ({qtd})</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Grid de Cards de Clientes */}
@@ -102,10 +157,45 @@ export const ClientesView = ({ onNovoCliente, onEditarCliente, onAgendarParaClie
                   </span>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+                  {/* Destaque para Condomínio e Torre */}
+                  {(c.condominio || c.torre) && (
+                    <div style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'space-between',
+                      background: 'rgba(16, 185, 129, 0.08)', 
+                      padding: '0.45rem 0.65rem', 
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px solid rgba(16, 185, 129, 0.2)'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', color: 'var(--primary-400)', fontWeight: '600' }}>
+                        <Building size={15} color="var(--primary-400)" />
+                        <span>{c.condominio || 'Condomínio'}</span>
+                      </div>
+                      {c.torre && (
+                        <span style={{ 
+                          fontSize: '0.75rem', 
+                          fontWeight: '600', 
+                          background: 'var(--bg-input)', 
+                          color: 'var(--text-primary)',
+                          padding: '0.2rem 0.5rem', 
+                          borderRadius: '4px',
+                          border: '1px solid var(--border-color)'
+                        }}>
+                          {c.torre}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <MapPin size={15} color="var(--primary-400)" />
-                    <span>{c.endereco}, {c.apartamento} - {c.bairro}</span>
+                    <span>
+                      {c.apartamento ? `${c.apartamento} • ` : ''}
+                      {c.endereco ? `${c.endereco} - ` : ''}
+                      {c.bairro}
+                    </span>
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>

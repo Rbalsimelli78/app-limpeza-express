@@ -307,7 +307,13 @@ export const DashboardView = ({ onNovoAgendamento, onEditarAgendamento }) => {
                     </h4>
                     <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.375rem', marginTop: '0.25rem' }}>
                       <MapPin size={15} color="var(--primary-400)" />
-                      <span>{cliente?.endereco}, {cliente?.apartamento} - {cliente?.bairro}</span>
+                      <span>
+                        {cliente?.condominio ? `${cliente.condominio} ` : ''}
+                        {cliente?.torre ? `• ${cliente.torre} ` : ''}
+                        {cliente?.apartamento ? `(${cliente.apartamento}) • ` : ''}
+                        {cliente?.endereco ? `${cliente.endereco} - ` : ''}
+                        {cliente?.bairro}
+                      </span>
                     </p>
                   </div>
 
@@ -360,6 +366,8 @@ export const DashboardView = ({ onNovoAgendamento, onEditarAgendamento }) => {
                         const escalaText = buildEscalaAjudanteText({
                           ajudanteNome: aj.nome,
                           clienteNome: cliente?.nome,
+                          condominio: cliente?.condominio || '',
+                          torre: cliente?.torre || '',
                           endereco: cliente?.endereco,
                           apartamento: cliente?.apartamento,
                           bairro: cliente?.bairro,

@@ -71,6 +71,8 @@ Podemos confirmar o agendamento da sua faxina? Aguardo seu retorno para reservar
 export const buildEscalaAjudanteText = ({
   ajudanteNome,
   clienteNome,
+  condominio,
+  torre,
   endereco,
   apartamento,
   bairro,
@@ -81,13 +83,23 @@ export const buildEscalaAjudanteText = ({
   const d = new Date(dataHoraInicio);
   const dataFormatada = d.toLocaleDateString('pt-BR');
   const horaFormatada = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-  const mapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${endereco}, ${bairro}, São Paulo`)}`;
+  const mapsQuery = condominio ? `${condominio}, ${endereco}, ${bairro}, São Paulo` : `${endereco}, ${bairro}, São Paulo`;
+  const mapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsQuery)}`;
+
+  let linhaLocal = '';
+  if (condominio) {
+    linhaLocal += `🏢 *Condomínio:* ${condominio}\n`;
+  }
+  if (torre || apartamento) {
+    linhaLocal += `🚪 *Torre/Apto:* ${torre ? `${torre} - ` : ''}${apartamento || ''}\n`;
+  }
+  linhaLocal += `📍 *Endereço:* ${endereco ? `${endereco} - ` : ''}${bairro}`;
 
   return `Oi ${ajudanteNome}! Segue sua escala de trabalho pela *Limpeza Express SP*:
 
 📅 *Data:* ${dataFormatada} às ${horaFormatada}
-🏢 *Cliente:* ${clienteNome}
-📍 *Endereço:* ${endereco}, ${apartamento || ''} - ${bairro}
+👤 *Cliente:* ${clienteNome}
+${linhaLocal}
 🗺️ *Localização no Maps:* ${mapsLink}
 💰 *Sua diária/valor deste serviço:* R$ ${Number(valorDiaria || 0).toFixed(2).replace('.', ',')}
 ℹ️ *Avisos/Obs:* ${observacoes || 'Chegar 10 minutos antes.'}

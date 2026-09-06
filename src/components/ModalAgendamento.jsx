@@ -231,7 +231,7 @@ export const ModalAgendamento = ({ isOpen, onClose, agendamentoEdicao = null }) 
                 <option value="">Selecione um cliente...</option>
                 {clientes.map(c => (
                   <option key={c.id} value={c.id}>
-                    {c.nome} - {c.bairro} ({c.apartamento})
+                    {c.nome} {c.condominio ? `• ${c.condominio}` : ''} {c.torre ? `(${c.torre} - ${c.apartamento})` : c.apartamento ? `(${c.apartamento})` : ''} - {c.bairro}
                   </option>
                 ))}
               </select>

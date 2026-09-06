@@ -52,6 +52,8 @@ export const AgendaView = ({ onNovoAgendamento, onEditarAgendamento }) => {
     const termo = busca.toLowerCase();
     const matchBusca = 
       cliente?.nome?.toLowerCase().includes(termo) ||
+      cliente?.condominio?.toLowerCase().includes(termo) ||
+      cliente?.torre?.toLowerCase().includes(termo) ||
       cliente?.bairro?.toLowerCase().includes(termo) ||
       cliente?.endereco?.toLowerCase().includes(termo);
 
@@ -230,7 +232,13 @@ export const AgendaView = ({ onNovoAgendamento, onEditarAgendamento }) => {
 
                       <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
                         <MapPin size={15} color="var(--primary-400)" />
-                        <span>{cliente?.endereco}, {cliente?.apartamento} - {cliente?.bairro}</span>
+                        <span>
+                          {cliente?.condominio ? `${cliente.condominio} ` : ''}
+                          {cliente?.torre ? `• ${cliente.torre} ` : ''}
+                          {cliente?.apartamento ? `(${cliente.apartamento}) • ` : ''}
+                          {cliente?.endereco ? `${cliente.endereco} - ` : ''}
+                          {cliente?.bairro}
+                        </span>
                       </p>
                     </div>
 

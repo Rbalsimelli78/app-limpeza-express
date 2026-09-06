@@ -226,7 +226,13 @@ export const ModalDiaAgenda = ({
 
                       <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.3rem', marginTop: '0.2rem' }}>
                         <MapPin size={13} color="var(--primary-400)" />
-                        <span>{cliente?.endereco} {cliente?.apartamento ? `, Apto ${cliente?.apartamento}` : ''} - {cliente?.bairro}</span>
+                        <span>
+                          {cliente?.condominio ? `${cliente.condominio} ` : ''}
+                          {cliente?.torre ? `• ${cliente.torre} ` : ''}
+                          {cliente?.apartamento ? `(${cliente.apartamento}) • ` : ''}
+                          {cliente?.endereco ? `${cliente.endereco} - ` : ''}
+                          {cliente?.bairro}
+                        </span>
                       </div>
                     </div>
 
@@ -342,6 +348,8 @@ export const ModalDiaAgenda = ({
                           const textoEscala = buildEscalaAjudanteText({
                             ajudanteNome: ajudante.nome,
                             clienteNome: cliente?.nome || 'Cliente',
+                            condominio: cliente?.condominio || '',
+                            torre: cliente?.torre || '',
                             endereco: cliente?.endereco || '',
                             apartamento: cliente?.apartamento || '',
                             bairro: cliente?.bairro || '',
