@@ -27,7 +27,7 @@ import {
   limparColecaoNuvem
 } from '../services/cloudSync';
 
-const AppContext = createContext();
+export const AppContext = createContext();
 
 const STORAGE_KEY = 'limpeza_express_sp_v1';
 const THEME_KEY = 'limpeza_express_theme';

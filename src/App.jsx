@@ -19,6 +19,7 @@ import { ModalAgendamento } from './components/ModalAgendamento';
 import { ModalCliente } from './components/ModalCliente';
 import { ModalAjudante } from './components/ModalAjudante';
 import { ModalPlano } from './components/ModalPlano';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 const MainAppContent = () => {
   const { activeTab, setActiveTab, addCliente, isAuthenticated, planos, regras } = useApp();
@@ -160,55 +161,57 @@ const MainAppContent = () => {
         <Header onOpenNovoAgendamento={handleNovoAgendamento} />
 
         <main>
-          {activeTab === 'dashboard' && (
-            <DashboardView 
-              onNovoAgendamento={handleNovoAgendamento}
-              onEditarAgendamento={handleEditarAgendamento}
-            />
-          )}
+          <ErrorBoundary key={activeTab}>
+            {activeTab === 'dashboard' && (
+              <DashboardView 
+                onNovoAgendamento={handleNovoAgendamento}
+                onEditarAgendamento={handleEditarAgendamento}
+              />
+            )}
 
-          {activeTab === 'agenda' && (
-            <AgendaView 
-              onNovoAgendamento={handleNovoAgendamento}
-              onEditarAgendamento={handleEditarAgendamento}
-            />
-          )}
+            {activeTab === 'agenda' && (
+              <AgendaView 
+                onNovoAgendamento={handleNovoAgendamento}
+                onEditarAgendamento={handleEditarAgendamento}
+              />
+            )}
 
-          {activeTab === 'clientes' && (
-            <ClientesView 
-              onNovoCliente={handleNovoCliente}
-              onEditarCliente={handleEditarCliente}
-              onAgendarParaCliente={handleAgendarParaCliente}
-            />
-          )}
+            {activeTab === 'clientes' && (
+              <ClientesView 
+                onNovoCliente={handleNovoCliente}
+                onEditarCliente={handleEditarCliente}
+                onAgendarParaCliente={handleAgendarParaCliente}
+              />
+            )}
 
-          {activeTab === 'ajudantes' && (
-            <AjudantesView 
-              onNovaAjudante={handleNovaAjudante}
-              onEditarAjudante={handleEditarAjudante}
-            />
-          )}
+            {activeTab === 'ajudantes' && (
+              <AjudantesView 
+                onNovaAjudante={handleNovaAjudante}
+                onEditarAjudante={handleEditarAjudante}
+              />
+            )}
 
-          {activeTab === 'planos' && (
-            <PlanosView 
-              onNovoPlano={handleNovoPlano}
-              onEditarPlano={handleEditarPlano}
-            />
-          )}
+            {activeTab === 'planos' && (
+              <PlanosView 
+                onNovoPlano={handleNovoPlano}
+                onEditarPlano={handleEditarPlano}
+              />
+            )}
 
-          {activeTab === 'orcamento' && (
-            <OrcamentoView 
-              onAgendarComDados={handleAgendarComDadosOrcamento}
-            />
-          )}
+            {activeTab === 'orcamento' && (
+              <OrcamentoView 
+                onAgendarComDados={handleAgendarComDadosOrcamento}
+              />
+            )}
 
-          {activeTab === 'financeiro' && (
-            <FinanceiroView />
-          )}
+            {activeTab === 'financeiro' && (
+              <FinanceiroView />
+            )}
 
-          {activeTab === 'config' && (
-            <ConfigView />
-          )}
+            {activeTab === 'config' && (
+              <ConfigView />
+            )}
+          </ErrorBoundary>
         </main>
       </div>
 

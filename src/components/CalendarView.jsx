@@ -81,11 +81,13 @@ export const CalendarView = ({
 
   // Helper para obter nomes das ajudantes escaladas
   const getAjudantesTexto = (ag, formato = 'curto') => {
-    if (!ag.ajudantesEscaladas || ag.ajudantesEscaladas.length === 0) return '';
+    if (!ag || !ag.ajudantesEscaladas || !Array.isArray(ag.ajudantesEscaladas) || ag.ajudantesEscaladas.length === 0) return '';
     const nomes = ag.ajudantesEscaladas
       .map(ae => {
-        const aj = ajudantes.find(a => a.id === ae.ajudanteId);
-        if (!aj) return '';
+        if (!ae) return '';
+        const ajId = ae.ajudanteId || ae;
+        const aj = ajudantes.find(a => a.id === ajId);
+        if (!aj || !aj.nome) return '';
         return formato === 'curto' ? aj.nome.split(' ')[0] : aj.nome;
       })
       .filter(Boolean);
@@ -93,12 +95,12 @@ export const CalendarView = ({
   };
 
   // Helper de status da faxina (Concluída vs Pendente)
-  const isConcluida = (ag) => ag.statusServico === 'concluido';
+  const isConcluida = (ag) => ag?.statusServico === 'concluido';
 
   // Título Dinâmico do Cabeçalho conforme o Modo
   const tituloCabecalho = useMemo(() => {
     if (visualizacao === 'mes') {
-      return `${MESES_NOMES[mes]} de ${ano}`;
+      return `${MESES_NOMES[mes] || ''} de ${ano}`;
     }
 
     if (visualizacao === 'semana') {
@@ -116,30 +118,35 @@ export const CalendarView = ({
       const anoSab = sab.getFullYear();
 
       if (mesDom === mesSab && anoDom === anoSab) {
-        return `${String(dom.getDate()).padStart(2, '0')} a ${String(sab.getDate()).padStart(2, '0')} de ${MESES_NOMES[mesDom]} de ${anoDom}`;
+        return `${String(dom.getDate()).padStart(2, '0')} a ${String(sab.getDate()).padStart(2, '0')} de ${MESES_NOMES[mesDom] || ''} de ${anoDom}`;
       } else if (anoDom === anoSab) {
-        return `${String(dom.getDate()).padStart(2, '0')} de ${MESES_NOMES[mesDom]} a ${String(sab.getDate()).padStart(2, '0')} de ${MESES_NOMES[mesSab]} de ${anoDom}`;
+        return `${String(dom.getDate()).padStart(2, '0')} de ${MESES_NOMES[mesDom] || ''} a ${String(sab.getDate()).padStart(2, '0')} de ${MESES_NOMES[mesSab] || ''} de ${anoDom}`;
       } else {
         return `${String(dom.getDate()).padStart(2, '0')}/${mesDom + 1}/${anoDom} a ${String(sab.getDate()).padStart(2, '0')}/${mesSab + 1}/${anoSab}`;
       }
     }
 
     // visualizacao === 'dia'
-    const formatador = new Intl.DateTimeFormat('pt-BR', { 
-      weekday: 'long', 
-      day: '2-digit', 
-      month: 'long', 
-      year: 'numeric' 
-    });
-    const str = formatador.format(dataAtual);
-    return str.charAt(0).toUpperCase() + str.slice(1);
-  }, [visualizacao, dataAtual, ano, mes]);
+    try {
+      const formatador = new Intl.DateTimeFormat('pt-BR', { 
+        weekday: 'long', 
+        day: '2-digit', 
+        month: 'long', 
+        year: 'numeric' 
+      });
+      const str = formatador.format(dataAtual);
+      return str.charAt(0).toUpperCase() + str.slice(1);
+    } catch (e) {
+      return `${dia}/${mes + 1}/${ano}`;
+    }
+  }, [visualizacao, dataAtual, ano, mes, dia]);
 
   // Agrupar agendamentos por data ISO (YYYY-MM-DD)
   const agendamentosPorDia = useMemo(() => {
     const mapa = {};
+    if (!Array.isArray(agendamentos)) return mapa;
     agendamentos.forEach(ag => {
-      if (!ag.dataHoraInicio) return;
+      if (!ag || !ag.dataHoraInicio || typeof ag.dataHoraInicio !== 'string') return;
       const dataStr = ag.dataHoraInicio.slice(0, 10);
       if (!mapa[dataStr]) {
         mapa[dataStr] = [];
@@ -257,12 +264,12 @@ export const CalendarView = ({
       const ags = agendamentosPorDia[dataStr] || [];
 
       semana.push({
-        dataObj,
+        dataObj: diaObj,
         dataStr,
         diaNum: diaObj.getDate(),
         mesNum: diaObj.getMonth() + 1,
-        nomeDia: DIAS_SEMANA_NOMES[i].split('-')[0],
-        nomeDiaCurto: DIAS_SEMANA_CURTOS[i],
+        nomeDia: (DIAS_SEMANA_NOMES[i] || '').split('-')[0],
+        nomeDiaCurto: DIAS_SEMANA_CURTOS[i] || '',
         isHoje: dataStr === hojeStr,
         agendamentos: ags
       });
@@ -632,7 +639,7 @@ export const CalendarView = ({
                       return (
                         <div
                           key={ag.id}
-                          onClick={() => onEditarAgendamento ? onEditarAgendamento(ag) : onSelectDay(diaItem.dataStr)}
+                          onClick={() => onEditarAgendamento ? onEditarAgendamento(ag) : (onSelectDay ? onSelectDay(diaItem.dataStr) : null)}
                           style={{
                             background: feita ? 'rgba(16, 185, 129, 0.12)' : 'rgba(245, 158, 11, 0.1)',
                             borderLeft: `3px solid ${feita ? '#10b981' : '#f59e0b'}`,

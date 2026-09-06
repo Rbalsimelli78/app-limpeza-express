@@ -28,6 +28,7 @@ import { getWhatsAppUrl, buildLembreteClienteText, buildEscalaAjudanteText } fro
 import { CalendarView } from '../components/CalendarView';
 import { ModalDiaAgenda } from '../components/ModalDiaAgenda';
 import { ModalViradaMes } from '../components/ModalViradaMes';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 
 export const AgendaView = ({ onNovoAgendamento, onEditarAgendamento }) => {
   const { 
@@ -193,16 +194,18 @@ export const AgendaView = ({ onNovoAgendamento, onEditarAgendamento }) => {
       {/* MODO 1: CALENDÁRIO INTERATIVO MENSAL COM DIAS E QUANTIDADE DE CLIENTES */}
       {modoVisualizacao === 'calendario' && (
         <div style={{ marginBottom: '1.5rem' }}>
-          <CalendarView 
-            agendamentos={agendamentosFiltrados}
-            clientes={clientes}
-            ajudantes={ajudantes}
-            planos={planos}
-            onSelectDay={handleSelectDay}
-            onNovoAgendamento={onNovoAgendamento}
-            onEditarAgendamento={onEditarAgendamento}
-            setStatusServico={setStatusServico}
-          />
+          <ErrorBoundary title="Erro ao carregar Calendário" message="Houve um problema ao renderizar o calendário. Você pode alternar para o modo Lista acima ou recarregar.">
+            <CalendarView 
+              agendamentos={agendamentosFiltrados}
+              clientes={clientes}
+              ajudantes={ajudantes}
+              planos={planos}
+              onSelectDay={handleSelectDay}
+              onNovoAgendamento={onNovoAgendamento}
+              onEditarAgendamento={onEditarAgendamento}
+              setStatusServico={setStatusServico}
+            />
+          </ErrorBoundary>
         </div>
       )}
 
