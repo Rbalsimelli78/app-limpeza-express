@@ -190,7 +190,7 @@ export const ModalDiaAgenda = ({
                   style={{ 
                     padding: '1rem', 
                     borderRadius: 'var(--radius-md)', 
-                    borderLeft: `4px solid ${isPago ? 'var(--primary-500)' : 'var(--accent-gold)'}` 
+                    borderLeft: `4px solid ${ag.statusServico === 'concluido' ? '#10b981' : '#f59e0b'}` 
                   }}
                 >
                   {/* Cabeçalho do Card da Faxina */}

@@ -3,44 +3,137 @@ import {
   ChevronLeft, 
   ChevronRight, 
   Calendar as CalendarIcon, 
-  Sparkles, 
   Clock, 
   Users, 
   DollarSign, 
   CheckCircle2, 
-  AlertCircle 
+  AlertCircle,
+  Plus,
+  Sparkles,
+  MessageCircle,
+  Edit2,
+  Check,
+  RotateCcw,
+  MapPin,
+  Building,
+  FileText
 } from 'lucide-react';
-import { formatCurrency } from '../utils/formatters';
+import { formatCurrency, formatTime } from '../utils/formatters';
+import { getWhatsAppUrl } from '../utils/whatsapp';
+import { 
+  toDatetimeLocalString, 
+  DIAS_SEMANA_NOMES, 
+  DIAS_SEMANA_CURTOS, 
+  MESES_NOMES 
+} from '../utils/recurrence';
 
 export const CalendarView = ({ 
   agendamentos = [], 
   clientes = [], 
+  ajudantes = [], 
   planos = [], 
-  onSelectDay 
+  onSelectDay,
+  onNovoAgendamento,
+  onEditarAgendamento,
+  setStatusServico
 }) => {
+  // Data de referência do calendário
   const [dataAtual, setDataAtual] = useState(new Date());
+  // Modelo de visualização tipo Google Calendar: 'mes' | 'semana' | 'dia'
+  const [visualizacao, setVisualizacao] = useState('mes');
 
   const ano = dataAtual.getFullYear();
   const mes = dataAtual.getMonth(); // 0 a 11
+  const dia = dataAtual.getDate();
 
-  // Navegação de Mês
-  const mesAnterior = () => {
-    setDataAtual(new Date(ano, mes - 1, 1));
+  // Navegação Temporal
+  const navegarAnterior = () => {
+    if (visualizacao === 'mes') {
+      setDataAtual(new Date(ano, mes - 1, 1));
+    } else if (visualizacao === 'semana') {
+      const d = new Date(dataAtual);
+      d.setDate(d.getDate() - 7);
+      setDataAtual(d);
+    } else {
+      const d = new Date(dataAtual);
+      d.setDate(d.getDate() - 1);
+      setDataAtual(d);
+    }
   };
 
-  const proximoMes = () => {
-    setDataAtual(new Date(ano, mes + 1, 1));
+  const navegarProximo = () => {
+    if (visualizacao === 'mes') {
+      setDataAtual(new Date(ano, mes + 1, 1));
+    } else if (visualizacao === 'semana') {
+      const d = new Date(dataAtual);
+      d.setDate(d.getDate() + 7);
+      setDataAtual(d);
+    } else {
+      const d = new Date(dataAtual);
+      d.setDate(d.getDate() + 1);
+      setDataAtual(d);
+    }
   };
 
   const irParaHoje = () => {
     setDataAtual(new Date());
   };
 
-  const nomeMesAno = useMemo(() => {
-    const formatador = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' });
+  // Helper para obter nomes das ajudantes escaladas
+  const getAjudantesTexto = (ag, formato = 'curto') => {
+    if (!ag.ajudantesEscaladas || ag.ajudantesEscaladas.length === 0) return '';
+    const nomes = ag.ajudantesEscaladas
+      .map(ae => {
+        const aj = ajudantes.find(a => a.id === ae.ajudanteId);
+        if (!aj) return '';
+        return formato === 'curto' ? aj.nome.split(' ')[0] : aj.nome;
+      })
+      .filter(Boolean);
+    return nomes.join(', ');
+  };
+
+  // Helper de status da faxina (Concluída vs Pendente)
+  const isConcluida = (ag) => ag.statusServico === 'concluido';
+
+  // Título Dinâmico do Cabeçalho conforme o Modo
+  const tituloCabecalho = useMemo(() => {
+    if (visualizacao === 'mes') {
+      return `${MESES_NOMES[mes]} de ${ano}`;
+    }
+
+    if (visualizacao === 'semana') {
+      // Encontra o domingo e sábado da semana atual
+      const d = new Date(dataAtual);
+      const diaSemana = d.getDay();
+      const dom = new Date(d);
+      dom.setDate(d.getDate() - diaSemana);
+      const sab = new Date(dom);
+      sab.setDate(dom.getDate() + 6);
+
+      const mesDom = dom.getMonth();
+      const mesSab = sab.getMonth();
+      const anoDom = dom.getFullYear();
+      const anoSab = sab.getFullYear();
+
+      if (mesDom === mesSab && anoDom === anoSab) {
+        return `${String(dom.getDate()).padStart(2, '0')} a ${String(sab.getDate()).padStart(2, '0')} de ${MESES_NOMES[mesDom]} de ${anoDom}`;
+      } else if (anoDom === anoSab) {
+        return `${String(dom.getDate()).padStart(2, '0')} de ${MESES_NOMES[mesDom]} a ${String(sab.getDate()).padStart(2, '0')} de ${MESES_NOMES[mesSab]} de ${anoDom}`;
+      } else {
+        return `${String(dom.getDate()).padStart(2, '0')}/${mesDom + 1}/${anoDom} a ${String(sab.getDate()).padStart(2, '0')}/${mesSab + 1}/${anoSab}`;
+      }
+    }
+
+    // visualizacao === 'dia'
+    const formatador = new Intl.DateTimeFormat('pt-BR', { 
+      weekday: 'long', 
+      day: '2-digit', 
+      month: 'long', 
+      year: 'numeric' 
+    });
     const str = formatador.format(dataAtual);
     return str.charAt(0).toUpperCase() + str.slice(1);
-  }, [dataAtual]);
+  }, [visualizacao, dataAtual, ano, mes]);
 
   // Agrupar agendamentos por data ISO (YYYY-MM-DD)
   const agendamentosPorDia = useMemo(() => {
@@ -53,45 +146,48 @@ export const CalendarView = ({
       }
       mapa[dataStr].push(ag);
     });
+    // Ordenar agendamentos do dia por horário de início
+    Object.keys(mapa).forEach(k => {
+      mapa[k].sort((a, b) => new Date(a.dataHoraInicio) - new Date(b.dataHoraInicio));
+    });
     return mapa;
   }, [agendamentos]);
 
-  // Estatísticas do Mês Atual
+  // Estatísticas do Mês Atual para o Topo
   const estatisticasMes = useMemo(() => {
     let totalFaxinas = 0;
-    let totalFaturado = 0;
-    let diasComServico = new Set();
+    let concluidas = 0;
+    let pendentes = 0;
 
     Object.entries(agendamentosPorDia).forEach(([dataStr, lista]) => {
       const [a, m] = dataStr.split('-').map(Number);
       if (a === ano && m - 1 === mes) {
         totalFaxinas += lista.length;
         lista.forEach(ag => {
-          totalFaturado += Number(ag.valorCliente) || 0;
+          if (ag.statusServico === 'concluido') {
+            concluidas++;
+          } else {
+            pendentes++;
+          }
         });
-        diasComServico.add(dataStr);
       }
     });
 
-    return {
-      totalFaxinas,
-      totalFaturado,
-      qtdDias: diasComServico.size
-    };
+    return { totalFaxinas, concluidas, pendentes };
   }, [agendamentosPorDia, ano, mes]);
 
-  // Matriz de Dias do Mês
-  const diasCalendario = useMemo(() => {
+  // 1. DADOS DA VISÃO MENSAL (Grade de 35 a 42 dias)
+  const diasCalendarioMensal = useMemo(() => {
     const primeiroDiaSemana = new Date(ano, mes, 1).getDay(); // 0 = Domingo
     const totalDiasMes = new Date(ano, mes + 1, 0).getDate();
     const totalDiasMesAnterior = new Date(ano, mes, 0).getDate();
 
     const hoje = new Date();
-    const hojeStr = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
+    const hojeStr = toDatetimeLocalString(hoje).slice(0, 10);
 
     const dias = [];
 
-    // Dias do mês anterior para completar o início da grade
+    // Dias do mês anterior
     for (let i = primeiroDiaSemana - 1; i >= 0; i--) {
       const diaNum = totalDiasMesAnterior - i;
       const mesAnt = mes === 0 ? 11 : mes - 1;
@@ -122,7 +218,7 @@ export const CalendarView = ({
       });
     }
 
-    // Dias do próximo mês para completar o final da grade (múltiplo de 7)
+    // Dias do próximo mês para fechar a grade (múltiplo de 7)
     const restante = (7 - (dias.length % 7)) % 7;
     for (let i = 1; i <= restante; i++) {
       const mesProx = mes === 11 ? 0 : mes + 1;
@@ -142,132 +238,653 @@ export const CalendarView = ({
     return dias;
   }, [ano, mes, agendamentosPorDia]);
 
-  const diasSemana = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
+  // 2. DADOS DA VISÃO SEMANAL (7 dias de Domingo a Sábado)
+  const diasSemanaAtual = useMemo(() => {
+    const d = new Date(dataAtual);
+    const diaSemana = d.getDay();
+    const domingo = new Date(d);
+    domingo.setDate(d.getDate() - diaSemana);
+    domingo.setHours(0, 0, 0, 0);
+
+    const hoje = new Date();
+    const hojeStr = toDatetimeLocalString(hoje).slice(0, 10);
+
+    const semana = [];
+    for (let i = 0; i < 7; i++) {
+      const diaObj = new Date(domingo);
+      diaObj.setDate(domingo.getDate() + i);
+      const dataStr = toDatetimeLocalString(diaObj).slice(0, 10);
+      const ags = agendamentosPorDia[dataStr] || [];
+
+      semana.push({
+        dataObj,
+        dataStr,
+        diaNum: diaObj.getDate(),
+        mesNum: diaObj.getMonth() + 1,
+        nomeDia: DIAS_SEMANA_NOMES[i].split('-')[0],
+        nomeDiaCurto: DIAS_SEMANA_CURTOS[i],
+        isHoje: dataStr === hojeStr,
+        agendamentos: ags
+      });
+    }
+    return semana;
+  }, [dataAtual, agendamentosPorDia]);
+
+  // 3. DADOS DA VISÃO DIÁRIA (Dia selecionado)
+  const dataSelecionadaStr = useMemo(() => {
+    return toDatetimeLocalString(dataAtual).slice(0, 10);
+  }, [dataAtual]);
+
+  const agendamentosDoDiaSelecionado = useMemo(() => {
+    return agendamentosPorDia[dataSelecionadaStr] || [];
+  }, [agendamentosPorDia, dataSelecionadaStr]);
+
+  const hojeDataStr = toDatetimeLocalString(new Date()).slice(0, 10);
+  const isDiaHoje = dataSelecionadaStr === hojeDataStr;
+
+  // Grade de Horários padrão para visão diária (07:00 às 20:00)
+  const horasDoDia = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
 
   return (
     <div className="calendar-wrapper">
-      {/* Barra de Navegação do Mês e Métricas Rápidas */}
-      <div className="calendar-header-bar">
+      {/* BARRA SUPERIOR: NAVEGAÇÃO, SELETOR DE MODELOS (MÊS / SEMANA / DIA) E MÉTRICAS */}
+      <div className="calendar-header-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+        
+        {/* Lado Esquerdo: Controles de Navegação (< Hoje >) e Título */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-          <button 
-            type="button" 
-            onClick={mesAnterior} 
-            className="btn btn-secondary btn-icon btn-sm"
-            title="Mês Anterior"
-          >
-            <ChevronLeft size={18} />
-          </button>
-
-          <h3 style={{ fontSize: '1.2rem', fontWeight: '700', color: 'var(--text-primary)', minWidth: '170px' }}>
-            {nomeMesAno}
-          </h3>
-
-          <button 
-            type="button" 
-            onClick={proximoMes} 
-            className="btn btn-secondary btn-icon btn-sm"
-            title="Próximo Mês"
-          >
-            <ChevronRight size={18} />
-          </button>
+          <div style={{ display: 'flex', gap: '0.25rem' }}>
+            <button 
+              type="button" 
+              onClick={navegarAnterior} 
+              className="btn btn-secondary btn-icon btn-sm"
+              title="Período Anterior"
+              style={{ width: '32px', height: '32px' }}
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <button 
+              type="button" 
+              onClick={navegarProximo} 
+              className="btn btn-secondary btn-icon btn-sm"
+              title="Próximo Período"
+              style={{ width: '32px', height: '32px' }}
+            >
+              <ChevronRight size={18} />
+            </button>
+          </div>
 
           <button 
             type="button" 
             onClick={irParaHoje} 
             className="btn btn-secondary btn-sm"
-            style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem', marginLeft: '0.25rem' }}
+            style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem' }}
           >
             Hoje
           </button>
+
+          <h3 style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--text-primary)', marginLeft: '0.25rem' }}>
+            {tituloCabecalho}
+          </h3>
         </div>
 
-        {/* Resumo do Mês */}
-        <div className="calendar-month-stats">
-          <div className="stat-pill">
-            <CalendarIcon size={14} color="var(--primary-400)" />
-            <span><strong>{estatisticasMes.totalFaxinas}</strong> faxina(s)</span>
-          </div>
-
-          <div className="stat-pill">
-            <DollarSign size={14} color="var(--primary-500)" />
-            <span><strong>{formatCurrency(estatisticasMes.totalFaturado)}</strong></span>
-          </div>
-        </div>
-      </div>
-
-      {/* Grade de Cabeçalho dos Dias da Semana */}
-      <div className="calendar-weekdays-grid">
-        {diasSemana.map((dia, idx) => (
-          <div 
-            key={dia} 
-            className="calendar-weekday-cell"
-            style={{ color: idx === 0 || idx === 6 ? 'var(--accent-gold)' : 'var(--text-secondary)' }}
-          >
-            {dia}
-          </div>
-        ))}
-      </div>
-
-      {/* Grade de Células dos Dias */}
-      <div className="calendar-days-grid">
-        {diasCalendario.map((d, index) => {
-          const qtd = d.agendamentos.length;
-          const temAgendamentos = qtd > 0;
-
-          // Cálculo do valor total do dia
-          const totalDia = d.agendamentos.reduce((acc, ag) => acc + (Number(ag.valorCliente) || 0), 0);
-
-          return (
-            <div
-              key={`${d.dataStr}-${index}`}
-              className={`calendar-day-cell ${!d.isMesAtual ? 'day-muted' : ''} ${d.isHoje ? 'day-today' : ''} ${temAgendamentos ? 'day-has-events' : ''}`}
-              onClick={() => onSelectDay(d.dataStr, d.agendamentos)}
-              title={temAgendamentos ? `Clique para ver ${qtd} cliente(s) agendado(s)` : `Clique para ver o dia ${d.numero}`}
+        {/* Lado Direito: Alternador de Modelo (Google Calendar Style) + Resumo */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+          
+          {/* Seletor de Modelo de Calendário */}
+          <div style={{ 
+            display: 'flex', 
+            background: 'var(--bg-input)', 
+            padding: '3px', 
+            borderRadius: 'var(--radius-md)', 
+            border: '1px solid var(--border-color)' 
+          }}>
+            <button
+              type="button"
+              onClick={() => setVisualizacao('mes')}
+              className={`btn btn-sm ${visualizacao === 'mes' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ 
+                padding: '0.35rem 0.85rem', 
+                fontSize: '0.8rem', 
+                border: 'none', 
+                borderRadius: 'calc(var(--radius-md) - 3px)' 
+              }}
             >
-              {/* Número do Dia e Badge Hoje */}
-              <div className="day-cell-top">
-                <span className={`day-number ${d.isHoje ? 'day-number-today' : ''}`}>
-                  {d.numero}
-                </span>
+              Mês
+            </button>
+            <button
+              type="button"
+              onClick={() => setVisualizacao('semana')}
+              className={`btn btn-sm ${visualizacao === 'semana' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ 
+                padding: '0.35rem 0.85rem', 
+                fontSize: '0.8rem', 
+                border: 'none', 
+                borderRadius: 'calc(var(--radius-md) - 3px)' 
+              }}
+            >
+              Semana
+            </button>
+            <button
+              type="button"
+              onClick={() => setVisualizacao('dia')}
+              className={`btn btn-sm ${visualizacao === 'dia' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ 
+                padding: '0.35rem 0.85rem', 
+                fontSize: '0.8rem', 
+                border: 'none', 
+                borderRadius: 'calc(var(--radius-md) - 3px)' 
+              }}
+            >
+              Dia
+            </button>
+          </div>
 
-                {d.isHoje && (
-                  <span className="badge-today">Hoje</span>
-                )}
+          {/* Badges de Status Geral do Mês */}
+          <div style={{ display: 'flex', gap: '0.4rem' }}>
+            <span 
+              className="badge" 
+              style={{ 
+                background: 'rgba(16, 185, 129, 0.15)', 
+                color: '#34d399', 
+                border: '1px solid rgba(16, 185, 129, 0.35)', 
+                fontSize: '0.75rem', 
+                padding: '0.3rem 0.55rem' 
+              }}
+              title="Faxinas com limpeza já concluída"
+            >
+              ✓ {estatisticasMes.concluidas} concluída(s)
+            </span>
+
+            <span 
+              className="badge" 
+              style={{ 
+                background: 'rgba(245, 158, 11, 0.15)', 
+                color: '#fbbf24', 
+                border: '1px solid rgba(245, 158, 11, 0.35)', 
+                fontSize: '0.75rem', 
+                padding: '0.3rem 0.55rem' 
+              }}
+              title="Faxinas agendadas e confirmadas a realizar"
+            >
+              ⏳ {estatisticasMes.pendentes} a realizar
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* MODELO 1: VISÃO MENSAL (Grade de Dias com Status Verde/Amarelo e Ajudante) */}
+      {/* ========================================================================= */}
+      {visualizacao === 'mes' && (
+        <>
+          {/* Cabeçalho dos Dias da Semana */}
+          <div className="calendar-weekdays-grid">
+            {['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'].map((diaNome, idx) => (
+              <div 
+                key={diaNome} 
+                className="calendar-weekday-cell"
+                style={{ color: idx === 0 || idx === 6 ? 'var(--accent-gold)' : 'var(--text-secondary)' }}
+              >
+                {diaNome}
               </div>
+            ))}
+          </div>
 
-              {/* Indicador de Clientes / Faxinas Agendadas */}
-              {temAgendamentos && (
-                <div className="day-cell-content">
-                  <div className="client-count-badge">
-                    <span className="badge-dot"></span>
-                    <span className="badge-text-full">{qtd} {qtd === 1 ? 'cliente' : 'clientes'}</span>
-                    <span className="badge-text-mobile">{qtd}</span>
-                  </div>
+          {/* Grade dos Dias do Mês */}
+          <div className="calendar-days-grid">
+            {diasCalendarioMensal.map((d, index) => {
+              const qtd = d.agendamentos.length;
+              const temAgendamentos = qtd > 0;
+              const concluidas = d.agendamentos.filter(isConcluida).length;
+              const pendentes = qtd - concluidas;
+              const todasConcluidas = temAgendamentos && pendentes === 0;
 
-                  <span className="day-total-val">
-                    {formatCurrency(totalDia)}
-                  </span>
+              return (
+                <div
+                  key={`${d.dataStr}-${index}`}
+                  className={`calendar-day-cell ${!d.isMesAtual ? 'day-muted' : ''} ${d.isHoje ? 'day-today' : ''} ${temAgendamentos ? 'day-has-events' : ''}`}
+                  onClick={() => onSelectDay ? onSelectDay(d.dataStr, d.agendamentos) : null}
+                  style={{
+                    borderColor: temAgendamentos 
+                      ? (todasConcluidas ? 'rgba(16, 185, 129, 0.5)' : 'rgba(245, 158, 11, 0.5)')
+                      : undefined
+                  }}
+                  title={temAgendamentos ? `Ver ${qtd} cliente(s) agendado(s) em ${d.dataStr}` : `Ver dia ${d.numero}`}
+                >
+                  {/* Número do Dia e Badge Hoje */}
+                  <div className="day-cell-top">
+                    <span className={`day-number ${d.isHoje ? 'day-number-today' : ''}`}>
+                      {d.numero}
+                    </span>
 
-                  {/* Nomes dos clientes em tela desktop */}
-                  <div className="day-client-previews">
-                    {d.agendamentos.slice(0, 2).map((ag, i) => {
-                      const cli = clientes.find(c => c.id === ag.clienteId);
-                      return (
-                        <span key={i} className="client-preview-chip">
-                          {cli?.nome?.split(' ')[0] || 'Cliente'}
-                        </span>
-                      );
-                    })}
-                    {qtd > 2 && (
-                      <span className="client-preview-more">+{qtd - 2}</span>
+                    {d.isHoje && (
+                      <span className="badge-today">Hoje</span>
                     )}
                   </div>
+
+                  {/* Conteúdo do Dia: SEM EXIBIR VALOR MONETÁRIO DIÁRIO */}
+                  {temAgendamentos && (
+                    <div className="day-cell-content">
+                      {/* Badge Resumo do Dia por Status */}
+                      <div 
+                        style={{
+                          background: todasConcluidas ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.18)',
+                          border: `1px solid ${todasConcluidas ? 'rgba(16, 185, 129, 0.5)' : 'rgba(245, 158, 11, 0.5)'}`,
+                          color: todasConcluidas ? '#34d399' : '#fbbf24',
+                          fontSize: '0.675rem',
+                          fontWeight: '700',
+                          borderRadius: 'var(--radius-sm)',
+                          padding: '2px 5px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          justifyContent: 'center',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        <span style={{ 
+                          width: '5px', 
+                          height: '5px', 
+                          borderRadius: '50%', 
+                          background: todasConcluidas ? '#10b981' : '#f59e0b',
+                          flexShrink: 0 
+                        }}></span>
+                        <span>
+                          {todasConcluidas 
+                            ? `✓ ${qtd} feita(s)` 
+                            : concluidas > 0 
+                              ? `${concluidas} ok • ${pendentes} pend` 
+                              : `⏳ ${qtd} ${qtd === 1 ? 'faxina' : 'faxinas'}`}
+                        </span>
+                      </div>
+
+                      {/* Lista com Nome do Cliente e Nome da Ajudante com Cores por Status */}
+                      <div className="day-client-previews">
+                        {d.agendamentos.slice(0, 3).map((ag, i) => {
+                          const cli = clientes.find(c => c.id === ag.clienteId);
+                          const nomeCli = cli?.nome ? cli.nome.split(' ')[0] : 'Cliente';
+                          const ajudanteTxt = getAjudantesTexto(ag, 'curto');
+                          const feita = isConcluida(ag);
+
+                          return (
+                            <div 
+                              key={ag.id || i} 
+                              style={{
+                                fontSize: '0.65rem',
+                                background: feita ? 'rgba(16, 185, 129, 0.22)' : 'rgba(245, 158, 11, 0.18)',
+                                border: `1px solid ${feita ? 'rgba(16, 185, 129, 0.45)' : 'rgba(245, 158, 11, 0.45)'}`,
+                                color: feita ? '#a7f3d0' : '#fde68a',
+                                borderRadius: '3px',
+                                padding: '1.5px 4px',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                textAlign: 'left',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '3px'
+                              }}
+                            >
+                              <span style={{ 
+                                width: '4px', 
+                                height: '4px', 
+                                borderRadius: '50%', 
+                                background: feita ? '#10b981' : '#f59e0b',
+                                flexShrink: 0
+                              }}></span>
+                              <span style={{ fontWeight: '600' }}>{nomeCli}</span>
+                              {ajudanteTxt && (
+                                <span style={{ opacity: 0.85, fontSize: '0.62rem' }}>
+                                  ({ajudanteTxt})
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
+                        {qtd > 3 && (
+                          <span className="client-preview-more" style={{ color: 'var(--text-muted)' }}>
+                            +{qtd - 3} mais
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODELO 2: VISÃO SEMANAL (7 Colunas de Domingo a Sábado com Horários)      */}
+      {/* ========================================================================= */}
+      {visualizacao === 'semana' && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(135px, 1fr))', gap: '0.5rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
+          {diasSemanaAtual.map((diaItem) => {
+            const qtd = diaItem.agendamentos.length;
+            const concluidas = diaItem.agendamentos.filter(isConcluida).length;
+
+            return (
+              <div 
+                key={diaItem.dataStr}
+                style={{
+                  background: diaItem.isHoje ? 'rgba(6, 182, 212, 0.05)' : 'var(--bg-card)',
+                  border: diaItem.isHoje ? '2px solid var(--accent-cyan)' : '1px solid var(--border-color)',
+                  borderRadius: 'var(--radius-md)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  minHeight: '480px'
+                }}
+              >
+                {/* Topo do Dia na Semana */}
+                <div style={{
+                  padding: '0.625rem',
+                  borderBottom: '1px solid var(--border-color)',
+                  background: diaItem.isHoje ? 'rgba(6, 182, 212, 0.12)' : 'rgba(255, 255, 255, 0.02)',
+                  textAlign: 'center'
+                }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: '700', color: diaItem.isHoje ? 'var(--accent-cyan)' : 'var(--text-secondary)' }}>
+                    {diaItem.nomeDiaCurto.toUpperCase()}
+                  </div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: '800', color: diaItem.isHoje ? 'var(--accent-cyan)' : 'var(--text-primary)' }}>
+                    {diaItem.diaNum}
+                  </div>
+                  <div style={{ marginTop: '0.25rem' }}>
+                    <span 
+                      style={{ 
+                        fontSize: '0.675rem', 
+                        padding: '1px 6px', 
+                        borderRadius: '4px',
+                        background: qtd > 0 ? (concluidas === qtd ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)') : 'transparent',
+                        color: qtd > 0 ? (concluidas === qtd ? '#34d399' : '#fbbf24') : 'var(--text-muted)'
+                      }}
+                    >
+                      {qtd === 0 ? 'Sem faxinas' : `${qtd} faxina(s)`}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Lista de Faxinas do Dia (Ordenadas por Horário) */}
+                <div style={{ padding: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
+                  {qtd === 0 ? (
+                    <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.75rem', padding: '2rem 0.25rem', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                      <Clock size={16} style={{ marginBottom: '0.35rem', opacity: 0.4 }} />
+                      <span>Livre</span>
+                      <button 
+                        type="button"
+                        onClick={() => onNovoAgendamento && onNovoAgendamento({ dataHoraInicio: `${diaItem.dataStr}T09:00:00` })}
+                        className="btn btn-secondary btn-sm"
+                        style={{ marginTop: '0.75rem', fontSize: '0.675rem', padding: '0.2rem 0.5rem' }}
+                      >
+                        + Agendar
+                      </button>
+                    </div>
+                  ) : (
+                    diaItem.agendamentos.map((ag) => {
+                      const cli = clientes.find(c => c.id === ag.clienteId);
+                      const plano = planos.find(p => p.id === ag.planoId);
+                      const ajudantesTxt = getAjudantesTexto(ag, 'curto');
+                      const feita = isConcluida(ag);
+                      const horaIni = ag.dataHoraInicio ? ag.dataHoraInicio.slice(11, 16) : '08:00';
+                      const horaFim = ag.dataHoraFim ? ag.dataHoraFim.slice(11, 16) : '';
+
+                      return (
+                        <div
+                          key={ag.id}
+                          onClick={() => onEditarAgendamento ? onEditarAgendamento(ag) : onSelectDay(diaItem.dataStr)}
+                          style={{
+                            background: feita ? 'rgba(16, 185, 129, 0.12)' : 'rgba(245, 158, 11, 0.1)',
+                            borderLeft: `3px solid ${feita ? '#10b981' : '#f59e0b'}`,
+                            borderTop: '1px solid var(--border-color)',
+                            borderRight: '1px solid var(--border-color)',
+                            borderBottom: '1px solid var(--border-color)',
+                            borderRadius: 'var(--radius-sm)',
+                            padding: '0.45rem',
+                            cursor: 'pointer',
+                            transition: 'var(--transition)'
+                          }}
+                          className="hover-card"
+                          title="Clique para editar ou ver detalhes"
+                        >
+                          {/* Horário e Status */}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                            <span style={{ fontSize: '0.7rem', fontWeight: '700', color: feita ? '#34d399' : '#fbbf24' }}>
+                              🕒 {horaIni}{horaFim ? ` - ${horaFim}` : ''}
+                            </span>
+                            <span 
+                              style={{ 
+                                fontSize: '0.6rem', 
+                                padding: '1px 4px', 
+                                borderRadius: '3px',
+                                background: feita ? '#10b981' : '#f59e0b',
+                                color: '#000',
+                                fontWeight: '700'
+                              }}
+                            >
+                              {feita ? 'FEITA' : 'PEND'}
+                            </span>
+                          </div>
+
+                          {/* Nome do Cliente */}
+                          <div style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {cli?.nome || 'Cliente'}
+                          </div>
+
+                          {/* Ajudante Escalada */}
+                          <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '3px', marginTop: '0.15rem' }}>
+                            <span>🧹</span>
+                            <span style={{ fontWeight: '500', color: 'var(--text-primary)' }}>
+                              {ajudantesTxt || 'Sem ajudante'}
+                            </span>
+                          </div>
+
+                          {/* Condomínio / Bairro */}
+                          {(cli?.condominio || cli?.bairro) && (
+                            <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '0.15rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              📍 {cli.condominio ? `${cli.condominio} ` : ''}{cli.bairro ? `• ${cli.bairro}` : ''}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODELO 3: VISÃO DIÁRIA (Hoje / Dia Específico com Linha de Horários)       */}
+      {/* ========================================================================= */}
+      {visualizacao === 'dia' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          
+          {/* Card Resumo do Dia Selecionado */}
+          <div className="glass-card" style={{ padding: '0.875rem 1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span className={`badge ${isDiaHoje ? 'badge-info' : 'badge-neutral'}`} style={{ fontSize: '0.75rem' }}>
+                  {isDiaHoje ? 'Hoje' : 'Dia Selecionado'}
+                </span>
+                <span style={{ fontSize: '0.825rem', color: 'var(--text-secondary)' }}>
+                  {agendamentosDoDiaSelecionado.length} faxina(s) agendada(s)
+                </span>
+              </div>
+              <h4 style={{ fontSize: '1.2rem', color: 'var(--text-primary)', marginTop: '0.2rem' }}>
+                {tituloCabecalho}
+              </h4>
             </div>
-          );
-        })}
-      </div>
+
+            <button
+              type="button"
+              onClick={() => onNovoAgendamento && onNovoAgendamento({ dataHoraInicio: `${dataSelecionadaStr}T09:00:00` })}
+              className="btn btn-primary btn-sm"
+              style={{ gap: '0.35rem' }}
+            >
+              <Plus size={16} />
+              <span>+ Agendar Faxina neste Dia</span>
+            </button>
+          </div>
+
+          {/* Se não houver faxinas no dia */}
+          {agendamentosDoDiaSelecionado.length === 0 ? (
+            <div className="glass-card" style={{ textAlign: 'center', padding: '3rem 1rem' }}>
+              <CalendarIcon size={44} color="var(--text-muted)" style={{ margin: '0 auto 0.75rem', opacity: 0.5 }} />
+              <h4 style={{ color: 'var(--text-primary)', marginBottom: '0.35rem' }}>
+                Nenhuma faxina agendada para este dia
+              </h4>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '1.25rem' }}>
+                Você pode utilizar os botões de navegação acima para ver outros dias ou agendar uma nova faxina agora.
+              </p>
+              <button
+                type="button"
+                onClick={() => onNovoAgendamento && onNovoAgendamento({ dataHoraInicio: `${dataSelecionadaStr}T09:00:00` })}
+                className="btn btn-primary btn-sm"
+              >
+                <Plus size={16} />
+                <span>Agendar Faxina</span>
+              </button>
+            </div>
+          ) : (
+            /* Lista detalhada das faxinas do dia com horários e ações */
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {agendamentosDoDiaSelecionado.map((ag) => {
+                const cli = clientes.find(c => c.id === ag.clienteId);
+                const plano = planos.find(p => p.id === ag.planoId);
+                const ajudantesCompletas = getAjudantesTexto(ag, 'completo');
+                const feita = isConcluida(ag);
+                const horaIni = ag.dataHoraInicio ? ag.dataHoraInicio.slice(11, 16) : '08:00';
+                const horaFim = ag.dataHoraFim ? ag.dataHoraFim.slice(11, 16) : '12:00';
+                const waUrl = cli ? getWhatsAppUrl(cli.telefone, `Olá ${cli.nome}! Aqui é da Limpeza Express SP sobre sua faxina de hoje ✨`) : '';
+
+                return (
+                  <div
+                    key={ag.id}
+                    className="glass-card"
+                    style={{
+                      padding: '1.125rem',
+                      borderLeft: `5px solid ${feita ? '#10b981' : '#f59e0b'}`,
+                      background: feita ? 'rgba(16, 185, 129, 0.05)' : 'rgba(245, 158, 11, 0.04)'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.75rem' }}>
+                      
+                      {/* Lado Esquerdo: Horário, Status, Cliente, Ajudantes e Local */}
+                      <div style={{ flex: 1, minWidth: '260px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem', flexWrap: 'wrap' }}>
+                          <span 
+                            style={{ 
+                              background: feita ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)',
+                              border: `1px solid ${feita ? '#10b981' : '#f59e0b'}`,
+                              color: feita ? '#34d399' : '#fbbf24',
+                              fontWeight: '700',
+                              fontSize: '0.75rem',
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}
+                          >
+                            <Clock size={12} />
+                            <span>{horaIni} às {horaFim}</span>
+                          </span>
+
+                          <span 
+                            className={`badge ${feita ? 'badge-success' : 'badge-warning'}`}
+                            style={{ fontSize: '0.75rem' }}
+                          >
+                            {feita ? '✓ Faxina Concluída' : '⏳ A Realizar / Confirmada'}
+                          </span>
+
+                          <span className="badge badge-info" style={{ fontSize: '0.75rem' }}>
+                            {plano?.nome || 'Plano Padrão'}
+                          </span>
+                        </div>
+
+                        {/* Nome do Cliente */}
+                        <h3 style={{ fontSize: '1.25rem', color: 'var(--text-primary)', fontWeight: '700', marginBottom: '0.25rem' }}>
+                          {cli?.nome || 'Cliente'}
+                        </h3>
+
+                        {/* Ajudantes Escaladas */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.85rem', color: 'var(--text-primary)', marginBottom: '0.35rem' }}>
+                          <span style={{ fontSize: '1rem' }}>🧹</span>
+                          <span><strong>Ajudante(s):</strong> {ajudantesCompletas || 'Nenhuma ajudante escalada'}</span>
+                        </div>
+
+                        {/* Endereço / Condomínio */}
+                        {(cli?.condominio || cli?.endereco) && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                            <MapPin size={14} color="var(--primary-400)" />
+                            <span>
+                              {cli.condominio ? `${cli.condominio} ` : ''}
+                              {cli.torre ? `(Torre ${cli.torre} - ${cli.apartamento}) ` : cli.apartamento ? `(${cli.apartamento}) ` : ''}
+                              {cli.endereco ? `• ${cli.endereco} ` : ''}
+                              {cli.bairro ? `- ${cli.bairro}` : ''}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Observações da Faxina */}
+                        {ag.observacoes && (
+                          <div style={{ marginTop: '0.5rem', background: 'rgba(0,0,0,0.2)', padding: '0.35rem 0.65rem', borderRadius: 'var(--radius-sm)', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                            Obs: {ag.observacoes}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Lado Direito: Botões de Ação Imediata */}
+                      <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                        {setStatusServico && (
+                          <button
+                            type="button"
+                            onClick={() => setStatusServico(ag.id, feita ? 'confirmado' : 'concluido')}
+                            className={`btn btn-sm ${feita ? 'btn-secondary' : 'btn-primary'}`}
+                            style={{ gap: '0.35rem' }}
+                            title={feita ? 'Reabrir faxina como pendente' : 'Marcar faxina como concluída'}
+                          >
+                            {feita ? <RotateCcw size={14} /> : <Check size={14} />}
+                            <span>{feita ? 'Reabrir' : 'Concluir Faxina'}</span>
+                          </button>
+                        )}
+
+                        {cli?.telefone && (
+                          <a 
+                            href={waUrl} 
+                            target="_blank" 
+                            rel="noreferrer" 
+                            className="btn btn-whatsapp btn-sm"
+                            title="Abrir WhatsApp direto do cliente"
+                          >
+                            <MessageCircle size={14} />
+                            <span>WhatsApp</span>
+                          </a>
+                        )}
+
+                        {onEditarAgendamento && (
+                          <button
+                            type="button"
+                            onClick={() => onEditarAgendamento(ag)}
+                            className="btn btn-secondary btn-sm"
+                            title="Editar agendamento"
+                          >
+                            <Edit2 size={14} />
+                            <span>Editar</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

@@ -196,8 +196,12 @@ export const AgendaView = ({ onNovoAgendamento, onEditarAgendamento }) => {
           <CalendarView 
             agendamentos={agendamentosFiltrados}
             clientes={clientes}
+            ajudantes={ajudantes}
             planos={planos}
             onSelectDay={handleSelectDay}
+            onNovoAgendamento={onNovoAgendamento}
+            onEditarAgendamento={onEditarAgendamento}
+            setStatusServico={setStatusServico}
           />
         </div>
       )}
