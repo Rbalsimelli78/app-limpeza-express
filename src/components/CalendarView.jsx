@@ -26,6 +26,7 @@ import {
   DIAS_SEMANA_CURTOS, 
   MESES_NOMES 
 } from '../utils/recurrence';
+import { checkHasConflict } from '../utils/conflicts';
 
 export const CalendarView = ({ 
   agendamentos = [], 
@@ -503,6 +504,21 @@ export const CalendarView = ({
                               ? `${concluidas} ok • ${pendentes} pend` 
                               : `⏳ ${qtd} ${qtd === 1 ? 'faxina' : 'faxinas'}`}
                         </span>
+                        {qtd > 1 && d.agendamentos.some(ag => checkHasConflict(ag, d.agendamentos, ajudantes)) && (
+                          <span 
+                            title="Atenção: Choque de horário ou ajudante detectado neste dia!"
+                            style={{
+                              fontSize: '0.62rem',
+                              background: '#ef4444',
+                              color: '#fff',
+                              borderRadius: '3px',
+                              padding: '1px 4px',
+                              fontWeight: '800'
+                            }}
+                          >
+                            ⚠️ Choque
+                          </span>
+                        )}
                       </div>
 
                       {/* Lista com Nome do Cliente e Nome da Ajudante com Cores por Status */}
@@ -597,7 +613,7 @@ export const CalendarView = ({
                   <div style={{ fontSize: '1.25rem', fontWeight: '800', color: diaItem.isHoje ? 'var(--accent-cyan)' : 'var(--text-primary)' }}>
                     {diaItem.diaNum}
                   </div>
-                  <div style={{ marginTop: '0.25rem' }}>
+                  <div style={{ marginTop: '0.25rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', flexWrap: 'wrap' }}>
                     <span 
                       style={{ 
                         fontSize: '0.675rem', 
@@ -609,6 +625,22 @@ export const CalendarView = ({
                     >
                       {qtd === 0 ? 'Sem faxinas' : `${qtd} faxina(s)`}
                     </span>
+                    {qtd > 1 && diaItem.agendamentos.some(ag => checkHasConflict(ag, diaItem.agendamentos, ajudantes)) && (
+                      <span 
+                        title="Há choque de horário ou de ajudante neste dia!"
+                        style={{
+                          fontSize: '0.62rem',
+                          padding: '1px 5px',
+                          borderRadius: '4px',
+                          background: 'rgba(239, 68, 68, 0.25)',
+                          border: '1px solid rgba(239, 68, 68, 0.5)',
+                          color: '#f87171',
+                          fontWeight: '800'
+                        }}
+                      >
+                        ⚠️ Choque
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -635,6 +667,7 @@ export const CalendarView = ({
                       const feita = isConcluida(ag);
                       const horaIni = ag.dataHoraInicio ? ag.dataHoraInicio.slice(11, 16) : '08:00';
                       const horaFim = ag.dataHoraFim ? ag.dataHoraFim.slice(11, 16) : '';
+                      const conflito = checkHasConflict(ag, diaItem.agendamentos, ajudantes);
 
                       return (
                         <div
@@ -642,7 +675,7 @@ export const CalendarView = ({
                           onClick={() => onEditarAgendamento ? onEditarAgendamento(ag) : (onSelectDay ? onSelectDay(diaItem.dataStr) : null)}
                           style={{
                             background: feita ? 'rgba(16, 185, 129, 0.12)' : 'rgba(245, 158, 11, 0.1)',
-                            borderLeft: `3px solid ${feita ? '#10b981' : '#f59e0b'}`,
+                            borderLeft: conflito ? (conflito.tipo === 'ajudante' ? '3px solid #ef4444' : '3px solid #f59e0b') : (feita ? '3px solid #10b981' : '3px solid #f59e0b'),
                             borderTop: '1px solid var(--border-color)',
                             borderRight: '1px solid var(--border-color)',
                             borderBottom: '1px solid var(--border-color)',
@@ -652,7 +685,7 @@ export const CalendarView = ({
                             transition: 'var(--transition)'
                           }}
                           className="hover-card"
-                          title="Clique para editar ou ver detalhes"
+                          title={conflito ? `⚠️ Choque detectado! Clique para editar ou ver detalhes` : 'Clique para editar ou ver detalhes'}
                         >
                           {/* Horário e Status */}
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
@@ -672,6 +705,32 @@ export const CalendarView = ({
                               {feita ? 'FEITA' : 'PEND'}
                             </span>
                           </div>
+
+                          {/* Alerta de Choque de Horário / Ajudante no card */}
+                          {conflito && (
+                            <div 
+                              title={conflito.tipo === 'ajudante' ? `Choque de ajudante: ${conflito.ajudantes.join(', ')}` : 'Choque de horário no mesmo intervalo'}
+                              style={{
+                                margin: '0.2rem 0 0.35rem 0',
+                                fontSize: '0.62rem',
+                                background: conflito.tipo === 'ajudante' ? 'rgba(239, 68, 68, 0.25)' : 'rgba(245, 158, 11, 0.25)',
+                                border: `1px solid ${conflito.tipo === 'ajudante' ? '#ef4444' : '#f59e0b'}`,
+                                color: conflito.tipo === 'ajudante' ? '#fca5a5' : '#fde68a',
+                                padding: '1.5px 4px',
+                                borderRadius: '3px',
+                                fontWeight: '700',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '3px',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis'
+                              }}
+                            >
+                              <span>⚠️</span>
+                              <span>{conflito.tipo === 'ajudante' ? `Choque: ${conflito.ajudantes.join(', ')}` : 'Horário Sobreposto'}</span>
+                            </div>
+                          )}
 
                           {/* Nome do Cliente */}
                           <div style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -758,6 +817,24 @@ export const CalendarView = ({
           ) : (
             /* Lista detalhada das faxinas do dia com horários e ações */
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {agendamentosDoDiaSelecionado.length > 1 && agendamentosDoDiaSelecionado.some(ag => checkHasConflict(ag, agendamentosDoDiaSelecionado, ajudantes)) && (
+                <div style={{
+                  padding: '0.65rem 1rem',
+                  borderRadius: 'var(--radius-md)',
+                  background: 'rgba(239, 68, 68, 0.12)',
+                  border: '1px solid rgba(239, 68, 68, 0.4)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.625rem',
+                  color: '#fca5a5',
+                  fontSize: '0.825rem',
+                  fontWeight: '600'
+                }}>
+                  <AlertCircle size={17} color="#ef4444" />
+                  <span>Atenção: Existem faxinas com choque de horário e/ou ajudantes sobrepostas neste dia.</span>
+                </div>
+              )}
+
               {agendamentosDoDiaSelecionado.map((ag) => {
                 const cli = clientes.find(c => c.id === ag.clienteId);
                 const plano = planos.find(p => p.id === ag.planoId);
@@ -766,6 +843,7 @@ export const CalendarView = ({
                 const horaIni = ag.dataHoraInicio ? ag.dataHoraInicio.slice(11, 16) : '08:00';
                 const horaFim = ag.dataHoraFim ? ag.dataHoraFim.slice(11, 16) : '12:00';
                 const waUrl = cli ? getWhatsAppUrl(cli.telefone, `Olá ${cli.nome}! Aqui é da Limpeza Express SP sobre sua faxina de hoje ✨`) : '';
+                const conflito = checkHasConflict(ag, agendamentosDoDiaSelecionado, ajudantes);
 
                 return (
                   <div
@@ -773,7 +851,7 @@ export const CalendarView = ({
                     className="glass-card"
                     style={{
                       padding: '1.125rem',
-                      borderLeft: `5px solid ${feita ? '#10b981' : '#f59e0b'}`,
+                      borderLeft: conflito ? (conflito.tipo === 'ajudante' ? '5px solid #ef4444' : '5px solid #f59e0b') : (feita ? '5px solid #10b981' : '5px solid #f59e0b'),
                       background: feita ? 'rgba(16, 185, 129, 0.05)' : 'rgba(245, 158, 11, 0.04)'
                     }}
                   >
@@ -810,7 +888,43 @@ export const CalendarView = ({
                           <span className="badge badge-info" style={{ fontSize: '0.75rem' }}>
                             {plano?.nome || 'Plano Padrão'}
                           </span>
+
+                          {conflito && (
+                            <span 
+                              style={{ 
+                                background: conflito.tipo === 'ajudante' ? 'rgba(239, 68, 68, 0.25)' : 'rgba(245, 158, 11, 0.25)',
+                                border: `1px solid ${conflito.tipo === 'ajudante' ? '#ef4444' : '#f59e0b'}`,
+                                color: conflito.tipo === 'ajudante' ? '#fca5a5' : '#fde68a',
+                                fontSize: '0.725rem',
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                fontWeight: '700',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '3px'
+                              }}
+                            >
+                              ⚠️ {conflito.tipo === 'ajudante' ? `Choque Ajudante: ${conflito.ajudantes.join(', ')}` : 'Horário Sobreposto'}
+                            </span>
+                          )}
                         </div>
+
+                        {conflito && (
+                          <div style={{
+                            margin: '0.4rem 0',
+                            padding: '0.35rem 0.65rem',
+                            borderRadius: 'var(--radius-sm)',
+                            background: conflito.tipo === 'ajudante' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                            border: `1px solid ${conflito.tipo === 'ajudante' ? 'rgba(239, 68, 68, 0.35)' : 'rgba(245, 158, 11, 0.35)'}`,
+                            color: conflito.tipo === 'ajudante' ? '#fca5a5' : '#fde68a',
+                            fontSize: '0.75rem',
+                            fontWeight: '600'
+                          }}>
+                            {conflito.tipo === 'ajudante'
+                              ? `⚠️ Ajudante (${conflito.ajudantes.join(', ')}) escalada em 2 ou mais faxinas com horários sobrepostos neste dia.`
+                              : '⚠️ Há outra faxina cadastrada para este mesmo horário.'}
+                          </div>
+                        )}
 
                         {/* Nome do Cliente */}
                         <h3 style={{ fontSize: '1.25rem', color: 'var(--text-primary)', fontWeight: '700', marginBottom: '0.25rem' }}>

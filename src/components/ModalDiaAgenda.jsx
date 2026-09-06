@@ -28,6 +28,7 @@ import {
 import { formatCurrency, formatTime } from '../utils/formatters';
 import { generateGoogleCalendarUrl, downloadIcsFile } from '../utils/calendar';
 import { getWhatsAppUrl, buildLembreteClienteText, buildEscalaAjudanteText } from '../utils/whatsapp';
+import { checkHasConflict } from '../utils/conflicts';
 
 export const ModalDiaAgenda = ({
   isOpen,
@@ -169,10 +170,29 @@ export const ModalDiaAgenda = ({
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+            {agendamentosDoDia.length > 1 && agendamentosDoDia.some(ag => checkHasConflict(ag, agendamentosDoDia, ajudantes)) && (
+              <div style={{
+                padding: '0.65rem 1rem',
+                borderRadius: 'var(--radius-md)',
+                background: 'rgba(239, 68, 68, 0.12)',
+                border: '1px solid rgba(239, 68, 68, 0.4)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.625rem',
+                color: '#fca5a5',
+                fontSize: '0.825rem',
+                fontWeight: '600'
+              }}>
+                <AlertCircle size={17} color="#ef4444" />
+                <span>Atenção: Detectamos faxinas com choques de horário ou de ajudante escalada neste dia.</span>
+              </div>
+            )}
+
             {agendamentosDoDia.map((ag) => {
               const cliente = clientes.find(c => c.id === ag.clienteId);
               const plano = planos.find(p => p.id === ag.planoId);
               const isPago = ag.statusClientePagamento === 'pago';
+              const conflito = checkHasConflict(ag, agendamentosDoDia, ajudantes);
 
               const nomesAjudantes = (ag.ajudantesEscaladas || []).map(ae => {
                 const a = ajudantes.find(aj => aj.id === ae.ajudanteId);
@@ -190,7 +210,7 @@ export const ModalDiaAgenda = ({
                   style={{ 
                     padding: '1rem', 
                     borderRadius: 'var(--radius-md)', 
-                    borderLeft: `4px solid ${ag.statusServico === 'concluido' ? '#10b981' : '#f59e0b'}` 
+                    borderLeft: conflito ? (conflito.tipo === 'ajudante' ? '4px solid #ef4444' : '4px solid #f59e0b') : (ag.statusServico === 'concluido' ? '4px solid #10b981' : '4px solid #f59e0b') 
                   }}
                 >
                   {/* Cabeçalho do Card da Faxina */}
@@ -200,6 +220,23 @@ export const ModalDiaAgenda = ({
                         <span className="badge badge-info" style={{ fontSize: '0.725rem' }}>
                           {plano?.nome || 'Plano de Limpeza'}
                         </span>
+
+                        {conflito && (
+                          <span style={{
+                            fontSize: '0.725rem',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            background: conflito.tipo === 'ajudante' ? 'rgba(239, 68, 68, 0.25)' : 'rgba(245, 158, 11, 0.25)',
+                            border: `1px solid ${conflito.tipo === 'ajudante' ? '#ef4444' : '#f59e0b'}`,
+                            color: conflito.tipo === 'ajudante' ? '#fca5a5' : '#fde68a',
+                            fontWeight: '700',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '3px'
+                          }}>
+                            ⚠️ {conflito.tipo === 'ajudante' ? `Choque Ajudante: ${conflito.ajudantes.join(', ')}` : 'Horário Sobreposto'}
+                          </span>
+                        )}
 
                         {cliente?.tipoCliente === 'PJ' && (
                           <span className="badge" style={{ fontSize: '0.725rem', background: 'rgba(168, 85, 247, 0.2)', color: '#e9d5ff', border: '1px solid rgba(168, 85, 247, 0.4)', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>

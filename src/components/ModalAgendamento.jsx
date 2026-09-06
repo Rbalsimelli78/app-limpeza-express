@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { X, Calendar, User, Clock, DollarSign, Sparkles, AlertTriangle, Users, Repeat } from 'lucide-react';
 import { generateGoogleCalendarUrl } from '../utils/calendar';
 import { generateRecurrenceDates, toDatetimeLocalString } from '../utils/recurrence';
 import { formatCurrency } from '../utils/formatters';
+import { findAgendamentoConflicts } from '../utils/conflicts';
 
 export const ModalAgendamento = ({ 
   isOpen, 
@@ -318,6 +319,41 @@ export const ModalAgendamento = ({
     ));
   };
 
+  // Detecção em tempo real de conflitos de horário e ajudantes escaladas
+  const conflitosHorario = useMemo(() => {
+    if (!dataHoraInicio) return [];
+    return findAgendamentoConflicts({
+      dataHoraInicio,
+      dataHoraFim: dataHoraFim || dataHoraInicio,
+      ajudantesSelecionadas,
+      agendamentoIdIgnorar: isEdicao ? agendamentoEdicao?.id : null,
+      agendamentos,
+      clientes,
+      ajudantes
+    });
+  }, [dataHoraInicio, dataHoraFim, ajudantesSelecionadas, isEdicao, agendamentoEdicao, agendamentos, clientes, ajudantes]);
+
+  // Detecção de conflitos para as datas recorrentes (quando agendar mês todo está ativo)
+  const conflitosRecorrencia = useMemo(() => {
+    if (!agendarMesTodo || datasRecorrentes.length === 0) return {};
+    const mapConflitos = {};
+    datasRecorrentes.forEach((d, idx) => {
+      const confs = findAgendamentoConflicts({
+        dataHoraInicio: d.dataHoraInicio,
+        dataHoraFim: d.dataHoraFim || d.dataHoraInicio,
+        ajudantesSelecionadas,
+        agendamentoIdIgnorar: null,
+        agendamentos,
+        clientes,
+        ajudantes
+      });
+      if (confs.length > 0) {
+        mapConflitos[idx] = confs;
+      }
+    });
+    return mapConflitos;
+  }, [agendarMesTodo, datasRecorrentes, ajudantesSelecionadas, agendamentos, clientes, ajudantes]);
+
   const handleSubmit = (e, openGoogleCalendar = false) => {
     e.preventDefault();
     if (!clienteId) {
@@ -327,6 +363,21 @@ export const ModalAgendamento = ({
     if (!dataHoraInicio) {
       showToast('Defina a data e horário da faxina.', 'danger');
       return;
+    }
+
+    // Alerta de confirmação se houver choque de horário com a mesma ajudante
+    if (conflitosHorario.length > 0) {
+      const choquesAjudante = conflitosHorario.filter(c => c.temChoqueAjudante);
+      if (choquesAjudante.length > 0) {
+        const nomesAjudantesConflito = [...new Set(choquesAjudante.flatMap(c => c.ajudantesEmConflito))].join(', ');
+        const confirmMsg = `⚠️ ATENÇÃO: Choque de Horário e Ajudante Detectado!\n\n` +
+          `A ajudante (${nomesAjudantesConflito}) já está escalada em outra faxina no mesmo horário:\n` +
+          choquesAjudante.map(c => `• ${c.clienteNome} (${c.horaInicio}${c.horaFim ? ' às ' + c.horaFim : ''})`).join('\n') +
+          `\n\nDeseja salvar o agendamento mesmo com este choque de horário?`;
+        if (!window.confirm(confirmMsg)) {
+          return;
+        }
+      }
     }
 
     // Se optou por agendar o mês todo / recorrente em um novo agendamento
@@ -564,6 +615,88 @@ export const ModalAgendamento = ({
               </div>
             </div>
 
+            {/* Aviso Dinâmico de Choque de Horário e Conflito de Ajudantes */}
+            {conflitosHorario.length > 0 && (
+              <div style={{
+                marginBottom: '1rem',
+                padding: '0.875rem 1rem',
+                borderRadius: 'var(--radius-md)',
+                background: conflitosHorario.some(c => c.temChoqueAjudante) 
+                  ? 'rgba(239, 68, 68, 0.12)' 
+                  : 'rgba(245, 158, 11, 0.12)',
+                border: conflitosHorario.some(c => c.temChoqueAjudante)
+                  ? '1px solid rgba(239, 68, 68, 0.45)'
+                  : '1px solid rgba(245, 158, 11, 0.45)',
+                animation: 'fadeIn 0.25s ease-in-out'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem' }}>
+                  <AlertTriangle 
+                    size={18} 
+                    color={conflitosHorario.some(c => c.temChoqueAjudante) ? '#ef4444' : '#f59e0b'} 
+                  />
+                  <strong style={{ 
+                    fontSize: '0.875rem',
+                    color: conflitosHorario.some(c => c.temChoqueAjudante) ? '#f87171' : '#fbbf24'
+                  }}>
+                    {conflitosHorario.some(c => c.temChoqueAjudante) 
+                      ? '⚠️ Choque de Horário e Ajudante Detectado!' 
+                      : '⚠️ Atenção: Outra faxina no mesmo dia e horário'}
+                  </strong>
+                </div>
+                
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
+                  {conflitosHorario.some(c => c.temChoqueAjudante)
+                    ? 'A ajudante selecionada já está escalada em outra faxina que coincide com este horário:'
+                    : 'Já existe faxina cadastrada para este mesmo horário. Verifique a disponibilidade:'}
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  {conflitosHorario.map((c, idx) => (
+                    <div key={c.agendamentoId || idx} style={{
+                      fontSize: '0.78rem',
+                      padding: '0.4rem 0.65rem',
+                      borderRadius: 'var(--radius-sm)',
+                      background: 'rgba(0, 0, 0, 0.3)',
+                      border: '1px solid rgba(255, 255, 255, 0.05)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: '0.35rem'
+                    }}>
+                      <div>
+                        <strong style={{ color: '#fff' }}>{c.clienteNome}</strong>
+                        {c.clienteLocal ? <span style={{ color: 'var(--text-muted)' }}> ({c.clienteLocal})</span> : null}
+                        <span style={{ marginLeft: '0.5rem', color: '#60a5fa', fontWeight: '600' }}>
+                          🕒 {c.horaInicio}{c.horaFim ? ` às ${c.horaFim}` : ''}
+                        </span>
+                      </div>
+                      {c.temChoqueAjudante && (
+                        <span style={{ 
+                          background: 'rgba(239, 68, 68, 0.25)', 
+                          color: '#fca5a5', 
+                          border: '1px solid rgba(239, 68, 68, 0.4)',
+                          padding: '1px 6px', 
+                          borderRadius: '4px',
+                          fontWeight: '700',
+                          fontSize: '0.72rem',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '3px'
+                        }}>
+                          🧹 Choque: {c.ajudantesEmConflito.join(', ')}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  💡 <em>Dica: Altere o horário de início/término ou escale outra ajudante para evitar atrasos na operação.</em>
+                </div>
+              </div>
+            )}
+
             {/* Recorrência / Programação do Mês Todo */}
             {!isEdicao && (
               <div style={{
@@ -636,40 +769,63 @@ export const ModalAgendamento = ({
                       overflowY: 'auto',
                       paddingRight: '0.25rem'
                     }}>
-                      {datasRecorrentes.map((item, idx) => (
-                        <div 
-                          key={item.idTemp || idx}
-                          onClick={() => toggleDataRecorrente(idx)}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            padding: '0.45rem 0.65rem',
-                            borderRadius: 'var(--radius-sm)',
-                            background: item.selecionada ? 'rgba(59, 130, 246, 0.15)' : 'var(--bg-card)',
-                            border: item.selecionada ? '1px solid rgba(59, 130, 246, 0.4)' : '1px solid var(--border-color)',
-                            cursor: 'pointer',
-                            fontSize: '0.82rem',
-                            transition: 'var(--transition)'
-                          }}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <input 
-                              type="checkbox" 
-                              checked={item.selecionada} 
-                              onChange={() => toggleDataRecorrente(idx)}
-                              onClick={e => e.stopPropagation()}
-                              style={{ width: '15px', height: '15px', accentColor: '#3b82f6' }}
-                            />
-                            <span style={{ fontWeight: item.selecionada ? '600' : '400', color: item.selecionada ? '#93c5fd' : 'var(--text-secondary)' }}>
-                              {item.diaSemana}, {item.diaFormatado.split(', ')[1]} • {item.horaFormatada}
+                      {datasRecorrentes.map((item, idx) => {
+                        const conflitosDesteDia = conflitosRecorrencia[idx] || [];
+                        const temConflito = conflitosDesteDia.length > 0;
+                        const temChoqueAjud = conflitosDesteDia.some(c => c.temChoqueAjudante);
+
+                        return (
+                          <div 
+                            key={item.idTemp || idx}
+                            onClick={() => toggleDataRecorrente(idx)}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              padding: '0.45rem 0.65rem',
+                              borderRadius: 'var(--radius-sm)',
+                              background: item.selecionada 
+                                ? (temChoqueAjud ? 'rgba(239, 68, 68, 0.15)' : temConflito ? 'rgba(245, 158, 11, 0.15)' : 'rgba(59, 130, 246, 0.15)')
+                                : 'var(--bg-card)',
+                              border: item.selecionada 
+                                ? (temChoqueAjud ? '1px solid rgba(239, 68, 68, 0.4)' : temConflito ? '1px solid rgba(245, 158, 11, 0.4)' : '1px solid rgba(59, 130, 246, 0.4)')
+                                : '1px solid var(--border-color)',
+                              cursor: 'pointer',
+                              fontSize: '0.82rem',
+                              transition: 'var(--transition)'
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                              <input 
+                                type="checkbox" 
+                                checked={item.selecionada} 
+                                onChange={() => toggleDataRecorrente(idx)}
+                                onClick={e => e.stopPropagation()}
+                                style={{ width: '15px', height: '15px', accentColor: temChoqueAjud ? '#ef4444' : '#3b82f6' }}
+                              />
+                              <span style={{ fontWeight: item.selecionada ? '600' : '400', color: item.selecionada ? (temChoqueAjud ? '#fca5a5' : '#93c5fd') : 'var(--text-secondary)' }}>
+                                {item.diaSemana}, {item.diaFormatado.split(', ')[1]} • {item.horaFormatada}
+                              </span>
+
+                              {temConflito && (
+                                <span style={{
+                                  fontSize: '0.68rem',
+                                  padding: '1px 5px',
+                                  borderRadius: '3px',
+                                  background: temChoqueAjud ? 'rgba(239, 68, 68, 0.3)' : 'rgba(245, 158, 11, 0.25)',
+                                  color: temChoqueAjud ? '#fca5a5' : '#fde68a',
+                                  fontWeight: '600'
+                                }}>
+                                  ⚠️ {temChoqueAjud ? `Choque Ajudante: ${conflitosDesteDia[0].clienteNome}` : `Horário Ocupado: ${conflitosDesteDia[0].clienteNome}`}
+                                </span>
+                              )}
+                            </div>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                              {formatCurrency(Number(valorCliente))}
                             </span>
                           </div>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                            {formatCurrency(Number(valorCliente))}
-                          </span>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
 
                     {/* Resumo do Mês */}
