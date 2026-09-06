@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { 
   Settings, 
@@ -22,8 +22,13 @@ import {
   CloudOff,
   RefreshCw,
   ExternalLink,
-  LogOut
+  LogOut,
+  Users,
+  Plus,
+  Edit2,
+  UserPlus
 } from 'lucide-react';
+import { ModalUsuario } from '../components/ModalUsuario';
 
 export const ConfigView = () => {
   const { 
@@ -35,6 +40,10 @@ export const ConfigView = () => {
     showToast,
     authCredentials,
     currentUser,
+    usuarios = [],
+    addUsuario,
+    updateUsuario,
+    deleteUsuario,
     updateCredentials,
     resetCredentialsToDefault,
     logout,
@@ -45,20 +54,51 @@ export const ConfigView = () => {
 
   const [copiadoSql, setCopiadoSql] = useState(false);
 
-  // Estados do formulário de troca de senha
-  const [formNome, setFormNome] = useState(authCredentials?.name || 'Administradora');
-  const [formUser, setFormUser] = useState(authCredentials?.username || 'admin');
+  // Estados do Modal de Usuário
+  const [modalUsuarioOpen, setModalUsuarioOpen] = useState(false);
+  const [usuarioEmEdicao, setUsuarioEmEdicao] = useState(null);
+
+  // Estados do formulário de troca de senha da usuária conectada
+  const [formNome, setFormNome] = useState(currentUser?.name || authCredentials?.name || 'Cleusa Gabrielli');
+  const [formUser, setFormUser] = useState(currentUser?.username || authCredentials?.username || 'cleusa.gabrielli@gmail.com');
   const [senhaAtual, setSenhaAtual] = useState('');
   const [novaSenha, setNovaSenha] = useState('');
   const [confirmaNovaSenha, setConfirmaNovaSenha] = useState('');
   const [mostrarSenhas, setMostrarSenhas] = useState(false);
   const [salvandoCreds, setSalvandoCreds] = useState(false);
 
-  const handleSalvarCredenciais = (e) => {
+  useEffect(() => {
+    if (currentUser) {
+      setFormNome(currentUser.name || '');
+      setFormUser(currentUser.username || '');
+    }
+  }, [currentUser]);
+
+  const handleNovoUsuario = () => {
+    setUsuarioEmEdicao(null);
+    setModalUsuarioOpen(true);
+  };
+
+  const handleEditarUsuario = (user) => {
+    setUsuarioEmEdicao(user);
+    setModalUsuarioOpen(true);
+  };
+
+  const handleSalvarUsuarioModal = async (dados, id) => {
+    if (id) {
+      const res = await updateUsuario(id, dados);
+      return res.success;
+    } else {
+      const res = await addUsuario(dados);
+      return res.success;
+    }
+  };
+
+  const handleSalvarCredenciais = async (e) => {
     e.preventDefault();
 
     if (!senhaAtual) {
-      showToast('Por favor, informe a senha atual para confirmar a alteração.', 'danger');
+      showToast('Por favor, informe sua senha atual para confirmar a alteração.', 'danger');
       return;
     }
 
@@ -68,21 +108,19 @@ export const ConfigView = () => {
     }
 
     setSalvandoCreds(true);
-    setTimeout(() => {
-      const res = updateCredentials({
-        currentPassword: senhaAtual,
-        newUsername: formUser,
-        newPassword: novaSenha,
-        newName: formNome
-      });
+    const res = await updateCredentials({
+      currentPassword: senhaAtual,
+      newUsername: formUser,
+      newPassword: novaSenha,
+      newName: formNome
+    });
 
-      if (res.success) {
-        setSenhaAtual('');
-        setNovaSenha('');
-        setConfirmaNovaSenha('');
-      }
-      setSalvandoCreds(false);
-    }, 200);
+    if (res.success) {
+      setSenhaAtual('');
+      setNovaSenha('');
+      setConfirmaNovaSenha('');
+    }
+    setSalvandoCreds(false);
   };
 
   const handleFileUpload = (e) => {
@@ -267,13 +305,148 @@ CREATE TABLE IF NOT EXISTS agendamentos (
           )}
         </div>
 
-        {/* Controle de Acesso e Alterar Senha */}
+        {/* Gestão de Usuários & Acessos à Nuvem */}
+        <div className="glass-card" style={{ borderLeft: '4px solid #10b981' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '0.75rem' }}>
+            <div>
+              <h3 style={{ fontSize: '1.15rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Users size={20} color="#10b981" />
+                <span>Usuários com Acesso ao Sistema</span>
+              </h3>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>
+                Controle quem pode acessar o sistema no celular ou computador. Sincronizado na Nuvem em tempo real.
+              </p>
+            </div>
+
+            <button 
+              type="button" 
+              onClick={handleNovoUsuario} 
+              className="btn btn-primary btn-sm"
+              style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+            >
+              <UserPlus size={15} />
+              <span>Novo Usuário</span>
+            </button>
+          </div>
+
+          <div style={{
+            background: 'rgba(239, 68, 68, 0.08)',
+            border: '1px solid rgba(239, 68, 68, 0.25)',
+            padding: '0.65rem 0.85rem',
+            borderRadius: 'var(--radius-md)',
+            fontSize: '0.775rem',
+            color: 'var(--text-secondary)',
+            marginBottom: '1rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem'
+          }}>
+            <ShieldCheck size={18} color="#fb7185" style={{ flexShrink: 0 }} />
+            <span>
+              <strong>Usuário "admin" desativado:</strong> O login antigo de teste não entra mais. Somente as pessoas cadastradas na lista abaixo conseguem acessar o aplicativo.
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+            {usuarios.map(u => {
+              const isLogado = currentUser?.username === u.username || currentUser?.id === u.id;
+
+              return (
+                <div 
+                  key={u.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '0.75rem 1rem',
+                    background: 'var(--bg-input)',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid var(--border-color)',
+                    gap: '0.75rem',
+                    flexWrap: 'wrap'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <div style={{
+                      width: '38px',
+                      height: '38px',
+                      borderRadius: '50%',
+                      background: 'rgba(16, 185, 129, 0.15)',
+                      color: 'var(--primary-400)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontWeight: 'bold',
+                      fontSize: '0.9rem'
+                    }}>
+                      {(u.name || u.nome || 'U')[0].toUpperCase()}
+                    </div>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                        <strong style={{ fontSize: '0.925rem', color: 'var(--text-primary)' }}>
+                          {u.name || u.nome}
+                        </strong>
+                        {isLogado && (
+                          <span className="badge badge-success" style={{ fontSize: '0.65rem', padding: '0.15rem 0.45rem' }}>
+                            Sua Conta Atual
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--primary-400)', fontWeight: '500' }}>
+                        {u.username || u.email}
+                      </div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                        {u.cargo || 'Administradora'} • Sincronizado na Nuvem
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '0.4rem' }}>
+                    <button
+                      type="button"
+                      onClick={() => handleEditarUsuario(u)}
+                      className="btn btn-secondary btn-sm"
+                      title="Editar usuário e senha"
+                      style={{ padding: '0.35rem 0.65rem' }}
+                    >
+                      <Edit2 size={14} />
+                      <span>Editar</span>
+                    </button>
+
+                    {usuarios.length > 1 && !isLogado && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (confirm(`Deseja realmente remover o acesso de ${u.name}?`)) {
+                            deleteUsuario(u.id);
+                          }
+                        }}
+                        className="btn btn-danger btn-sm"
+                        title="Excluir usuário"
+                        style={{ padding: '0.35rem 0.65rem' }}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Alterar Minha Senha / Minhas Credenciais */}
         <div className="glass-card" style={{ borderLeft: '4px solid var(--primary-400)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-            <h3 style={{ fontSize: '1.15rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Lock size={20} color="var(--primary-400)" />
-              <span>Segurança & Senha de Acesso</span>
-            </h3>
+            <div>
+              <h3 style={{ fontSize: '1.15rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Lock size={20} color="var(--primary-400)" />
+                <span>Alterar Minha Senha ({formUser})</span>
+              </h3>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>
+                Atualize seus dados e senha de acesso pessoal. Sincroniza em todos os seus aparelhos.
+              </p>
+            </div>
             <span style={{ 
               fontSize: '0.725rem', 
               background: 'rgba(16, 185, 129, 0.15)', 
@@ -282,24 +455,20 @@ CREATE TABLE IF NOT EXISTS agendamentos (
               borderRadius: '100px',
               fontWeight: '600'
             }}>
-              Protegido
+              Sessão Conectada
             </span>
           </div>
-
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1rem', lineHeight: '1.5' }}>
-            Altere o usuário e a senha da sua esposa para garantir privacidade total dos clientes e faturamento:
-          </p>
 
           <form onSubmit={handleSalvarCredenciais} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
             <div>
               <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
-                Nome de Exibição
+                Meu Nome de Exibição
               </label>
               <input
                 type="text"
                 value={formNome}
                 onChange={(e) => setFormNome(e.target.value)}
-                placeholder="Ex: Administradora ou Nome da Esposa"
+                placeholder="Ex: Cleusa Gabrielli"
                 className="input"
                 style={{ width: '100%', fontSize: '0.85rem' }}
                 required
@@ -308,13 +477,13 @@ CREATE TABLE IF NOT EXISTS agendamentos (
 
             <div>
               <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
-                Usuário / E-mail de Login
+                Meu E-mail / Usuário de Login
               </label>
               <input
                 type="text"
                 value={formUser}
                 onChange={(e) => setFormUser(e.target.value)}
-                placeholder="Ex: admin ou seu email"
+                placeholder="Ex: cleusa.gabrielli@gmail.com"
                 className="input"
                 style={{ width: '100%', fontSize: '0.85rem' }}
                 required
@@ -359,7 +528,7 @@ CREATE TABLE IF NOT EXISTS agendamentos (
                 type={mostrarSenhas ? 'text' : 'password'}
                 value={senhaAtual}
                 onChange={(e) => setSenhaAtual(e.target.value)}
-                placeholder="Digite a senha atual"
+                placeholder="Digite sua senha atual"
                 className="input"
                 style={{ width: '100%', fontSize: '0.85rem' }}
                 required
@@ -376,30 +545,6 @@ CREATE TABLE IF NOT EXISTS agendamentos (
                 />
                 <span>Mostrar senhas</span>
               </label>
-
-              <button
-                type="button"
-                onClick={() => {
-                  if (confirm('Deseja restaurar as credenciais para o padrão (admin / 123456)?')) {
-                    resetCredentialsToDefault();
-                    setFormUser('admin');
-                    setFormNome('Administradora');
-                    setSenhaAtual('');
-                    setNovaSenha('');
-                    setConfirmaNovaSenha('');
-                  }
-                }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--text-muted)',
-                  fontSize: '0.75rem',
-                  cursor: 'pointer',
-                  textDecoration: 'underline'
-                }}
-              >
-                Restaurar padrão de fábrica
-              </button>
             </div>
 
             <button 
@@ -409,7 +554,7 @@ CREATE TABLE IF NOT EXISTS agendamentos (
               style={{ width: '100%', marginTop: '0.25rem' }}
             >
               <KeyRound size={16} />
-              <span>{salvandoCreds ? 'Salvando...' : 'Salvar Novas Credenciais'}</span>
+              <span>{salvandoCreds ? 'Salvando...' : 'Salvar Alterações na Nuvem'}</span>
             </button>
 
             <div style={{ marginTop: '1.25rem', paddingTop: '1.25rem', borderTop: '1px solid var(--border-color)' }}>
@@ -565,6 +710,15 @@ CREATE TABLE IF NOT EXISTS agendamentos (
           {sqlSchema}
         </pre>
       </div>
+
+      {/* Modal de Criação / Edição de Usuário */}
+      <ModalUsuario 
+        isOpen={modalUsuarioOpen}
+        onClose={() => setModalUsuarioOpen(false)}
+        usuarioEdicao={usuarioEmEdicao}
+        onSalvar={handleSalvarUsuarioModal}
+      />
     </div>
   );
 };
+

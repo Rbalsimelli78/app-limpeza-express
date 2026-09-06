@@ -85,7 +85,7 @@ export const Sidebar = () => {
               {currentUser?.name || 'Administradora'}
             </div>
             <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-              @{currentUser?.username || 'admin'}
+              @{currentUser?.username || 'cleusa.gabrielli@gmail.com'}
             </span>
           </div>
         </div>

@@ -12,6 +12,9 @@ import {
   listenAjudantes,
   listenAgendamentos,
   listenPlanos,
+  listenUsuarios,
+  salvarUsuarioNuvem,
+  excluirUsuarioNuvem,
   salvarClienteNuvem,
   excluirClienteNuvem,
   salvarAjudanteNuvem,
@@ -29,33 +32,80 @@ const AppContext = createContext();
 const STORAGE_KEY = 'limpeza_express_sp_v1';
 const THEME_KEY = 'limpeza_express_theme';
 const AUTH_CREDS_KEY = 'limpeza_express_auth_creds';
+const STORAGE_USUARIOS_KEY = 'limpeza_express_sp_usuarios';
 const AUTH_SESSION_KEY = 'limpeza_express_session';
 const AUTH_PERSISTENT_KEY = 'limpeza_express_persistent_session';
 
-const CREDENCIAIS_PADRAO = {
-  username: 'admin',
-  password: '123456',
-  name: 'Administradora'
+const USUARIO_CLEUSA_PADRAO = {
+  id: 'usr_cleusa',
+  name: 'Cleusa Gabrielli',
+  username: 'cleusa.gabrielli@gmail.com',
+  password: '123',
+  cargo: 'Proprietária & Administradora',
+  ativo: true,
+  criadoEm: new Date().toISOString()
 };
 
 export const AppProvider = ({ children }) => {
-  // Credenciais de Acesso (Salvas em localStorage)
-  const [authCredentials, setAuthCredentials] = useState(() => {
+  // Lista de Usuários do Sistema (Sincronizada em Tempo Real com Firestore)
+  const [usuarios, setUsuarios] = useState(() => {
     try {
-      const saved = localStorage.getItem(AUTH_CREDS_KEY);
-      return saved ? JSON.parse(saved) : CREDENCIAIS_PADRAO;
+      const saved = localStorage.getItem(STORAGE_USUARIOS_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const semAdmin = parsed.filter(u => u.username?.trim().toLowerCase() !== 'admin');
+          if (semAdmin.length > 0) return semAdmin;
+        }
+      }
+      // Migração de credenciais anteriores se já existirem
+      const oldCreds = localStorage.getItem(AUTH_CREDS_KEY);
+      if (oldCreds) {
+        const parsedOld = JSON.parse(oldCreds);
+        if (parsedOld.username && parsedOld.username.toLowerCase() !== 'admin') {
+          return [{
+            id: 'usr_cleusa',
+            name: parsedOld.name || 'Cleusa Gabrielli',
+            username: parsedOld.username.trim().toLowerCase(),
+            password: parsedOld.password || '123',
+            cargo: 'Proprietária & Administradora',
+            ativo: true,
+            criadoEm: new Date().toISOString()
+          }];
+        }
+      }
+      return [USUARIO_CLEUSA_PADRAO];
     } catch (e) {
-      return CREDENCIAIS_PADRAO;
+      return [USUARIO_CLEUSA_PADRAO];
     }
   });
 
-  // Sessão de Autenticação Ativa
+  // Salvar usuários no cache local para resiliência offline
+  useEffect(() => {
+    localStorage.setItem(STORAGE_USUARIOS_KEY, JSON.stringify(usuarios));
+  }, [usuarios]);
+
+  // Sessão de Autenticação Ativa (descarta qualquer sessão antiga de 'admin')
   const [currentUser, setCurrentUser] = useState(() => {
     try {
       const persistent = localStorage.getItem(AUTH_PERSISTENT_KEY);
-      if (persistent) return JSON.parse(persistent);
+      if (persistent) {
+        const parsed = JSON.parse(persistent);
+        if (parsed?.username?.toLowerCase() === 'admin') {
+          localStorage.removeItem(AUTH_PERSISTENT_KEY);
+        } else {
+          return parsed;
+        }
+      }
       const session = sessionStorage.getItem(AUTH_SESSION_KEY);
-      if (session) return JSON.parse(session);
+      if (session) {
+        const parsed = JSON.parse(session);
+        if (parsed?.username?.toLowerCase() === 'admin') {
+          sessionStorage.removeItem(AUTH_SESSION_KEY);
+        } else {
+          return parsed;
+        }
+      }
       return null;
     } catch (e) {
       return null;
@@ -66,10 +116,12 @@ export const AppProvider = ({ children }) => {
     return currentUser !== null;
   });
 
-  // Salvar credenciais no localStorage sempre que alteradas
-  useEffect(() => {
-    localStorage.setItem(AUTH_CREDS_KEY, JSON.stringify(authCredentials));
-  }, [authCredentials]);
+  // Credenciais ativas da usuária logada
+  const authCredentials = {
+    name: currentUser?.name || usuarios[0]?.name || 'Cleusa Gabrielli',
+    username: currentUser?.username || usuarios[0]?.username || 'cleusa.gabrielli@gmail.com',
+    password: usuarios.find(u => u.username === currentUser?.username)?.password || usuarios[0]?.password || '123'
+  };
 
   // Tema (Dark / Light)
   const [theme, setTheme] = useState(() => {
@@ -209,6 +261,40 @@ export const AppProvider = ({ children }) => {
         (err) => setCloudStatus('offline')
       );
       unsubs.push(unsubPlanos);
+
+      // 5. Escuta Usuários do Sistema em Tempo Real
+      const unsubUsuarios = listenUsuarios(
+        async (docs, isEmpty) => {
+          setCloudStatus('sincronizado');
+          setCloudLastSync(new Date());
+
+          if (isEmpty || !docs || docs.length === 0) {
+            // Se a nuvem ainda não tiver usuários cadastrados, inicializa com o usuário da Cleusa
+            const initialUser = usuarios[0] || USUARIO_CLEUSA_PADRAO;
+            await salvarUsuarioNuvem(initialUser);
+            setUsuarios([initialUser]);
+          } else {
+            // Remove qualquer resquício de 'admin' da nuvem se existir
+            docs.forEach(d => {
+              if (d.username?.trim().toLowerCase() === 'admin' || d.id === 'usr_admin') {
+                excluirUsuarioNuvem(d.id);
+              }
+            });
+            const validos = docs.filter(u => u.username?.trim().toLowerCase() !== 'admin');
+            if (validos.length > 0) {
+              setUsuarios(validos);
+            } else {
+              const initialUser = USUARIO_CLEUSA_PADRAO;
+              await salvarUsuarioNuvem(initialUser);
+              setUsuarios([initialUser]);
+            }
+          }
+        },
+        (err) => {
+          console.warn('[Cloud] Erro ao escutar usuários na nuvem:', err?.message);
+        }
+      );
+      unsubs.push(unsubUsuarios);
 
     } catch (e) {
       console.warn('[Cloud] Erro ao iniciar sincronização:', e);
@@ -510,40 +596,62 @@ export const AppProvider = ({ children }) => {
     showToast('Agenda e financeiro zerados no micro e na nuvem!', 'info');
   };
 
-  // --- MÓDULO DE AUTENTICAÇÃO E SEGURANÇA ---
-  const login = (username, password, rememberMe = true) => {
-    const cleanUser = (username || '').trim().toLowerCase();
-    const cleanCredUser = (authCredentials.username || '').trim().toLowerCase();
+  // --- MÓDULO DE AUTENTICAÇÃO E SEGURANÇA (MULTIUSUÁRIO & NUVEM FIRESTORE) ---
+  const login = (usernameInput, passwordInput, rememberMe = true) => {
+    const cleanUser = (usernameInput || '').trim().toLowerCase();
 
-    // Validação de usuário e senha
-    const isUserValid = cleanUser === cleanCredUser;
-    // Aceita a senha cadastrada ou "123" se a senha for "123456" para comodidade inicial
-    const isPasswordValid = password === authCredentials.password || 
-      (authCredentials.password === '123456' && password === '123');
+    // Busca usuário ativo no array de usuários sincronizados com a nuvem
+    const userFound = usuarios.find(u => 
+      u.ativo !== false && 
+      (u.username?.trim().toLowerCase() === cleanUser || u.email?.trim().toLowerCase() === cleanUser)
+    );
 
-    if (isUserValid && isPasswordValid) {
-      const userData = {
-        username: authCredentials.username,
-        name: authCredentials.name || 'Administradora',
-        loginAt: new Date().toISOString()
-      };
-
-      setIsAuthenticated(true);
-      setCurrentUser(userData);
-
-      if (rememberMe) {
-        localStorage.setItem(AUTH_PERSISTENT_KEY, JSON.stringify(userData));
-      } else {
-        localStorage.removeItem(AUTH_PERSISTENT_KEY);
+    if (!userFound) {
+      if (cleanUser === 'admin') {
+        showToast('O usuário padrão "admin" foi desativado. Use o seu e-mail cadastrado (cleusa.gabrielli@gmail.com).', 'danger');
+        return { success: false, error: 'O usuário "admin" foi desativado. Use seu e-mail cadastrado.' };
       }
-      sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(userData));
-
-      showToast(`Bem-vinda, ${userData.name}!`, 'success');
-      return { success: true };
-    } else {
-      showToast('Usuário ou senha incorretos!', 'danger');
-      return { success: false, error: 'Usuário ou senha incorretos' };
+      showToast('Usuário ou e-mail não cadastrado!', 'danger');
+      return { success: false, error: 'Usuário ou e-mail não cadastrado.' };
     }
+
+    // Validação exata da senha configurada para o usuário
+    const isPasswordValid = passwordInput === userFound.password;
+
+    if (!isPasswordValid) {
+      showToast('Senha incorreta para este usuário!', 'danger');
+      return { success: false, error: 'Senha incorreta para este usuário.' };
+    }
+
+    const userData = {
+      id: userFound.id,
+      username: userFound.username,
+      name: userFound.name || userFound.nome || 'Cleusa Gabrielli',
+      cargo: userFound.cargo || 'Proprietária & Administradora',
+      loginAt: new Date().toISOString()
+    };
+
+    setIsAuthenticated(true);
+    setCurrentUser(userData);
+
+    // Salva o último login bem-sucedido para comodidade no dispositivo
+    localStorage.setItem('limpeza_express_last_user', userFound.username);
+
+    if (rememberMe) {
+      localStorage.setItem(AUTH_PERSISTENT_KEY, JSON.stringify(userData));
+    } else {
+      localStorage.removeItem(AUTH_PERSISTENT_KEY);
+    }
+    sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(userData));
+
+    // Atualiza data do último acesso na nuvem
+    salvarUsuarioNuvem({
+      ...userFound,
+      ultimoAcesso: new Date().toISOString()
+    });
+
+    showToast(`Bem-vinda, ${userData.name}!`, 'success');
+    return { success: true };
   };
 
   const logout = () => {
@@ -554,57 +662,144 @@ export const AppProvider = ({ children }) => {
     showToast('Sessão bloqueada com segurança.', 'info');
   };
 
-  const updateCredentials = ({ currentPassword, newUsername, newPassword, newName }) => {
-    // Validação da senha atual
-    const isCurrentValid = currentPassword === authCredentials.password || 
-      (authCredentials.password === '123456' && currentPassword === '123');
+  // Gerenciamento de Usuários (Multi-usuário na Nuvem)
+  const addUsuario = async ({ name, username, password, cargo = 'Operacional' }) => {
+    const cleanUser = (username || '').trim().toLowerCase();
+    if (!cleanUser || cleanUser.length < 3) {
+      showToast('O usuário/e-mail deve ter pelo menos 3 caracteres.', 'danger');
+      return { success: false, error: 'Usuário inválido' };
+    }
+
+    if (!password || password.length < 3) {
+      showToast('A senha deve ter pelo menos 3 caracteres.', 'danger');
+      return { success: false, error: 'Senha muito curta' };
+    }
+
+    const jaExiste = usuarios.some(u => u.username?.trim().toLowerCase() === cleanUser);
+    if (jaExiste) {
+      showToast('Já existe um usuário com este e-mail/login!', 'danger');
+      return { success: false, error: 'Usuário já existe' };
+    }
+
+    const novoUsuario = {
+      id: `usr_${Date.now()}`,
+      name: name?.trim() || 'Usuário',
+      username: cleanUser,
+      password: password,
+      cargo: cargo || 'Operacional',
+      ativo: true,
+      criadoEm: new Date().toISOString(),
+      ultimoAcesso: null
+    };
+
+    const novaLista = [...usuarios, novoUsuario];
+    setUsuarios(novaLista);
+    localStorage.setItem(STORAGE_USUARIOS_KEY, JSON.stringify(novaLista));
+    await salvarUsuarioNuvem(novoUsuario);
+
+    showToast(`Usuário ${novoUsuario.name} cadastrado na nuvem com sucesso!`, 'success');
+    return { success: true, usuario: novoUsuario };
+  };
+
+  const updateUsuario = async (usuarioId, dados) => {
+    const userExistente = usuarios.find(u => u.id === usuarioId);
+    if (!userExistente) {
+      showToast('Usuário não encontrado!', 'danger');
+      return { success: false, error: 'Usuário não encontrado' };
+    }
+
+    const cleanUser = dados.username ? dados.username.trim().toLowerCase() : userExistente.username;
+
+    if (cleanUser !== userExistente.username) {
+      const duplicado = usuarios.some(u => u.id !== usuarioId && u.username?.trim().toLowerCase() === cleanUser);
+      if (duplicado) {
+        showToast('Já existe outro usuário com este e-mail/login!', 'danger');
+        return { success: false, error: 'E-mail já em uso' };
+      }
+    }
+
+    const usuarioAtualizado = {
+      ...userExistente,
+      name: dados.name !== undefined ? dados.name.trim() : userExistente.name,
+      username: cleanUser,
+      password: dados.password ? dados.password : userExistente.password,
+      cargo: dados.cargo !== undefined ? dados.cargo : userExistente.cargo,
+      atualizadoEm: new Date().toISOString()
+    };
+
+    const novaLista = usuarios.map(u => u.id === usuarioId ? usuarioAtualizado : u);
+    setUsuarios(novaLista);
+    localStorage.setItem(STORAGE_USUARIOS_KEY, JSON.stringify(novaLista));
+    await salvarUsuarioNuvem(usuarioAtualizado);
+
+    // Se editou o usuário ativo na sessão, atualiza os dados em memória
+    if (currentUser?.id === usuarioId || currentUser?.username === userExistente.username) {
+      const updatedCurr = {
+        ...currentUser,
+        id: usuarioAtualizado.id,
+        name: usuarioAtualizado.name,
+        username: usuarioAtualizado.username,
+        cargo: usuarioAtualizado.cargo
+      };
+      setCurrentUser(updatedCurr);
+      if (localStorage.getItem(AUTH_PERSISTENT_KEY)) {
+        localStorage.setItem(AUTH_PERSISTENT_KEY, JSON.stringify(updatedCurr));
+      }
+      sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(updatedCurr));
+    }
+
+    showToast('Usuário e senha salvos na nuvem!', 'success');
+    return { success: true };
+  };
+
+  const deleteUsuario = async (usuarioId) => {
+    if (usuarios.length <= 1) {
+      showToast('Não é possível excluir o único usuário do sistema!', 'danger');
+      return { success: false, error: 'Único usuário' };
+    }
+
+    const userToDelete = usuarios.find(u => u.id === usuarioId);
+    if (!userToDelete) return;
+
+    if (currentUser?.id === usuarioId || currentUser?.username === userToDelete.username) {
+      showToast('Você não pode excluir sua própria conta enquanto estiver conectada nela!', 'danger');
+      return { success: false, error: 'Usuário ativo' };
+    }
+
+    const novaLista = usuarios.filter(u => u.id !== usuarioId);
+    setUsuarios(novaLista);
+    localStorage.setItem(STORAGE_USUARIOS_KEY, JSON.stringify(novaLista));
+    await excluirUsuarioNuvem(usuarioId);
+
+    showToast(`Usuário ${userToDelete.name} excluído com sucesso.`, 'info');
+    return { success: true };
+  };
+
+  const updateCredentials = async ({ currentPassword, newUsername, newPassword, newName }) => {
+    const targetUser = usuarios.find(u => u.username === currentUser?.username) || usuarios[0];
+    if (!targetUser) return { success: false, error: 'Usuário não encontrado' };
+
+    const isCurrentValid = currentPassword === targetUser.password ||
+      (targetUser.password === '123456' && currentPassword === '123') ||
+      (targetUser.password === '123' && currentPassword === '123456');
 
     if (!isCurrentValid) {
       showToast('Senha atual incorreta!', 'danger');
       return { success: false, error: 'Senha atual incorreta' };
     }
 
-    if (!newUsername || newUsername.trim().length < 3) {
-      showToast('O usuário deve ter pelo menos 3 caracteres.', 'danger');
-      return { success: false, error: 'Usuário inválido' };
-    }
-
-    if (newPassword && newPassword.length < 4) {
-      showToast('A nova senha deve ter pelo menos 4 caracteres.', 'danger');
-      return { success: false, error: 'Senha curta' };
-    }
-
-    const updatedCreds = {
-      username: newUsername.trim(),
-      password: newPassword ? newPassword : authCredentials.password,
-      name: newName && newName.trim() ? newName.trim() : (authCredentials.name || 'Administradora')
-    };
-
-    setAuthCredentials(updatedCreds);
-    localStorage.setItem(AUTH_CREDS_KEY, JSON.stringify(updatedCreds));
-
-    // Atualiza dados da sessão ativa
-    if (currentUser) {
-      const updatedUser = {
-        ...currentUser,
-        username: updatedCreds.username,
-        name: updatedCreds.name
-      };
-      setCurrentUser(updatedUser);
-      if (localStorage.getItem(AUTH_PERSISTENT_KEY)) {
-        localStorage.setItem(AUTH_PERSISTENT_KEY, JSON.stringify(updatedUser));
-      }
-      sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(updatedUser));
-    }
-
-    showToast('Credenciais atualizadas com sucesso!', 'success');
-    return { success: true };
+    return await updateUsuario(targetUser.id, {
+      name: newName,
+      username: newUsername,
+      password: newPassword
+    });
   };
 
-  const resetCredentialsToDefault = () => {
-    setAuthCredentials(CREDENCIAIS_PADRAO);
-    localStorage.setItem(AUTH_CREDS_KEY, JSON.stringify(CREDENCIAIS_PADRAO));
-    showToast('Credenciais redefinidas para o padrão: admin / 123456', 'info');
+  const resetCredentialsToDefault = async () => {
+    setUsuarios([USUARIO_CLEUSA_PADRAO]);
+    localStorage.setItem(STORAGE_USUARIOS_KEY, JSON.stringify([USUARIO_CLEUSA_PADRAO]));
+    await salvarUsuarioNuvem(USUARIO_CLEUSA_PADRAO);
+    showToast('Acesso padrão redefinido para: cleusa.gabrielli@gmail.com / 123', 'info');
   };
 
   // Resetar para dados de demonstração
@@ -634,9 +829,13 @@ export const AppProvider = ({ children }) => {
       cloudStatus,
       cloudLastSync,
       forcarSincronizacaoNuvem,
-      // Autenticação
+      // Autenticação & Usuários
       isAuthenticated,
       currentUser,
+      usuarios,
+      addUsuario,
+      updateUsuario,
+      deleteUsuario,
       authCredentials,
       login,
       logout,

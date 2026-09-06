@@ -17,7 +17,9 @@ import {
 export const LoginView = () => {
   const { login, resetCredentialsToDefault, theme, toggleTheme } = useApp();
 
-  const [username, setUsername] = useState('admin');
+  const [username, setUsername] = useState(() => {
+    return localStorage.getItem('limpeza_express_last_user') || 'cleusa.gabrielli@gmail.com';
+  });
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
@@ -43,17 +45,17 @@ export const LoginView = () => {
     setTimeout(() => {
       const result = login(username, password, rememberMe);
       if (!result.success) {
-        setErrorMsg('Usuário ou senha incorretos. Tente novamente.');
+        setErrorMsg(result.error || 'Usuário ou senha incorretos. Tente novamente.');
       }
       setLoading(false);
     }, 200);
   };
 
   const handleResetPassword = () => {
-    if (confirm('Deseja redefinir a senha para o padrão de fábrica? (Usuário: admin | Senha: 123456)')) {
+    if (confirm('Deseja redefinir o acesso para Cleusa Gabrielli (cleusa.gabrielli@gmail.com / senha: 123)?')) {
       resetCredentialsToDefault();
-      setUsername('admin');
-      setPassword('123456');
+      setUsername('cleusa.gabrielli@gmail.com');
+      setPassword('123');
       setShowRecoveryModal(false);
       setErrorMsg('');
     }
@@ -181,7 +183,7 @@ export const LoginView = () => {
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Ex: admin"
+                  placeholder="Ex: cleusa.gabrielli@gmail.com"
                   className="login-input"
                   style={{ 
                     height: '60px', 
@@ -329,7 +331,7 @@ export const LoginView = () => {
             </button>
           </form>
 
-          {/* Dica de Acesso Inicial */}
+          {/* Dica de Acesso Seguro */}
           <div style={{
             marginTop: '1.75rem',
             padding: '0.875rem',
@@ -340,16 +342,15 @@ export const LoginView = () => {
             lineHeight: '1.5',
             color: 'var(--text-secondary)'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontWeight: '700', color: 'var(--accent-gold)', marginBottom: '0.25rem' }}>
-              <Sparkles size={14} />
-              <span>Acesso Inicial Recomendado:</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontWeight: '700', color: 'var(--primary-400)', marginBottom: '0.25rem' }}>
+              <ShieldCheck size={14} />
+              <span>Acesso Restrito & Seguro:</span>
             </div>
             <div>
-              Usuário: <code style={{ color: 'var(--primary-400)', fontWeight: 'bold' }}>admin</code> &nbsp;|&nbsp; 
-              Senha: <code style={{ color: 'var(--primary-400)', fontWeight: 'bold' }}>123456</code>
+              Usuário Principal: <code style={{ color: 'var(--primary-400)', fontWeight: 'bold' }}>cleusa.gabrielli@gmail.com</code>
             </div>
-            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-              💡 Você pode alterar o usuário e a senha a qualquer momento no menu <strong>Configurações</strong>.
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>
+              🔒 O login padrão de teste "admin" foi desativado. Cada pessoa acessa com seu próprio e-mail e senha cadastrados no sistema.
             </div>
           </div>
         </div>
@@ -365,7 +366,7 @@ export const LoginView = () => {
         <div className="modal-backdrop" onClick={() => setShowRecoveryModal(false)}>
           <div 
             className="modal-content" 
-            style={{ maxWidth: '400px' }} 
+            style={{ maxWidth: '420px' }} 
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
@@ -373,8 +374,8 @@ export const LoginView = () => {
               <h3 style={{ fontSize: '1.15rem' }}>Recuperação de Acesso</h3>
             </div>
 
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: '1.5', marginBottom: '1.25rem' }}>
-              Caso você ou sua esposa tenham esquecido a senha personalizada, é possível restaurar o acesso com a senha padrão de fábrica.
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: '1.5', marginBottom: '1rem' }}>
+              O acesso é restrito aos usuários cadastrados pela administradora Cleusa Gabrielli.
             </p>
 
             <div style={{ 
@@ -382,10 +383,14 @@ export const LoginView = () => {
               padding: '0.875rem', 
               borderRadius: 'var(--radius-md)', 
               fontSize: '0.8rem',
-              marginBottom: '1.25rem'
+              marginBottom: '1.25rem',
+              lineHeight: '1.6'
             }}>
-              <div><strong>Usuário padrão:</strong> admin</div>
-              <div><strong>Senha padrão:</strong> 123456</div>
+              <div><strong>Usuário Principal:</strong> cleusa.gabrielli@gmail.com</div>
+              <div><strong>Senha Inicial Padrão:</strong> 123 (ou a senha que você cadastrou)</div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
+                💡 Novos usuários para ajudantes ou sócios podem ser criados no menu <strong>Configurações</strong> após o login.
+              </div>
             </div>
 
             <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
@@ -402,7 +407,7 @@ export const LoginView = () => {
                 className="btn btn-primary btn-sm"
               >
                 <RotateCcw size={16} />
-                <span>Restaurar para Padrão</span>
+                <span>Restaurar para Cleusa (123)</span>
               </button>
             </div>
           </div>

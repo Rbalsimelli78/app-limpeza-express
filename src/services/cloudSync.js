@@ -85,9 +85,48 @@ export const listenPlanos = (onUpdate, onError) => {
   }
 };
 
+/**
+ * Escuta em tempo real a coleção de Usuários do Sistema
+ */
+export const listenUsuarios = (onUpdate, onError) => {
+  try {
+    const colRef = collection(db, 'usuarios');
+    return onSnapshot(colRef, (snapshot) => {
+      const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      onUpdate(docs, snapshot.empty);
+    }, (err) => {
+      console.warn('Erro ao escutar usuarios na nuvem:', err.message);
+      if (onError) onError(err);
+    });
+  } catch (err) {
+    if (onError) onError(err);
+    return () => {};
+  }
+};
+
 // ===============================================
 // Gravações Individuais no Firestore
 // ===============================================
+
+export const salvarUsuarioNuvem = async (usuario) => {
+  try {
+    if (!usuario || !usuario.id) return;
+    const ref = doc(db, 'usuarios', usuario.id);
+    await setDoc(ref, usuario, { merge: true });
+  } catch (e) {
+    console.warn('Falha ao salvar usuário na nuvem:', e.message);
+  }
+};
+
+export const excluirUsuarioNuvem = async (usuarioId) => {
+  try {
+    if (!usuarioId) return;
+    const ref = doc(db, 'usuarios', usuarioId);
+    await deleteDoc(ref);
+  } catch (e) {
+    console.warn('Falha ao excluir usuário na nuvem:', e.message);
+  }
+};
 
 export const salvarClienteNuvem = async (cliente) => {
   try {
