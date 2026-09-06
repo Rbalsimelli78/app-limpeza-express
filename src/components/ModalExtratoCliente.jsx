@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { LineChart } from './LineChart';
-import { exportExtratoClienteCsv } from '../utils/exportExcel';
+import { exportExtratoClienteXlsx, exportExtratoClienteCsv } from '../utils/exportExcel';
+import { imprimirExtratoCliente } from '../utils/printStatement';
 import { buildExtratoClienteText, getWhatsAppUrl } from '../utils/whatsapp';
 import { 
   X, 
@@ -149,19 +150,37 @@ export const ModalExtratoCliente = ({ isOpen, onClose, cliente }) => {
   }, [agendamentosFiltrados]);
 
   // Ações de Exportação
-  const handleExportExcel = () => {
-    exportExtratoClienteCsv({
-      cliente,
-      agendamentos: agendamentosFiltrados.map(ag => {
-        const p = planos.find(pl => pl.id === ag.planoId);
-        return { ...ag, planoNome: p?.nome || 'Faxina Residencial' };
-      }),
-      totalGeral,
-      totalPago,
-      totalPendente,
-      periodoDesc
-    });
-    showToast('Extrato do cliente exportado para o Excel com sucesso!');
+  const handleExportExcel = async () => {
+    try {
+      showToast('Gerando planilha Excel (.xlsx) com gráfico...');
+      await exportExtratoClienteXlsx({
+        cliente,
+        agendamentos: agendamentosFiltrados.map(ag => {
+          const p = planos.find(pl => pl.id === ag.planoId);
+          return { ...ag, planoNome: p?.nome || 'Faxina Residencial' };
+        }),
+        totalGeral,
+        totalPago,
+        totalPendente,
+        periodoDesc,
+        dadosGrafico
+      });
+      showToast('Extrato do cliente exportado para o Excel (.xlsx) com sucesso!');
+    } catch (err) {
+      console.error('Erro ao exportar XLSX, usando fallback CSV:', err);
+      exportExtratoClienteCsv({
+        cliente,
+        agendamentos: agendamentosFiltrados.map(ag => {
+          const p = planos.find(pl => pl.id === ag.planoId);
+          return { ...ag, planoNome: p?.nome || 'Faxina Residencial' };
+        }),
+        totalGeral,
+        totalPago,
+        totalPendente,
+        periodoDesc
+      });
+      showToast('Extrato exportado para o Excel (.csv) com sucesso!');
+    }
   };
 
   const handleEncaminharWhatsApp = () => {
@@ -182,7 +201,18 @@ export const ModalExtratoCliente = ({ isOpen, onClose, cliente }) => {
   };
 
   const handleImprimir = () => {
-    window.print();
+    imprimirExtratoCliente({
+      cliente,
+      agendamentos: agendamentosFiltrados.map(ag => {
+        const p = planos.find(pl => pl.id === ag.planoId);
+        return { ...ag, planoNome: p?.nome || 'Faxina Residencial' };
+      }),
+      totalGeral,
+      totalPago,
+      totalPendente,
+      periodoDesc,
+      dadosGrafico
+    });
   };
 
   if (!isOpen || !cliente) return null;
@@ -420,10 +450,10 @@ export const ModalExtratoCliente = ({ isOpen, onClose, cliente }) => {
                   type="button" 
                   onClick={handleExportExcel}
                   className="btn btn-secondary btn-sm"
-                  title="Baixar planilha para o Microsoft Excel"
+                  title="Baixar planilha nativa (.xlsx) com gráfico para o Microsoft Excel"
                 >
                   <FileSpreadsheet size={15} color="#10b981" />
-                  <span>Exportar Excel (.csv)</span>
+                  <span>Exportar Excel (.xlsx)</span>
                 </button>
 
                 <button 
@@ -440,7 +470,7 @@ export const ModalExtratoCliente = ({ isOpen, onClose, cliente }) => {
                   type="button" 
                   onClick={handleImprimir}
                   className="btn btn-secondary btn-sm"
-                  title="Imprimir ou Salvar PDF"
+                  title="Imprimir ou Salvar em PDF (Formato Oficial A4)"
                 >
                   <Printer size={15} />
                   <span>Imprimir / PDF</span>

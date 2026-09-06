@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { LineChart } from './LineChart';
-import { exportExtratoAjudanteCsv } from '../utils/exportExcel';
+import { exportExtratoAjudanteXlsx, exportExtratoAjudanteCsv } from '../utils/exportExcel';
+import { imprimirExtratoAjudante } from '../utils/printStatement';
 import { buildExtratoAjudanteText, getWhatsAppUrl } from '../utils/whatsapp';
 import { 
   X, 
@@ -180,16 +181,31 @@ export const ModalExtratoAjudante = ({ isOpen, onClose, ajudante }) => {
   }, [diariasFiltradas]);
 
   // Ações de Exportação
-  const handleExportExcel = () => {
-    exportExtratoAjudanteCsv({
-      ajudante,
-      historicoDiarias: diariasFiltradas,
-      totalGeral,
-      totalPago,
-      totalPendente,
-      periodoDesc
-    });
-    showToast('Planilha de diárias exportada com sucesso!');
+  const handleExportExcel = async () => {
+    try {
+      showToast('Gerando planilha Excel (.xlsx) com gráfico...');
+      await exportExtratoAjudanteXlsx({
+        ajudante,
+        historicoDiarias: diariasFiltradas,
+        totalGeral,
+        totalPago,
+        totalPendente,
+        periodoDesc,
+        dadosGrafico
+      });
+      showToast('Extrato de diárias exportado para o Excel (.xlsx) com sucesso!');
+    } catch (err) {
+      console.error('Erro ao exportar XLSX, usando fallback CSV:', err);
+      exportExtratoAjudanteCsv({
+        ajudante,
+        historicoDiarias: diariasFiltradas,
+        totalGeral,
+        totalPago,
+        totalPendente,
+        periodoDesc
+      });
+      showToast('Planilha de diárias exportada em CSV com sucesso!');
+    }
   };
 
   const handleEncaminharWhatsApp = () => {
@@ -209,7 +225,15 @@ export const ModalExtratoAjudante = ({ isOpen, onClose, ajudante }) => {
   };
 
   const handleImprimir = () => {
-    window.print();
+    imprimirExtratoAjudante({
+      ajudante,
+      historicoDiarias: diariasFiltradas,
+      totalGeral,
+      totalPago,
+      totalPendente,
+      periodoDesc,
+      dadosGrafico
+    });
   };
 
   if (!isOpen || !ajudante) return null;
@@ -479,10 +503,10 @@ export const ModalExtratoAjudante = ({ isOpen, onClose, ajudante }) => {
                   type="button" 
                   onClick={handleExportExcel}
                   className="btn btn-secondary btn-sm"
-                  title="Baixar relatório para o Microsoft Excel"
+                  title="Baixar relatório (.xlsx) com gráfico para o Microsoft Excel"
                 >
                   <FileSpreadsheet size={15} color="#10b981" />
-                  <span>Exportar Excel (.csv)</span>
+                  <span>Exportar Excel (.xlsx)</span>
                 </button>
 
                 <button 
@@ -499,7 +523,7 @@ export const ModalExtratoAjudante = ({ isOpen, onClose, ajudante }) => {
                   type="button" 
                   onClick={handleImprimir}
                   className="btn btn-secondary btn-sm"
-                  title="Imprimir ou Salvar PDF"
+                  title="Imprimir ou Salvar em PDF (Formato Oficial A4)"
                 >
                   <Printer size={15} />
                   <span>Imprimir / PDF</span>
