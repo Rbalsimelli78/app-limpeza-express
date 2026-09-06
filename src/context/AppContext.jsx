@@ -329,6 +329,7 @@ export const AppProvider = ({ children }) => {
   // Funções de Clientes com Sincronização em Nuvem
   const addCliente = (clienteData) => {
     const novo = {
+      status: 'ativo',
       ...clienteData,
       id: `cli-${Date.now()}`,
       criadoEm: new Date().toISOString().split('T')[0]
@@ -349,7 +350,12 @@ export const AppProvider = ({ children }) => {
       return c;
     }));
     if (atualizado) salvarClienteNuvem(atualizado);
-    showToast('Dados do cliente atualizados!');
+
+    if (clienteData.status && Object.keys(clienteData).length === 1) {
+      showToast(clienteData.status === 'ativo' ? 'Cliente reativado com sucesso!' : 'Cliente marcado como inativo / pausado.', 'info');
+    } else {
+      showToast('Dados do cliente atualizados!');
+    }
   };
 
   const deleteCliente = (id) => {
@@ -361,6 +367,7 @@ export const AppProvider = ({ children }) => {
   // Funções de Ajudantes com Sincronização em Nuvem
   const addAjudante = (ajudanteData) => {
     const nova = {
+      status: 'ativo',
       ...ajudanteData,
       id: `ajud-${Date.now()}`
     };
@@ -380,7 +387,12 @@ export const AppProvider = ({ children }) => {
       return a;
     }));
     if (atualizada) salvarAjudanteNuvem(atualizada);
-    showToast('Dados da colaboradora atualizados!');
+
+    if (ajudanteData.status && Object.keys(ajudanteData).length === 1) {
+      showToast(ajudanteData.status === 'ativo' ? 'Colaboradora reativada para escalas!' : 'Colaboradora marcada como inativa / pausada.', 'info');
+    } else {
+      showToast('Dados da colaboradora atualizados!');
+    }
   };
 
   const deleteAjudante = (id) => {

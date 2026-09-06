@@ -13,7 +13,10 @@ import {
   Edit2, 
   Trash2,
   AlertTriangle,
-  TrendingUp
+  TrendingUp,
+  Search,
+  UserX,
+  CheckCircle2
 } from 'lucide-react';
 import { formatCurrency, formatPhone, formatDate, formatTime } from '../utils/formatters';
 import { getWhatsAppUrl } from '../utils/whatsapp';
@@ -25,12 +28,35 @@ export const AjudantesView = ({ onNovaAjudante, onEditarAjudante }) => {
     agendamentos, 
     clientes,
     deleteAjudante, 
-    setStatusPagamentoAjudante,
+    updateAjudante,
+    setStatusPagamentoAjudante, 
     showToast 
   } = useApp();
 
-  const [abaInterna, setAbaInterna] = useState('cadastro'); // 'cadastro' ou 'extrato'
+  const [busca, setBusca] = useState('');
+  const [filtroStatus, setFiltroStatus] = useState('todas'); // 'todas', 'ativo', 'inativo'
   const [ajudanteExtrato, setAjudanteExtrato] = useState(null);
+
+  // Contagens para os botões de status
+  const qtdAtivas = ajudantes.filter(a => a.status === 'ativo').length;
+  const qtdInativas = ajudantes.filter(a => a.status !== 'ativo').length;
+
+  const ajudantesFiltradas = ajudantes.filter(aj => {
+    // 1. Filtro de Status
+    if (filtroStatus === 'ativo' && aj.status !== 'ativo') return false;
+    if (filtroStatus === 'inativo' && aj.status === 'ativo') return false;
+
+    // 2. Filtro de Busca
+    const termo = busca.toLowerCase();
+    if (!termo) return true;
+
+    return (
+      aj.nome?.toLowerCase().includes(termo) ||
+      aj.telefone?.includes(termo) ||
+      aj.chavePix?.toLowerCase().includes(termo) ||
+      aj.especialidade?.toLowerCase().includes(termo)
+    );
+  });
 
   const copiarPix = (chave) => {
     navigator.clipboard.writeText(chave);
@@ -89,18 +115,70 @@ export const AjudantesView = ({ onNovaAjudante, onEditarAjudante }) => {
         </button>
       </div>
 
+      {/* Busca e Filtro por Status */}
+      <div className="glass-card" style={{ padding: '1rem', marginBottom: '1.5rem' }}>
+        <div style={{ position: 'relative' }}>
+          <Search size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+          <input 
+            type="text" 
+            className="form-input" 
+            placeholder="Buscar por nome da colaboradora, chave PIX, especialidade ou WhatsApp..."
+            style={{ paddingLeft: '36px' }}
+            value={busca}
+            onChange={e => setBusca(e.target.value)}
+          />
+        </div>
+
+        {/* Filtro por Situação (Todas / Ativas / Inativas) */}
+        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.85rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.25rem', marginRight: '0.25rem' }}>
+            <UserCheck size={13} color="var(--primary-400)" />
+            <span>Situação:</span>
+          </span>
+
+          <button
+            type="button"
+            onClick={() => setFiltroStatus('todas')}
+            className={`badge ${filtroStatus === 'todas' ? 'badge-info' : 'badge-neutral'}`}
+            style={{ cursor: 'pointer', border: 'none', padding: '0.35rem 0.75rem', fontSize: '0.75rem' }}
+          >
+            Todas ({ajudantes.length})
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setFiltroStatus('ativo')}
+            className={`badge ${filtroStatus === 'ativo' ? 'badge-success' : 'badge-neutral'}`}
+            style={{ cursor: 'pointer', border: 'none', padding: '0.35rem 0.75rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+          >
+            <CheckCircle2 size={12} />
+            <span>Ativas ({qtdAtivas})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setFiltroStatus('inativo')}
+            className={`badge ${filtroStatus === 'inativo' ? 'badge-danger' : 'badge-neutral'}`}
+            style={{ cursor: 'pointer', border: 'none', padding: '0.35rem 0.75rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+          >
+            <UserX size={12} />
+            <span>Inativas / Pausadas ({qtdInativas})</span>
+          </button>
+        </div>
+      </div>
+
       {/* Grid de Cards de Ajudantes */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '1.25rem' }}>
-        {ajudantes.length === 0 ? (
+        {ajudantesFiltradas.length === 0 ? (
           <div className="glass-card" style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '3rem' }}>
             <UserCheck size={40} color="var(--text-muted)" style={{ margin: '0 auto 1rem' }} />
-            <p style={{ color: 'var(--text-secondary)' }}>Nenhuma ajudante cadastrada.</p>
+            <p style={{ color: 'var(--text-secondary)' }}>Nenhuma ajudante encontrada com os filtros atuais.</p>
             <button onClick={onNovaAjudante} className="btn btn-primary btn-sm" style={{ marginTop: '1rem' }}>
-              Cadastrar Primeira Ajudante
+              Cadastrar Nova Ajudante
             </button>
           </div>
         ) : (
-          ajudantes.map(aj => {
+          ajudantesFiltradas.map(aj => {
             const { totalPendente, totalPago, totalServicos, historico } = getDadosAjudante(aj.id);
             const waUrl = getWhatsAppUrl(aj.telefone, `Oi ${aj.nome}! Tudo bem? Limpeza Express SP falando ✨`);
 
@@ -287,6 +365,14 @@ export const AjudantesView = ({ onNovaAjudante, onEditarAjudante }) => {
                   </a>
 
                   <div style={{ display: 'flex', gap: '0.25rem' }}>
+                    <button 
+                      onClick={() => updateAjudante(aj.id, { status: aj.status === 'ativo' ? 'inativo' : 'ativo' })}
+                      className="btn btn-secondary btn-icon btn-sm"
+                      title={aj.status === 'ativo' ? 'Pausar / Inativar Colaboradora' : 'Reativar Colaboradora para Escalas'}
+                      style={{ color: aj.status === 'ativo' ? '#f43f5e' : '#10b981' }}
+                    >
+                      {aj.status === 'ativo' ? <UserX size={14} /> : <UserCheck size={14} />}
+                    </button>
                     <button 
                       onClick={() => onEditarAjudante(aj)} 
                       className="btn btn-secondary btn-icon btn-sm"

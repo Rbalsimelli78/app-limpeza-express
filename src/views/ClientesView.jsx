@@ -14,17 +14,25 @@ import {
   Sparkles,
   TrendingUp,
   Building,
-  Filter
+  Filter,
+  UserCheck,
+  UserX,
+  CheckCircle2
 } from 'lucide-react';
 import { formatPhone, formatCurrency } from '../utils/formatters';
 import { getWhatsAppUrl } from '../utils/whatsapp';
 import { ModalExtratoCliente } from '../components/ModalExtratoCliente';
 
 export const ClientesView = ({ onNovoCliente, onEditarCliente, onAgendarParaCliente }) => {
-  const { clientes, agendamentos, planos, deleteCliente } = useApp();
+  const { clientes, agendamentos, planos, deleteCliente, updateCliente } = useApp();
   const [busca, setBusca] = useState('');
   const [filtroCondominio, setFiltroCondominio] = useState('todos');
+  const [filtroStatus, setFiltroStatus] = useState('todos'); // 'todos', 'ativo', 'inativo'
   const [clienteExtrato, setClienteExtrato] = useState(null);
+
+  // Contagens para os botões de status
+  const qtdAtivos = clientes.filter(c => c.status !== 'inativo').length;
+  const qtdInativos = clientes.filter(c => c.status === 'inativo').length;
 
   // Lista de condomínios únicos cadastrados para filtro rápido
   const condominiosUnicos = Array.from(
@@ -32,6 +40,11 @@ export const ClientesView = ({ onNovoCliente, onEditarCliente, onAgendarParaClie
   ).sort();
 
   const clientesFiltrados = clientes.filter(c => {
+    // 1. Filtro de Status
+    if (filtroStatus === 'ativo' && c.status === 'inativo') return false;
+    if (filtroStatus === 'inativo' && c.status !== 'inativo') return false;
+
+    // 2. Filtro de Busca em Texto
     const termo = busca.toLowerCase();
     const matchBusca = (
       c.nome?.toLowerCase().includes(termo) ||
@@ -45,6 +58,7 @@ export const ClientesView = ({ onNovoCliente, onEditarCliente, onAgendarParaClie
 
     if (!matchBusca) return false;
 
+    // 3. Filtro de Condomínio
     if (filtroCondominio !== 'todos') {
       return c.condominio?.trim().toLowerCase() === filtroCondominio.toLowerCase();
     }
@@ -84,6 +98,43 @@ export const ClientesView = ({ onNovoCliente, onEditarCliente, onAgendarParaClie
             value={busca}
             onChange={e => setBusca(e.target.value)}
           />
+        </div>
+
+        {/* Filtro por Status (Ativos / Inativos) */}
+        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.85rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.25rem', marginRight: '0.25rem' }}>
+            <UserCheck size={13} color="var(--primary-400)" />
+            <span>Situação:</span>
+          </span>
+
+          <button
+            type="button"
+            onClick={() => setFiltroStatus('todos')}
+            className={`badge ${filtroStatus === 'todos' ? 'badge-info' : 'badge-neutral'}`}
+            style={{ cursor: 'pointer', border: 'none', padding: '0.35rem 0.75rem', fontSize: '0.75rem' }}
+          >
+            Todos ({clientes.length})
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setFiltroStatus('ativo')}
+            className={`badge ${filtroStatus === 'ativo' ? 'badge-success' : 'badge-neutral'}`}
+            style={{ cursor: 'pointer', border: 'none', padding: '0.35rem 0.75rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+          >
+            <CheckCircle2 size={12} />
+            <span>Ativos ({qtdAtivos})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setFiltroStatus('inativo')}
+            className={`badge ${filtroStatus === 'inativo' ? 'badge-danger' : 'badge-neutral'}`}
+            style={{ cursor: 'pointer', border: 'none', padding: '0.35rem 0.75rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+          >
+            <UserX size={12} />
+            <span>Inativos / Pausados ({qtdInativos})</span>
+          </button>
         </div>
 
         {/* Filtro Rápido por Condomínio */}
@@ -145,10 +196,15 @@ export const ClientesView = ({ onNovoCliente, onEditarCliente, onAgendarParaClie
               <div key={c.id} className="glass-card" style={{ display: 'flex', flexDirection: 'column' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
                   <div>
-                    <span className="badge badge-info" style={{ marginBottom: '0.25rem' }}>
-                      {planoPadrao?.nome || 'Plano Quinzenal'}
-                    </span>
-                    <h4 style={{ fontSize: '1.15rem', color: 'var(--text-primary)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.35rem', flexWrap: 'wrap' }}>
+                      <span className={`badge ${c.status === 'inativo' ? 'badge-danger' : 'badge-success'}`} style={{ fontSize: '0.7rem' }}>
+                        {c.status === 'inativo' ? 'Inativo' : 'Ativo'}
+                      </span>
+                      <span className="badge badge-info" style={{ fontSize: '0.7rem' }}>
+                        {planoPadrao?.nome || 'Plano Quinzenal'}
+                      </span>
+                    </div>
+                    <h4 style={{ fontSize: '1.15rem', color: c.status === 'inativo' ? 'var(--text-muted)' : 'var(--text-primary)' }}>
                       {c.nome}
                     </h4>
                   </div>
@@ -281,6 +337,14 @@ export const ClientesView = ({ onNovoCliente, onEditarCliente, onAgendarParaClie
                   </div>
 
                   <div style={{ display: 'flex', gap: '0.25rem' }}>
+                    <button 
+                      onClick={() => updateCliente(c.id, { status: c.status === 'inativo' ? 'ativo' : 'inativo' })}
+                      className="btn btn-secondary btn-icon btn-sm"
+                      title={c.status === 'inativo' ? 'Reativar Cliente' : 'Pausar / Inativar Cliente'}
+                      style={{ color: c.status === 'inativo' ? '#10b981' : '#f43f5e' }}
+                    >
+                      {c.status === 'inativo' ? <UserCheck size={14} /> : <UserX size={14} />}
+                    </button>
                     <button 
                       onClick={() => onEditarCliente(c)} 
                       className="btn btn-secondary btn-icon btn-sm"

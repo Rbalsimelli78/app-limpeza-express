@@ -231,7 +231,7 @@ export const ModalAgendamento = ({ isOpen, onClose, agendamentoEdicao = null }) 
                 <option value="">Selecione um cliente...</option>
                 {clientes.map(c => (
                   <option key={c.id} value={c.id}>
-                    {c.nome} {c.condominio ? `• ${c.condominio}` : ''} {c.torre ? `(${c.torre} - ${c.apartamento})` : c.apartamento ? `(${c.apartamento})` : ''} - {c.bairro}
+                    {c.status === 'inativo' ? '⚠️ [INATIVO] ' : ''}{c.nome} {c.condominio ? `• ${c.condominio}` : ''} {c.torre ? `(${c.torre} - ${c.apartamento})` : c.apartamento ? `(${c.apartamento})` : ''} - {c.bairro}
                   </option>
                 ))}
               </select>
@@ -349,8 +349,8 @@ export const ModalAgendamento = ({ isOpen, onClose, agendamentoEdicao = null }) 
                           onChange={() => toggleAjudante(aj.id)}
                           style={{ width: '16px', height: '16px', accentColor: 'var(--primary-500)' }}
                         />
-                        <span style={{ fontSize: '0.875rem', fontWeight: isSelected ? '600' : '400' }}>
-                          {aj.nome} ({aj.especialidade || 'Geral'})
+                        <span style={{ fontSize: '0.875rem', fontWeight: isSelected ? '600' : '400', color: aj.status === 'inativo' ? 'var(--text-muted)' : 'inherit' }}>
+                          {aj.nome} {aj.status === 'inativo' ? '⚠️ (INATIVA)' : ''} ({aj.especialidade || 'Geral'})
                         </span>
                       </label>
 

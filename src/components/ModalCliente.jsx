@@ -16,6 +16,7 @@ export const ModalCliente = ({ isOpen, onClose, clienteEdicao = null }) => {
   const [metragem, setMetragem] = useState('80 a 100m²');
   const [planoPadraoId, setPlanoPadraoId] = useState('plano-quinzenal');
   const [observacoes, setObservacoes] = useState('');
+  const [status, setStatus] = useState('ativo');
 
   useEffect(() => {
     if (clienteEdicao) {
@@ -30,6 +31,7 @@ export const ModalCliente = ({ isOpen, onClose, clienteEdicao = null }) => {
       setMetragem(clienteEdicao.metragem || '80 a 100m²');
       setPlanoPadraoId(clienteEdicao.planoPadraoId || 'plano-quinzenal');
       setObservacoes(clienteEdicao.observacoes || '');
+      setStatus(clienteEdicao.status || 'ativo');
     } else {
       setNome('');
       setTelefone('');
@@ -42,6 +44,7 @@ export const ModalCliente = ({ isOpen, onClose, clienteEdicao = null }) => {
       setMetragem('80 a 100m²');
       setPlanoPadraoId('plano-quinzenal');
       setObservacoes('');
+      setStatus('ativo');
     }
   }, [clienteEdicao, isOpen]);
 
@@ -64,6 +67,7 @@ export const ModalCliente = ({ isOpen, onClose, clienteEdicao = null }) => {
       dormitorios: Number(dormitorios),
       metragem,
       planoPadraoId,
+      status: status || 'ativo',
       observacoes
     };
 
@@ -220,6 +224,18 @@ export const ModalCliente = ({ isOpen, onClose, clienteEdicao = null }) => {
                   onChange={e => setMetragem(e.target.value)} 
                 />
               </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Status do Cliente</label>
+              <select 
+                className="form-select"
+                value={status}
+                onChange={e => setStatus(e.target.value)}
+              >
+                <option value="ativo">Ativo (Atendimentos Regulares)</option>
+                <option value="inativo">Inativo / Pausado (Sem Faxinas Ativas)</option>
+              </select>
             </div>
 
             <div className="form-group" style={{ marginBottom: 0 }}>
