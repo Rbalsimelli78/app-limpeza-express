@@ -242,5 +242,22 @@ Ainda não temos seus dias agendados para este mês. Podemos já reservar as sua
 Aguardo seu retorno para programarmos seus dias! Muito obrigado! 📲✨`;
 };
 
+/**
+ * Mensagem para enviar a escala semanal consolidada da ajudante com todas as faxinas dos próximos 7 dias
+ */
+export const buildEscalaSemanalAjudanteText = ({
+  ajudanteNome,
+  faxinas,
+  totalDiarias
+}) => {
+  const lista = faxinas.map((f, i) => {
+    const d = new Date(f.dataHoraInicio);
+    const diaSemana = d.toLocaleDateString('pt-BR', { weekday: 'short' });
+    const data = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+    const hora = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const local = f.condominio ? `${f.condominio} (${f.bairro || ''})` : (f.bairro || 'São Paulo');
+    return `${i + 1}. *${diaSemana.toUpperCase()}, ${data}* às *${hora}*\n   👤 Cliente: ${f.clienteNome}\n   📍 Local: ${local}\n   💵 Diária: R$ ${Number(f.valorDiaria || 0).toFixed(2).replace('.', ',')}`;
+  }).join('\n\n');
 
-
+  return `Oi *${ajudanteNome}*! Segue sua escala de trabalhos da *Limpeza Express SP* para os próximos dias: 🧹✨\n\n${lista}\n\n📊 *Total:* ${faxinas.length} faxina(s)\n💰 *Valor Total em Diárias:* R$ ${Number(totalDiarias || 0).toFixed(2).replace('.', ',')}\n\nContamos com sua dedicação e capricho de sempre! Que Deus abençoe sua jornada e seu trabalho! ✝️🙏`;
+};

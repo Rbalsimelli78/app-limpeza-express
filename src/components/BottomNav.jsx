@@ -37,7 +37,7 @@ export const BottomNav = () => {
             onClick={() => setActiveTab(item.id)}
             className={`bottom-nav-item ${isActive ? 'active' : ''}`}
           >
-            <Icon size={18} />
+            <Icon size={17} />
             <span>{item.label}</span>
           </button>
         );
@@ -53,7 +53,7 @@ export const BottomNav = () => {
         style={{ color: '#fb7185' }}
         title="Sair do Aplicativo"
       >
-        <LogOut size={18} color="#fb7185" />
+        <LogOut size={17} color="#fb7185" />
         <span style={{ fontWeight: '700', color: '#fb7185' }}>Sair</span>
       </button>
     </nav>

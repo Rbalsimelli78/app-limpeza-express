@@ -22,11 +22,11 @@ export const Header = ({ onOpenNovoAgendamento }) => {
   return (
     <header className="top-header">
       {/* Mobile Brand */}
-      <div className="header-brand-mobile">
-        <img src="/logo.jpg" alt="Limpeza Express SP" />
-        <div>
-          <h2 style={{ fontSize: '1rem', fontWeight: '700', lineHeight: '1.2' }}>Limpeza Express</h2>
-          <span style={{ fontSize: '0.7rem', color: 'var(--primary-400)', fontWeight: '600' }}>São Paulo • SP</span>
+      <div className="header-brand-mobile" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0, flexShrink: 1 }}>
+        <img src="/logo.jpg" alt="Limpeza Express SP" style={{ width: '30px', height: '30px', borderRadius: '6px', flexShrink: 0 }} />
+        <div style={{ minWidth: 0 }}>
+          <h2 style={{ fontSize: '0.92rem', fontWeight: '700', lineHeight: '1.2', margin: 0, whiteSpace: 'nowrap' }}>Limpeza Express</h2>
+          <span style={{ fontSize: '0.65rem', color: 'var(--primary-400)', fontWeight: '600', display: 'block' }}>São Paulo • SP</span>
         </div>
       </div>
 
@@ -38,7 +38,7 @@ export const Header = ({ onOpenNovoAgendamento }) => {
       </div>
 
       {/* Actions */}
-      <div className="header-actions">
+      <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0 }}>
         {/* Status da Nuvem Firebase em Tempo Real */}
         <button
           onClick={forcarSincronizacaoNuvem}
@@ -52,39 +52,40 @@ export const Header = ({ onOpenNovoAgendamento }) => {
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '0.4rem',
+            gap: '0.3rem',
             background: cloudStatus === 'sincronizado' ? 'rgba(16, 185, 129, 0.12)' : 'var(--bg-input)',
             border: cloudStatus === 'sincronizado' ? '1px solid rgba(16, 185, 129, 0.35)' : '1px solid var(--border-color)',
-            padding: '0.35rem 0.65rem',
+            padding: '0.3rem 0.5rem',
             borderRadius: '100px',
-            fontSize: '0.75rem',
+            fontSize: '0.72rem',
             cursor: 'pointer',
             color: cloudStatus === 'sincronizado' ? 'var(--primary-400)' : 'var(--text-muted)',
-            transition: 'all 0.2s ease'
+            transition: 'all 0.2s ease',
+            flexShrink: 0
           }}
         >
           {cloudStatus === 'sincronizado' ? (
             <>
               <span style={{ 
-                width: '7px', 
-                height: '7px', 
+                width: '6px', 
+                height: '6px', 
                 borderRadius: '50%', 
                 background: '#10b981', 
                 display: 'inline-block',
                 boxShadow: '0 0 6px #10b981'
               }} />
               <Cloud size={14} color="#10b981" />
-              <span className="hide-on-mobile-extra" style={{ fontWeight: '600', color: '#10b981' }}>Nuvem Ativa</span>
+              <span className="hide-on-mobile" style={{ fontWeight: '600', color: '#10b981' }}>Nuvem</span>
             </>
           ) : cloudStatus === 'conectando' ? (
             <>
-              <RefreshCw size={13} className="spin" color="#f59e0b" />
-              <span className="hide-on-mobile-extra" style={{ color: '#f59e0b' }}>Conectando...</span>
+              <RefreshCw size={12} className="spin" color="#f59e0b" />
+              <span className="hide-on-mobile" style={{ color: '#f59e0b' }}>Conectando</span>
             </>
           ) : (
             <>
               <CloudOff size={14} color="var(--text-muted)" />
-              <span className="hide-on-mobile-extra">Local</span>
+              <span className="hide-on-mobile">Local</span>
             </>
           )}
         </button>
@@ -105,30 +106,50 @@ export const Header = ({ onOpenNovoAgendamento }) => {
           <span style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{currentUser?.name || 'Administradora'}</span>
         </div>
 
+        {/* Botão de Agendamento Harmonizado e com Explicação Clara */}
         <button 
           onClick={onOpenNovoAgendamento}
-          className="btn btn-primary btn-sm"
+          className="header-btn-agendar"
           title="Novo Agendamento de Faxina"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.3rem',
+            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+            color: '#ffffff',
+            border: 'none',
+            padding: '0.35rem 0.65rem',
+            borderRadius: '100px',
+            fontSize: '0.75rem',
+            fontWeight: '700',
+            cursor: 'pointer',
+            whiteSpace: 'nowrap',
+            boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)',
+            flexShrink: 0
+          }}
         >
-          <Plus size={18} />
-          <span className="hide-on-mobile-extra">Nova Faxina</span>
+          <Plus size={14} strokeWidth={2.5} />
+          <span>+ Agendar</span>
         </button>
 
+        {/* Alternador de Tema */}
         <button 
           onClick={toggleTheme} 
           className="btn btn-secondary btn-icon"
           title={theme === 'dark' ? 'Mudar para Modo Claro' : 'Mudar para Modo Escuro'}
+          style={{ width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
         >
-          {theme === 'dark' ? <Sun size={18} color="#f59e0b" /> : <Moon size={18} color="#6366f1" />}
+          {theme === 'dark' ? <Sun size={15} color="#f59e0b" /> : <Moon size={15} color="#6366f1" />}
         </button>
 
+        {/* Botão Sair (Visível no Desktop, no mobile fica no rodapé) */}
         <button 
           onClick={() => {
             if (confirm('Deseja sair e bloquear o aplicativo agora?')) {
               logout();
             }
           }}
-          className="btn btn-danger btn-sm"
+          className="btn btn-danger btn-sm hide-on-mobile"
           title="Sair do Aplicativo"
           style={{ 
             display: 'flex', 
@@ -136,7 +157,8 @@ export const Header = ({ onOpenNovoAgendamento }) => {
             gap: '0.35rem', 
             fontWeight: '700',
             padding: '0.35rem 0.65rem',
-            fontSize: '0.8rem'
+            fontSize: '0.8rem',
+            flexShrink: 0
           }}
         >
           <LogOut size={15} />
