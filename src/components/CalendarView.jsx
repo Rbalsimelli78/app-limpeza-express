@@ -475,48 +475,61 @@ export const CalendarView = ({
                     <div className="day-cell-content">
                       {/* Badge Resumo do Dia por Status */}
                       <div 
+                        className="day-status-badge"
                         style={{
                           background: todasConcluidas ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.18)',
                           border: `1px solid ${todasConcluidas ? 'rgba(16, 185, 129, 0.5)' : 'rgba(245, 158, 11, 0.5)'}`,
                           color: todasConcluidas ? '#34d399' : '#fbbf24',
-                          fontSize: '0.675rem',
+                          fontSize: '0.65rem',
                           fontWeight: '700',
                           borderRadius: 'var(--radius-sm)',
-                          padding: '2px 5px',
+                          padding: '1px 3px',
                           display: 'flex',
                           alignItems: 'center',
-                          gap: '4px',
+                          gap: '3px',
                           justifyContent: 'center',
-                          whiteSpace: 'nowrap'
+                          width: '100%',
+                          minWidth: 0,
+                          overflow: 'hidden',
+                          boxSizing: 'border-box'
                         }}
                       >
                         <span style={{ 
-                          width: '5px', 
-                          height: '5px', 
+                          width: '4px', 
+                          height: '4px', 
                           borderRadius: '50%', 
                           background: todasConcluidas ? '#10b981' : '#f59e0b',
                           flexShrink: 0 
                         }}></span>
-                        <span>
+
+                        {/* Versão Compacta no Celular: ex: ✓2 ou ⏳3 */}
+                        <span className="badge-text-mobile" style={{ fontSize: '0.62rem', fontWeight: '800' }}>
+                          {todasConcluidas ? `✓${qtd}` : `⏳${qtd}`}
+                        </span>
+
+                        {/* Versão Completa no Computador/Tablet */}
+                        <span className="badge-text-full">
                           {todasConcluidas 
                             ? `✓ ${qtd} feita(s)` 
                             : concluidas > 0 
                               ? `${concluidas} ok • ${pendentes} pend` 
                               : `⏳ ${qtd} ${qtd === 1 ? 'faxina' : 'faxinas'}`}
                         </span>
+
                         {qtd > 1 && d.agendamentos.some(ag => checkHasConflict(ag, d.agendamentos, ajudantes)) && (
                           <span 
                             title="Atenção: Choque de horário ou ajudante detectado neste dia!"
                             style={{
-                              fontSize: '0.62rem',
+                              fontSize: '0.58rem',
                               background: '#ef4444',
                               color: '#fff',
-                              borderRadius: '3px',
-                              padding: '1px 4px',
-                              fontWeight: '800'
+                              borderRadius: '2px',
+                              padding: '0 2px',
+                              fontWeight: '800',
+                              flexShrink: 0
                             }}
                           >
-                            ⚠️ Choque
+                            ⚠️
                           </span>
                         )}
                       </div>
