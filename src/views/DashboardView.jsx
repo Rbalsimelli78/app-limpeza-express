@@ -22,12 +22,14 @@ import {
   CheckCircle2,
   ArrowRight,
   UserCheck,
-  ChevronRight
+  ChevronRight,
+  Eye
 } from 'lucide-react';
 import { formatCurrency, formatTime, formatDate } from '../utils/formatters';
 import { getWhatsAppUrl, buildEscalaSemanalAjudanteText } from '../utils/whatsapp';
 import { ModalViradaMes } from '../components/ModalViradaMes';
 import { MensagemBiblica } from '../components/MensagemBiblica';
+import { ModalPreviewEscalaSemanal } from '../components/ModalPreviewEscalaSemanal';
 
 export const DashboardView = ({ onNovoAgendamento, onEditarAgendamento }) => {
   const { 
@@ -45,6 +47,24 @@ export const DashboardView = ({ onNovoAgendamento, onEditarAgendamento }) => {
   } = useApp();
 
   const [modalViradaMesOpen, setModalViradaMesOpen] = useState(false);
+  const [modalPreviewEscalaOpen, setModalPreviewEscalaOpen] = useState(false);
+  const [ajudantePreviewEscala, setAjudantePreviewEscala] = useState(null);
+  const [faxinasPreviewEscala, setFaxinasPreviewEscala] = useState([]);
+  const [expandedAjudantes, setExpandedAjudantes] = useState({});
+
+  const toggleExpandAjudante = (id) => {
+    setExpandedAjudantes(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const abrirPreviewEscala = (item) => {
+    if (item.faxinas.length === 0) {
+      showToast(`${item.ajudante.nome} não possui faxinas agendadas para os próximos 7 dias.`);
+      return;
+    }
+    setAjudantePreviewEscala(item.ajudante);
+    setFaxinasPreviewEscala(item.faxinas);
+    setModalPreviewEscalaOpen(true);
+  };
 
   const financeiro = getFinanceiroGeral();
 
@@ -107,40 +127,7 @@ export const DashboardView = ({ onNovoAgendamento, onEditarAgendamento }) => {
       qtd: faxinasDestaAjudante.length,
       totalDiarias: totalDiariasAjudante
     };
-  }).sort((a, b) => b.qtd - a.qtd); // ordenadas por volume de faxinas na semana
-
-  // Função para enviar escala consolidada da semana no WhatsApp da ajudante
-  const handleEnviarEscalaSemana = (item) => {
-    const { ajudante, faxinas, totalDiarias } = item;
-    if (faxinas.length === 0) {
-      showToast(`${ajudante.nome} não possui faxinas agendadas para os próximos 7 dias.`);
-      return;
-    }
-
-    const payload = faxinas.map(ag => {
-      const cli = clientes.find(c => c.id === ag.clienteId);
-      const ae = (ag.ajudantesEscaladas || []).find(e => e.ajudanteId === ajudante.id);
-      return {
-        dataHoraInicio: ag.dataHoraInicio,
-        clienteNome: cli?.nome || 'Cliente',
-        condominio: cli?.condominio || '',
-        torre: cli?.torre || '',
-        apartamento: cli?.apartamento || '',
-        endereco: cli?.endereco || '',
-        bairro: cli?.bairro || '',
-        valorDiaria: ae?.valorAPagar || ajudante.valorDiariaBase || 100
-      };
-    });
-
-    const msg = buildEscalaSemanalAjudanteText({
-      ajudanteNome: ajudante.nome,
-      faxinas: payload,
-      totalDiarias
-    });
-
-    const url = getWhatsAppUrl(ajudante.telefone, msg);
-    window.open(url, '_blank');
-  };
+  }).sort((a, b) => b.qtd - a.qtd);
 
   return (
     <div className="page-wrapper">
@@ -687,45 +674,104 @@ export const DashboardView = ({ onNovoAgendamento, onEditarAgendamento }) => {
 
                     {/* Resumo das Faxinas Agendadas nos Próximos 7 Dias */}
                     {qtd > 0 && (
-                      <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                        {faxinas.slice(0, 3).map(f => {
+                      <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                        {((expandedAjudantes[ajudante.id] ? faxinas : faxinas.slice(0, 3))).map(f => {
                           const c = clientes.find(cli => cli.id === f.clienteId);
+                          const ae = (f.ajudantesEscaladas || []).find(e => e.ajudanteId === ajudante.id);
+                          const valorDiaria = ae?.valorAPagar || ajudante.valorDiariaBase || 100;
                           const d = new Date(f.dataHoraInicio);
                           const diaSemana = d.toLocaleDateString('pt-BR', { weekday: 'short' });
                           const diaMes = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+                          const local = c?.condominio ? `${c.condominio}` : (c?.bairro || 'São Paulo');
+
                           return (
-                            <div key={f.id} style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between' }}>
-                              <span>• {diaSemana}, {diaMes}: <strong>{c?.nome || 'Cliente'}</strong></span>
-                              <span style={{ color: 'var(--accent-cyan)' }}>{formatTime(f.dataHoraInicio)}</span>
+                            <div 
+                              key={f.id} 
+                              style={{ 
+                                fontSize: '0.75rem', 
+                                color: 'var(--text-secondary)', 
+                                background: 'rgba(255,255,255,0.03)',
+                                border: '1px solid rgba(255,255,255,0.05)',
+                                padding: '0.35rem 0.5rem',
+                                borderRadius: '6px',
+                                display: 'flex', 
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                gap: '0.4rem'
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', minWidth: 0, overflow: 'hidden' }}>
+                                <span style={{ color: 'var(--accent-cyan)', fontWeight: '700', whiteSpace: 'nowrap' }}>
+                                  {diaSemana}, {diaMes} ({formatTime(f.dataHoraInicio)})
+                                </span>
+                                <span style={{ color: 'var(--text-primary)', fontWeight: '600', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                  • {c?.nome || 'Cliente'}
+                                </span>
+                                <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem', whiteSpace: 'nowrap' }}>
+                                  ({local})
+                                </span>
+                              </div>
+                              <span style={{ color: 'var(--accent-gold)', fontWeight: '700', whiteSpace: 'nowrap', fontSize: '0.75rem' }}>
+                                {formatCurrency(valorDiaria)}
+                              </span>
                             </div>
                           );
                         })}
+
                         {qtd > 3 && (
-                          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                            + {qtd - 3} outra(s) faxina(s) na semana
-                          </span>
+                          <button
+                            type="button"
+                            onClick={() => toggleExpandAjudante(ajudante.id)}
+                            className="btn btn-secondary btn-sm"
+                            style={{
+                              fontSize: '0.72rem',
+                              padding: '0.25rem 0.5rem',
+                              marginTop: '0.25rem',
+                              width: '100%',
+                              justifyContent: 'center',
+                              color: 'var(--primary-400)',
+                              borderColor: 'rgba(16, 185, 129, 0.35)',
+                              background: 'rgba(16, 185, 129, 0.05)'
+                            }}
+                          >
+                            {expandedAjudantes[ajudante.id] ? `▴ Ver menos (recolher lista)` : `▾ Ver todas as ${qtd} faxinas da semana`}
+                          </button>
                         )}
                       </div>
                     )}
                   </div>
 
                   {/* Ações da Ajudante na Semana */}
-                  <div style={{ display: 'flex', gap: '0.45rem', marginTop: '0.35rem' }}>
+                  <div style={{ marginTop: '0.5rem' }}>
                     {qtd > 0 ? (
-                      <button 
-                        onClick={() => handleEnviarEscalaSemana(item)}
-                        className="btn btn-whatsapp btn-sm"
-                        style={{ flex: 1, fontSize: '0.72rem', padding: '0.3rem 0.5rem', gap: '0.3rem' }}
-                        title="Enviar lista consolidada das faxinas da semana no WhatsApp da ajudante"
-                      >
-                        <Send size={12} />
-                        <span>Enviar Escala (WhatsApp)</span>
-                      </button>
+                      <div style={{ display: 'flex', gap: '0.45rem', width: '100%' }}>
+                        <button 
+                          type="button"
+                          onClick={() => abrirPreviewEscala(item)}
+                          className="btn btn-secondary btn-sm"
+                          style={{ flex: 1, fontSize: '0.72rem', padding: '0.35rem 0.45rem', gap: '0.3rem', justifyContent: 'center' }}
+                          title="Ver o texto da mensagem e conferir se quer enviar com ou sem valores"
+                        >
+                          <Eye size={13} color="var(--primary-400)" />
+                          <span>Ver Mensagem</span>
+                        </button>
+
+                        <button 
+                          type="button"
+                          onClick={() => abrirPreviewEscala(item)}
+                          className="btn btn-whatsapp btn-sm"
+                          style={{ flex: 1.2, fontSize: '0.72rem', padding: '0.35rem 0.5rem', gap: '0.3rem', justifyContent: 'center' }}
+                          title="Abrir pré-visualização e enviar no WhatsApp"
+                        >
+                          <Send size={13} />
+                          <span>Enviar WhatsApp</span>
+                        </button>
+                      </div>
                     ) : (
                       <button 
                         onClick={() => onNovoAgendamento()}
                         className="btn btn-primary btn-sm"
-                        style={{ flex: 1, fontSize: '0.72rem', padding: '0.3rem 0.5rem', gap: '0.3rem' }}
+                        style={{ width: '100%', fontSize: '0.72rem', padding: '0.35rem 0.5rem', gap: '0.3rem' }}
                       >
                         <span>+ Escalar Faxina Agora</span>
                       </button>
@@ -780,6 +826,20 @@ export const DashboardView = ({ onNovoAgendamento, onEditarAgendamento }) => {
           <ChevronRight size={16} />
         </button>
       </div>
+
+      {/* MODAL DE PRÉ-VISUALIZAÇÃO DA ESCALA SEMANAL */}
+      <ModalPreviewEscalaSemanal 
+        isOpen={modalPreviewEscalaOpen}
+        onClose={() => {
+          setModalPreviewEscalaOpen(false);
+          setAjudantePreviewEscala(null);
+          setFaxinasPreviewEscala([]);
+        }}
+        ajudante={ajudantePreviewEscala}
+        faxinas={faxinasPreviewEscala}
+        clientes={clientes}
+        showToast={showToast}
+      />
 
       {/* MODAL DE VIRADA DE MÊS AUTOMÁTICA */}
       <ModalViradaMes 

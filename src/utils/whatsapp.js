@@ -248,16 +248,41 @@ Aguardo seu retorno para programarmos seus dias! Muito obrigado! 📲✨`;
 export const buildEscalaSemanalAjudanteText = ({
   ajudanteNome,
   faxinas,
-  totalDiarias
+  totalDiarias,
+  incluirPreco = true,
+  incluirEndereco = true
 }) => {
   const lista = faxinas.map((f, i) => {
     const d = new Date(f.dataHoraInicio);
     const diaSemana = d.toLocaleDateString('pt-BR', { weekday: 'short' });
     const data = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
     const hora = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-    const local = f.condominio ? `${f.condominio} (${f.bairro || ''})` : (f.bairro || 'São Paulo');
-    return `${i + 1}. *${diaSemana.toUpperCase()}, ${data}* às *${hora}*\n   👤 Cliente: ${f.clienteNome}\n   📍 Local: ${local}\n   💵 Diária: R$ ${Number(f.valorDiaria || 0).toFixed(2).replace('.', ',')}`;
+    
+    let linhas = [
+      `${i + 1}. *${diaSemana.toUpperCase()}, ${data}* às *${hora}*`,
+      `   👤 Cliente: ${f.clienteNome}`
+    ];
+    
+    if (incluirEndereco) {
+      const local = f.condominio ? `${f.condominio} (${f.bairro || ''})` : (f.bairro || 'São Paulo');
+      linhas.push(`   📍 Local: ${local}`);
+      if (f.apartamento || f.torre) {
+        linhas.push(`   🚪 Apto/Torre: ${f.torre ? `${f.torre} - ` : ''}${f.apartamento || ''}`);
+      }
+    }
+    
+    if (incluirPreco) {
+      linhas.push(`   💵 Diária a receber: R$ ${Number(f.valorDiaria || 0).toFixed(2).replace('.', ',')}`);
+    }
+    
+    return linhas.join('\n');
   }).join('\n\n');
 
-  return `Oi *${ajudanteNome}*! Segue sua escala de trabalhos da *Limpeza Express SP* para os próximos dias: 🧹✨\n\n${lista}\n\n📊 *Total:* ${faxinas.length} faxina(s)\n💰 *Valor Total em Diárias:* R$ ${Number(totalDiarias || 0).toFixed(2).replace('.', ',')}\n\nContamos com sua dedicação e capricho de sempre! Que Deus abençoe sua jornada e seu trabalho! ✝️🙏`;
+  let rodape = `📊 *Total:* ${faxinas.length} faxina(s)`;
+  if (incluirPreco) {
+    rodape += `\n💰 *Total em Diárias:* R$ ${Number(totalDiarias || 0).toFixed(2).replace('.', ',')}`;
+  }
+
+  return `Oi *${ajudanteNome}*! Segue sua escala de trabalhos da *Limpeza Express SP* para os próximos dias: 🧹✨\n\n${lista}\n\n${rodape}\n\nContamos com sua dedicação e capricho de sempre! Que Deus abençoe sua jornada e seu trabalho! ✝️🙏`;
 };
+
