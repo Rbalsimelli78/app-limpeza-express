@@ -226,7 +226,21 @@ ${listaDiarias || '• Nenhuma diária registrada no período.'}
 ⏳ Saldo a Pagar: *R$ ${Number(totalPendente).toFixed(2).replace('.', ',')}*
 📊 Total de Faxinas: *${historicoDiarias.length} trabalhos*
 
-Muito obrigado pela sua dedicação e excelente trabalho na equipe! ⭐✨`;
+Qualquer dúvida estamos à disposição! 🧼🧹✨`;
 };
+
+/**
+ * Mensagem para cliente ativo que ainda não tem limpeza agendada no mês
+ */
+export const buildVerificacaoAgendamentoText = ({ clienteNome, mesNome, ano }) => {
+  return `Olá ${clienteNome || 'Cliente'}! Tudo bem? Aqui é da *Limpeza Express SP*! ✨
+
+Passando para verificar a sua programação de limpezas para o mês de *${mesNome} de ${ano}*. 🧹🧼
+
+Ainda não temos seus dias agendados para este mês. Podemos já reservar as suas datas na agenda para garantir a sua escala e o atendimento da sua equipe favorita?
+
+Aguardo seu retorno para programarmos seus dias! Muito obrigado! 📲✨`;
+};
+
 
 

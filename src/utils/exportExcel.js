@@ -571,3 +571,138 @@ export const exportExtratoAjudanteCsv = ({ ajudante, historicoDiarias, totalGera
   const safeName = ajudante.nome.toLowerCase().replace(/[^a-z0-9]/g, '_');
   downloadCsv(`extrato_diarias_${safeName}_${new Date().toISOString().slice(0, 10)}.csv`, csvString);
 };
+
+// ==========================================
+// EXPORTAÇÃO EXCEL (.XLSX) - MAPA ANUAL DE LIMPEZAS POR CLIENTE
+// ==========================================
+export const exportMapaLimpezasXlsx = async ({
+  dadosClientes = [],
+  ano = 2026,
+  totaisMeses = [],
+  totalGeralAno = 0
+}) => {
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'Limpeza Express SP';
+  workbook.created = new Date();
+
+  const worksheet = workbook.addWorksheet(`Limpezas ${ano}`);
+
+  const colunasMeses = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+  const sufixoAno = String(ano).slice(2);
+
+  worksheet.columns = [
+    { key: 'cliente', width: 32 },
+    { key: 'tipo', width: 18 },
+    ...colunasMeses.map((m, idx) => ({ key: `m_${idx}`, width: 10 })),
+    { key: 'total', width: 14 }
+  ];
+
+  // 1. Título
+  const titleRow = worksheet.addRow([`QUANTIDADE DE LIMPEZAS EFETUADAS POR CLIENTE - ${ano}`]);
+  titleRow.height = 30;
+  worksheet.mergeCells('A1:O1');
+  const titleCell = worksheet.getCell('A1');
+  titleCell.font = { name: 'Calibri', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
+  titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF065F46' } };
+  titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
+
+  // 2. Metadados
+  worksheet.addRow([]);
+  const rSub = worksheet.addRow(['Limpeza Express SP • Controle Operacional de Frequência e Ativação de Clientes']);
+  worksheet.mergeCells(`A${rSub.number}:O${rSub.number}`);
+  rSub.getCell(1).font = { italic: true, color: { argb: 'FF475569' } };
+  worksheet.addRow([]);
+
+  // 3. Cabeçalho da Tabela
+  const headers = ['Clientes Ativos', 'Frequência / Plano', ...colunasMeses.map(m => `${m}/${sufixoAno}`), 'Total Ano'];
+  const headerRow = worksheet.addRow(headers);
+  headerRow.height = 24;
+  headerRow.eachCell((cell) => {
+    cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F172A' } };
+    cell.alignment = { vertical: 'middle', horizontal: 'center' };
+  });
+
+  // 4. Linhas de Dados
+  dadosClientes.forEach((item, idx) => {
+    const rowValues = [
+      item.nome,
+      item.tipoRecorrencia || 'Semanal',
+      ...item.mesesQtd,
+      item.totalAno
+    ];
+
+    const row = worksheet.addRow(rowValues);
+    row.height = 20;
+
+    const isEven = idx % 2 === 0;
+    const bgArgb = isEven ? 'FFFFFFFF' : 'FFF8FAFC';
+
+    row.eachCell((cell, colNumber) => {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bgArgb } };
+      cell.border = {
+        bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+        top: { style: 'thin', color: { argb: 'FFE2E8F0' } }
+      };
+
+      if (colNumber === 1) {
+        cell.alignment = { horizontal: 'left', vertical: 'middle' };
+        cell.font = { bold: true };
+      } else if (colNumber === 2) {
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.font = { color: { argb: 'FF64748B' } };
+      } else if (colNumber === 15) { // Total Ano
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.font = { bold: true, color: { argb: 'FF065F46' } };
+      } else {
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        const val = Number(cell.value) || 0;
+        if (val > 0) {
+          cell.font = { bold: true, color: { argb: 'FF059669' } };
+        } else {
+          cell.font = { color: { argb: 'FF94A3B8' } };
+        }
+      }
+    });
+  });
+
+  // 5. Linha de Total Geral
+  if (dadosClientes.length > 0) {
+    const totalRowValues = ['TOTAL GERAL', '', ...totaisMeses, totalGeralAno];
+    const totalRow = worksheet.addRow(totalRowValues);
+    totalRow.height = 24;
+
+    totalRow.eachCell((cell, colNumber) => {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
+      cell.font = { bold: true };
+      cell.border = {
+        top: { style: 'medium', color: { argb: 'FF0F172A' } },
+        bottom: { style: 'double', color: { argb: 'FF0F172A' } }
+      };
+      if (colNumber === 1) {
+        cell.alignment = { horizontal: 'left', vertical: 'middle' };
+      } else {
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        if (colNumber === 15) {
+          cell.font = { bold: true, color: { argb: 'FF065F46' } };
+        }
+      }
+    });
+  }
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  });
+  const filename = `quantidade_limpezas_clientes_${ano}.xlsx`;
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+

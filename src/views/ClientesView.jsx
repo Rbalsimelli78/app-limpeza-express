@@ -23,13 +23,30 @@ import {
 import { formatPhone, formatCurrency } from '../utils/formatters';
 import { getWhatsAppUrl } from '../utils/whatsapp';
 import { ModalExtratoCliente } from '../components/ModalExtratoCliente';
+import { MapaLimpezasClientes } from '../components/MapaLimpezasClientes';
 
 export const ClientesView = ({ onNovoCliente, onEditarCliente, onAgendarParaCliente }) => {
   const { clientes, agendamentos, planos, deleteCliente, updateCliente } = useApp();
+  const [abaVisao, setAbaVisao] = useState('cartoes'); // 'cartoes' | 'mapa_limpezas'
   const [busca, setBusca] = useState('');
   const [filtroCondominio, setFiltroCondominio] = useState('todos');
   const [filtroStatus, setFiltroStatus] = useState('todos'); // 'todos', 'ativo', 'inativo', 'pj'
   const [clienteExtrato, setClienteExtrato] = useState(null);
+
+  const agora = new Date();
+  const mesAtual = agora.getMonth();
+  const anoAtual = agora.getFullYear();
+
+  // Contagem de clientes ativos sem agendamento no mês corrente para badge
+  const qtdSemAgendamentoMesAtual = clientes.filter(c => {
+    if (c.status === 'inativo') return false;
+    const agsNoMes = agendamentos.filter(ag => {
+      if (ag.clienteId !== c.id || !ag.dataHoraInicio) return false;
+      const d = new Date(ag.dataHoraInicio);
+      return d.getMonth() === mesAtual && d.getFullYear() === anoAtual;
+    });
+    return agsNoMes.length === 0;
+  }).length;
 
   // Contagens para os botões de status
   const qtdAtivos = clientes.filter(c => c.status !== 'inativo').length;
@@ -92,8 +109,56 @@ export const ClientesView = ({ onNovoCliente, onEditarCliente, onAgendarParaClie
         </button>
       </div>
 
-      {/* Busca e Filtros */}
-      <div className="glass-card" style={{ padding: '1rem', marginBottom: '1.5rem' }}>
+      {/* Seletor de Visão: Cartões vs Mapa de Limpezas & Ativação */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1.25rem' }}>
+        <div style={{ display: 'flex', gap: '0.4rem', background: 'rgba(255, 255, 255, 0.05)', padding: '0.3rem', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+          <button
+            type="button"
+            onClick={() => setAbaVisao('cartoes')}
+            className={`btn btn-sm ${abaVisao === 'cartoes' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{ border: 'none', gap: '0.45rem' }}
+          >
+            <Users size={15} />
+            <span>Cartões de Clientes ({clientes.length})</span>
+          </button>
+          
+          <button
+            type="button"
+            onClick={() => setAbaVisao('mapa_limpezas')}
+            className={`btn btn-sm ${abaVisao === 'mapa_limpezas' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{ border: 'none', gap: '0.45rem', position: 'relative' }}
+          >
+            <Calendar size={15} />
+            <span>Mapa de Limpezas & Ativação</span>
+            {qtdSemAgendamentoMesAtual > 0 && (
+              <span style={{
+                background: '#f59e0b',
+                color: '#1e1b4b',
+                fontWeight: '800',
+                fontSize: '0.7rem',
+                padding: '0.1rem 0.5rem',
+                borderRadius: '999px',
+                marginLeft: '0.25rem'
+              }}>
+                {qtdSemAgendamentoMesAtual} sem faxina
+              </span>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {abaVisao === 'mapa_limpezas' ? (
+        <MapaLimpezasClientes
+          clientes={clientes}
+          agendamentos={agendamentos}
+          planos={planos}
+          onAgendarParaCliente={onAgendarParaCliente}
+          onVerExtratoCliente={(cli) => setClienteExtrato(cli)}
+        />
+      ) : (
+        <>
+          {/* Busca e Filtros */}
+          <div className="glass-card" style={{ padding: '1rem', marginBottom: '1.5rem' }}>
         <div style={{ position: 'relative' }}>
           <Search size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
           <input 
@@ -465,6 +530,8 @@ export const ClientesView = ({ onNovoCliente, onEditarCliente, onAgendarParaClie
           })
         )}
       </div>
+        </>
+      )}
 
       {/* Modal de Extrato do Cliente */}
       <ModalExtratoCliente 
