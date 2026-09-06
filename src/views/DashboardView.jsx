@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { 
   DollarSign, 
@@ -15,11 +15,13 @@ import {
   Sparkles,
   AlertCircle,
   FileText,
-  Building
+  Building,
+  RefreshCw
 } from 'lucide-react';
 import { formatCurrency, formatTime, formatDate } from '../utils/formatters';
 import { generateGoogleCalendarUrl } from '../utils/calendar';
 import { getWhatsAppUrl, buildLembreteClienteText, buildEscalaAjudanteText } from '../utils/whatsapp';
+import { ModalViradaMes } from '../components/ModalViradaMes';
 
 export const DashboardView = ({ onNovoAgendamento, onEditarAgendamento }) => {
   const { 
@@ -35,6 +37,8 @@ export const DashboardView = ({ onNovoAgendamento, onEditarAgendamento }) => {
     limparTodosOsDados,
     showToast 
   } = useApp();
+
+  const [modalViradaMesOpen, setModalViradaMesOpen] = useState(false);
 
   const financeiro = getFinanceiroGeral();
 
@@ -145,13 +149,27 @@ export const DashboardView = ({ onNovoAgendamento, onEditarAgendamento }) => {
               Controle diário de agendamentos, clientes e diárias das ajudantes parceiras.
             </p>
           </div>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
             <button 
               onClick={() => setActiveTab('orcamento')} 
               className="btn btn-secondary btn-sm"
             >
               <MessageCircle size={16} color="#25d366" />
-              <span>Orçar via WhatsApp</span>
+              <span>Orçar WhatsApp</span>
+            </button>
+            <button 
+              onClick={() => setModalViradaMesOpen(true)} 
+              className="btn btn-secondary btn-sm"
+              style={{ 
+                gap: '0.4rem', 
+                background: 'rgba(59, 130, 246, 0.12)', 
+                borderColor: 'rgba(59, 130, 246, 0.4)',
+                color: '#93c5fd'
+              }}
+              title="Programar em 1 clique todos os clientes confirmados para o próximo mês"
+            >
+              <RefreshCw size={15} color="#60a5fa" />
+              <span>🔄 Virar Mês</span>
             </button>
             <button 
               onClick={onNovoAgendamento} 
@@ -508,6 +526,12 @@ export const DashboardView = ({ onNovoAgendamento, onEditarAgendamento }) => {
           })
         )}
       </div>
+
+      {/* MODAL DE VIRADA DE MÊS AUTOMÁTICA */}
+      <ModalViradaMes 
+        isOpen={modalViradaMesOpen}
+        onClose={() => setModalViradaMesOpen(false)}
+      />
     </div>
   );
 };

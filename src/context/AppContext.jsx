@@ -451,6 +451,19 @@ export const AppProvider = ({ children }) => {
     return novo;
   };
 
+  const addAgendamentosMultiplos = (listaAgendamentos) => {
+    if (!Array.isArray(listaAgendamentos) || listaAgendamentos.length === 0) return [];
+    const timestamp = Date.now();
+    const novos = listaAgendamentos.map((item, index) => ({
+      ...item,
+      id: `agend-${timestamp}-${index}-${Math.random().toString(36).substr(2, 4)}`
+    }));
+    setAgendamentos(prev => [...novos, ...prev]);
+    novos.forEach(ag => salvarAgendamentoNuvem(ag));
+    showToast(`🎉 ${novos.length} faxinas agendadas com sucesso!`);
+    return novos;
+  };
+
   const updateAgendamento = (id, agendamentoData) => {
     let atualizado = null;
     setAgendamentos(prev => prev.map(a => {
@@ -871,6 +884,7 @@ export const AppProvider = ({ children }) => {
       deletePlano,
       resetPlanosPadrao,
       addAgendamento,
+      addAgendamentosMultiplos,
       updateAgendamento,
       deleteAgendamento,
       setStatusServico,

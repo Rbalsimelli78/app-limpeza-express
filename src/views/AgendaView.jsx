@@ -19,13 +19,15 @@ import {
   CheckCircle2,
   AlertCircle,
   FileText,
-  Building
+  Building,
+  RefreshCw
 } from 'lucide-react';
 import { formatCurrency, formatDate, formatTime } from '../utils/formatters';
 import { generateGoogleCalendarUrl, downloadIcsFile } from '../utils/calendar';
 import { getWhatsAppUrl, buildLembreteClienteText, buildEscalaAjudanteText } from '../utils/whatsapp';
 import { CalendarView } from '../components/CalendarView';
 import { ModalDiaAgenda } from '../components/ModalDiaAgenda';
+import { ModalViradaMes } from '../components/ModalViradaMes';
 
 export const AgendaView = ({ onNovoAgendamento, onEditarAgendamento }) => {
   const { 
@@ -47,6 +49,7 @@ export const AgendaView = ({ onNovoAgendamento, onEditarAgendamento }) => {
   // Estado para o Modal de Detalhes do Dia
   const [diaSelecionado, setDiaSelecionado] = useState(null);
   const [modalDiaOpen, setModalDiaOpen] = useState(false);
+  const [modalViradaMesOpen, setModalViradaMesOpen] = useState(false);
 
   // Filtragem dos agendamentos
   const agendamentosFiltrados = agendamentos.filter(ag => {
@@ -131,6 +134,21 @@ export const AgendaView = ({ onNovoAgendamento, onEditarAgendamento }) => {
               <span>Lista ({agendamentosFiltrados.length})</span>
             </button>
           </div>
+
+          <button 
+            onClick={() => setModalViradaMesOpen(true)} 
+            className="btn btn-secondary btn-sm" 
+            style={{ 
+              gap: '0.4rem', 
+              background: 'rgba(59, 130, 246, 0.12)', 
+              borderColor: 'rgba(59, 130, 246, 0.4)',
+              color: '#93c5fd'
+            }}
+            title="Programar em 1 clique todos os clientes confirmados (semanais, quinzenais e mensais) para o próximo mês"
+          >
+            <RefreshCw size={15} color="#60a5fa" />
+            <span>🔄 Virar Mês (Clientes Confirmados)</span>
+          </button>
 
           <button onClick={() => onNovoAgendamento()} className="btn btn-primary btn-sm" style={{ gap: '0.35rem' }}>
             <Plus size={16} />
@@ -375,6 +393,12 @@ export const AgendaView = ({ onNovoAgendamento, onEditarAgendamento }) => {
         setStatusPagamentoCliente={setStatusPagamentoCliente}
         setStatusPagamentoAjudante={setStatusPagamentoAjudante}
         showToast={showToast}
+      />
+
+      {/* MODAL DE VIRADA DE MÊS AUTOMÁTICA */}
+      <ModalViradaMes 
+        isOpen={modalViradaMesOpen}
+        onClose={() => setModalViradaMesOpen(false)}
       />
     </div>
   );

@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { X, Calendar, User, Clock, DollarSign, Sparkles, AlertTriangle, Users } from 'lucide-react';
+import { X, Calendar, User, Clock, DollarSign, Sparkles, AlertTriangle, Users, Repeat } from 'lucide-react';
 import { generateGoogleCalendarUrl } from '../utils/calendar';
+import { generateRecurrenceDates } from '../utils/recurrence';
+import { formatCurrency } from '../utils/formatters';
 
 export const ModalAgendamento = ({ isOpen, onClose, agendamentoEdicao = null }) => {
   const { 
@@ -10,6 +12,7 @@ export const ModalAgendamento = ({ isOpen, onClose, agendamentoEdicao = null }) 
     planos, 
     regras, 
     addAgendamento, 
+    addAgendamentosMultiplos,
     updateAgendamento, 
     showToast 
   } = useApp();
@@ -26,6 +29,12 @@ export const ModalAgendamento = ({ isOpen, onClose, agendamentoEdicao = null }) 
   const [statusServico, setStatusServico] = useState('agendado');
   const [observacoes, setObservacoes] = useState('');
   const [ajudantesSelecionadas, setAjudantesSelecionadas] = useState([]);
+
+  // Recorrência / Programação do Mês Todo
+  const [agendarMesTodo, setAgendarMesTodo] = useState(false);
+  const [tipoRecorrencia, setTipoRecorrencia] = useState('semanal'); // 'semanal' | 'quinzenal' | 'mensal'
+  const [limiteRecorrencia, setLimiteRecorrencia] = useState('fim_mes'); // 'fim_mes' | '4_semanas' | '8_semanas'
+  const [datasRecorrentes, setDatasRecorrentes] = useState([]);
 
   // Inicialização ao abrir modal
   useEffect(() => {
@@ -119,6 +128,16 @@ export const ModalAgendamento = ({ isOpen, onClose, agendamentoEdicao = null }) 
   const handlePlanoChange = (e) => {
     const newId = e.target.value;
     setPlanoId(newId);
+
+    // Ajusta tipo de recorrência automaticamente com base no plano
+    if (newId.includes('semanal')) {
+      setTipoRecorrencia('semanal');
+    } else if (newId.includes('quinzenal')) {
+      setTipoRecorrencia('quinzenal');
+    } else if (newId.includes('mensal')) {
+      setTipoRecorrencia('mensal');
+    }
+
     const cli = clientes.find(c => c.id === clienteId);
     if (cli?.valorFechado !== null && cli?.valorFechado !== undefined && Number(cli?.valorFechado) > 0 && (newId === 'plano-customizado' || newId === 'plano-comercial-pj' || newId === cli?.planoPadraoId)) {
       setValorCliente(Number(cli.valorFechado));
@@ -149,12 +168,46 @@ export const ModalAgendamento = ({ isOpen, onClose, agendamentoEdicao = null }) 
       setDormitorios(dorms);
       setPlanoId(planoCli);
 
+      // Ajusta tipo de recorrência automaticamente com base no plano do cliente
+      if (planoCli.includes('semanal')) {
+        setTipoRecorrencia('semanal');
+      } else if (planoCli.includes('quinzenal')) {
+        setTipoRecorrencia('quinzenal');
+      } else if (planoCli.includes('mensal')) {
+        setTipoRecorrencia('mensal');
+      }
+
       if (cli.valorFechado !== null && cli.valorFechado !== undefined && Number(cli.valorFechado) > 0) {
         setValorCliente(Number(cli.valorFechado));
       } else {
         recalcularValor(planoCli, dorms, semManutencao, cId);
       }
     }
+  };
+
+  // Recalcular datas da recorrência quando parâmetros mudam
+  useEffect(() => {
+    if (!agendamentoEdicao && agendarMesTodo && dataHoraInicio) {
+      try {
+        const datas = generateRecurrenceDates({
+          dataHoraInicio,
+          dataHoraFim,
+          tipoRecorrencia,
+          limiteTipo: limiteRecorrencia
+        });
+        setDatasRecorrentes(datas);
+      } catch (err) {
+        console.error('Erro ao gerar datas recorrentes:', err);
+      }
+    } else if (!agendarMesTodo) {
+      setDatasRecorrentes([]);
+    }
+  }, [agendarMesTodo, dataHoraInicio, dataHoraFim, tipoRecorrencia, limiteRecorrencia, agendamentoEdicao]);
+
+  const toggleDataRecorrente = (index) => {
+    setDatasRecorrentes(prev => prev.map((item, idx) => 
+      idx === index ? { ...item, selecionada: !item.selecionada } : item
+    ));
   };
 
   const toggleAjudante = (ajudanteId) => {
@@ -185,6 +238,47 @@ export const ModalAgendamento = ({ isOpen, onClose, agendamentoEdicao = null }) 
     }
     if (!dataHoraInicio) {
       showToast('Defina a data e horário da faxina.', 'danger');
+      return;
+    }
+
+    // Se optou por agendar o mês todo / recorrente em um novo agendamento
+    if (agendarMesTodo && !agendamentoEdicao && datasRecorrentes.length > 0) {
+      const selecionadas = datasRecorrentes.filter(d => d.selecionada);
+      if (selecionadas.length === 0) {
+        showToast('Selecione pelo menos uma data para agendar.', 'danger');
+        return;
+      }
+
+      const listaPayloads = selecionadas.map(d => ({
+        clienteId,
+        planoId,
+        dataHoraInicio: d.dataHoraInicio,
+        dataHoraFim: d.dataHoraFim || d.dataHoraInicio,
+        dormitorios,
+        semManutencao2Meses: semManutencao,
+        valorCliente: Number(valorCliente),
+        statusClientePagamento,
+        formaPagamentoCliente,
+        statusServico,
+        observacoes,
+        ajudantesEscaladas: ajudantesSelecionadas.map(a => ({ ...a }))
+      }));
+
+      addAgendamentosMultiplos(listaPayloads);
+      showToast(`🎉 ${listaPayloads.length} faxinas agendadas com sucesso para o mês todo!`, 'success');
+
+      if (openGoogleCalendar && listaPayloads.length > 0) {
+        const clienteObj = clientes.find(c => c.id === clienteId);
+        const planoObj = planos.find(p => p.id === planoId);
+        const nomesAjudantes = ajudantesSelecionadas
+          .map(a => ajudantes.find(aj => aj.id === a.ajudanteId)?.nome)
+          .filter(Boolean);
+
+        const url = generateGoogleCalendarUrl(listaPayloads[0], clienteObj, planoObj, nomesAjudantes);
+        window.open(url, '_blank');
+      }
+
+      onClose();
       return;
     }
 
@@ -382,6 +476,141 @@ export const ModalAgendamento = ({ isOpen, onClose, agendamentoEdicao = null }) 
               </div>
             </div>
 
+            {/* Recorrência / Programação do Mês Todo */}
+            {!agendamentoEdicao && (
+              <div style={{
+                background: agendarMesTodo ? 'rgba(59, 130, 246, 0.08)' : 'var(--bg-input)',
+                border: agendarMesTodo ? '1px solid rgba(59, 130, 246, 0.35)' : '1px solid var(--border-color)',
+                borderRadius: 'var(--radius-md)',
+                padding: '0.875rem 1rem',
+                marginBottom: '1rem',
+                transition: 'var(--transition)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', cursor: 'pointer', margin: 0, fontWeight: '600', color: agendarMesTodo ? '#60a5fa' : 'var(--text-primary)' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={agendarMesTodo} 
+                      onChange={e => setAgendarMesTodo(e.target.checked)}
+                      style={{ width: '18px', height: '18px', accentColor: '#3b82f6' }}
+                    />
+                    <Repeat size={16} />
+                    <span>📅 Programar Faxinas do Mês Todo (Recorrência)</span>
+                  </label>
+                  {agendarMesTodo && (
+                    <span className="badge badge-blue" style={{ fontSize: '0.75rem' }}>
+                      {datasRecorrentes.filter(d => d.selecionada).length} datas selecionadas
+                    </span>
+                  )}
+                </div>
+
+                {agendarMesTodo && (
+                  <div style={{ marginTop: '0.875rem', paddingTop: '0.875rem', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.875rem' }}>
+                      <div>
+                        <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Frequência</label>
+                        <select 
+                          className="form-select" 
+                          value={tipoRecorrencia} 
+                          onChange={e => setTipoRecorrencia(e.target.value)}
+                          style={{ fontSize: '0.85rem', padding: '0.35rem 0.6rem' }}
+                        >
+                          <option value="semanal">Semanal (Toda semana)</option>
+                          <option value="quinzenal">Quinzenal (A cada 15 dias)</option>
+                          <option value="mensal">Mensal (1x ao mês)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Período a Programar</label>
+                        <select 
+                          className="form-select" 
+                          value={limiteRecorrencia} 
+                          onChange={e => setLimiteRecorrencia(e.target.value)}
+                          style={{ fontSize: '0.85rem', padding: '0.35rem 0.6rem' }}
+                        >
+                          <option value="fim_mes">Até o final deste mês</option>
+                          <option value="4_semanas">Próximas 4 semanas</option>
+                          <option value="8_semanas">Próximas 8 semanas</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Checklist das datas geradas */}
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', fontWeight: '500' }}>
+                      Datas calculadas para este cliente (desmarque se houver algum dia sem faxina):
+                    </div>
+
+                    <div style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.375rem',
+                      maxHeight: '160px',
+                      overflowY: 'auto',
+                      paddingRight: '0.25rem'
+                    }}>
+                      {datasRecorrentes.map((item, idx) => (
+                        <div 
+                          key={item.idTemp || idx}
+                          onClick={() => toggleDataRecorrente(idx)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '0.45rem 0.65rem',
+                            borderRadius: 'var(--radius-sm)',
+                            background: item.selecionada ? 'rgba(59, 130, 246, 0.15)' : 'var(--bg-card)',
+                            border: item.selecionada ? '1px solid rgba(59, 130, 246, 0.4)' : '1px solid var(--border-color)',
+                            cursor: 'pointer',
+                            fontSize: '0.82rem',
+                            transition: 'var(--transition)'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <input 
+                              type="checkbox" 
+                              checked={item.selecionada} 
+                              onChange={() => toggleDataRecorrente(idx)}
+                              onClick={e => e.stopPropagation()}
+                              style={{ width: '15px', height: '15px', accentColor: '#3b82f6' }}
+                            />
+                            <span style={{ fontWeight: item.selecionada ? '600' : '400', color: item.selecionada ? '#93c5fd' : 'var(--text-secondary)' }}>
+                              {item.diaSemana}, {item.diaFormatado.split(', ')[1]} • {item.horaFormatada}
+                            </span>
+                          </div>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                            {formatCurrency(Number(valorCliente))}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Resumo do Mês */}
+                    {datasRecorrentes.filter(d => d.selecionada).length > 0 && (
+                      <div style={{
+                        marginTop: '0.625rem',
+                        padding: '0.5rem 0.75rem',
+                        background: 'rgba(16, 185, 129, 0.08)',
+                        border: '1px solid rgba(16, 185, 129, 0.25)',
+                        borderRadius: 'var(--radius-sm)',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        fontSize: '0.78rem',
+                        color: 'var(--primary-400)'
+                      }}>
+                        <span>
+                          <strong>{datasRecorrentes.filter(d => d.selecionada).length} faxinas</strong> programadas no mês
+                        </span>
+                        <strong>
+                          Total Cliente: {formatCurrency(datasRecorrentes.filter(d => d.selecionada).length * Number(valorCliente))}
+                        </strong>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Equipe de Ajudantes (Geralmente 2 profissionais) */}
             <div className="form-group">
               <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -541,7 +770,7 @@ export const ModalAgendamento = ({ isOpen, onClose, agendamentoEdicao = null }) 
                 Cancelar
               </button>
               <button type="submit" className="btn btn-primary btn-sm">
-                Salvar Faxina
+                {agendamentoEdicao ? 'Salvar Alterações' : (agendarMesTodo && datasRecorrentes.filter(d => d.selecionada).length > 1) ? `Salvar ${datasRecorrentes.filter(d => d.selecionada).length} Faxinas do Mês` : 'Salvar Faxina'}
               </button>
             </div>
           </div>
