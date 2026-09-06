@@ -21,7 +21,8 @@ import {
   Cloud,
   CloudOff,
   RefreshCw,
-  ExternalLink
+  ExternalLink,
+  LogOut
 } from 'lucide-react';
 
 export const ConfigView = () => {
@@ -410,6 +411,22 @@ CREATE TABLE IF NOT EXISTS agendamentos (
               <KeyRound size={16} />
               <span>{salvandoCreds ? 'Salvando...' : 'Salvar Novas Credenciais'}</span>
             </button>
+
+            <div style={{ marginTop: '1.25rem', paddingTop: '1.25rem', borderTop: '1px solid var(--border-color)' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  if (confirm('Deseja sair e bloquear o aplicativo agora?')) {
+                    logout();
+                  }
+                }}
+                className="btn btn-danger"
+                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontWeight: '700' }}
+              >
+                <LogOut size={16} />
+                <span>Sair da Conta (Bloquear Aplicativo)</span>
+              </button>
+            </div>
           </form>
         </div>
 

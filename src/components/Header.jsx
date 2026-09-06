@@ -128,11 +128,19 @@ export const Header = ({ onOpenNovoAgendamento }) => {
               logout();
             }
           }}
-          className="btn btn-secondary btn-icon"
-          title="Sair e Bloquear Aplicativo"
-          style={{ color: 'var(--accent-rose)' }}
+          className="btn btn-danger btn-sm"
+          title="Sair do Aplicativo"
+          style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '0.35rem', 
+            fontWeight: '700',
+            padding: '0.35rem 0.65rem',
+            fontSize: '0.8rem'
+          }}
         >
-          <LogOut size={18} />
+          <LogOut size={15} />
+          <span>Sair</span>
         </button>
       </div>
     </header>

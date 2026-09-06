@@ -65,56 +65,55 @@ export const Sidebar = () => {
         flexDirection: 'column',
         gap: '0.625rem'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <div style={{
-              width: '28px',
-              height: '28px',
-              borderRadius: '50%',
-              background: 'rgba(16, 185, 129, 0.2)',
-              color: 'var(--primary-400)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 'bold',
-              fontSize: '0.75rem'
-            }}>
-              {(currentUser?.name || 'A')[0].toUpperCase()}
-            </div>
-            <div>
-              <div style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--text-primary)', lineHeight: 1.2 }}>
-                {currentUser?.name || 'Administradora'}
-              </div>
-              <span style={{ fontSize: '0.675rem', color: 'var(--text-muted)' }}>
-                @{currentUser?.username || 'admin'}
-              </span>
-            </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+          <div style={{
+            width: '32px',
+            height: '32px',
+            borderRadius: '50%',
+            background: 'rgba(16, 185, 129, 0.2)',
+            color: 'var(--primary-400)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontWeight: 'bold',
+            fontSize: '0.85rem'
+          }}>
+            {(currentUser?.name || 'A')[0].toUpperCase()}
           </div>
-
-          <button
-            onClick={() => {
-              if (confirm('Deseja sair e bloquear o sistema?')) {
-                logout();
-              }
-            }}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: 'var(--accent-rose)',
-              cursor: 'pointer',
-              padding: '0.35rem',
-              borderRadius: 'var(--radius-sm)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-            title="Sair e Bloquear"
-          >
-            <LogOut size={16} />
-          </button>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-primary)', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {currentUser?.name || 'Administradora'}
+            </div>
+            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+              @{currentUser?.username || 'admin'}
+            </span>
+          </div>
         </div>
 
-        <div style={{ fontSize: '0.7rem', color: 'var(--primary-400)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+        <button
+          onClick={() => {
+            if (confirm('Deseja sair e bloquear o sistema agora?')) {
+              logout();
+            }
+          }}
+          className="btn btn-danger btn-sm"
+          style={{
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '0.45rem',
+            fontWeight: '700',
+            padding: '0.55rem 0.75rem',
+            marginTop: '0.25rem'
+          }}
+          title="Sair do Aplicativo"
+        >
+          <LogOut size={16} />
+          <span>Sair do Sistema</span>
+        </button>
+
+        <div style={{ fontSize: '0.7rem', color: 'var(--primary-400)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem' }}>
           <ShieldCheck size={12} />
           <span>Acesso Administrativo Seguro</span>
         </div>
