@@ -10,7 +10,8 @@ import {
   Clock, 
   Users, 
   PieChart,
-  Filter
+  Filter,
+  RotateCcw
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '../utils/formatters';
 
@@ -240,7 +241,34 @@ export const FinanceiroView = () => {
                     </span>
                   </div>
 
-                  {item.status !== 'pago' && (
+                  {item.status === 'pago' ? (
+                    <button 
+                      onClick={() => {
+                        if (window.confirm(`Deseja estornar este lançamento (${formatCurrency(item.valor)}) para Pendente?`)) {
+                          if (item.origem === 'cliente') {
+                            setStatusPagamentoCliente(item.agendamentoId, 'pendente');
+                          } else if (item.origem === 'ajudante') {
+                            setStatusPagamentoAjudante(item.agendamentoId, item.ajudanteId, 'pendente');
+                          }
+                        }
+                      }}
+                      className="btn btn-secondary btn-sm"
+                      style={{ 
+                        padding: '0.35rem 0.65rem', 
+                        fontSize: '0.75rem',
+                        color: '#f87171',
+                        borderColor: 'rgba(239, 68, 68, 0.4)',
+                        background: 'rgba(239, 68, 68, 0.08)',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.25rem'
+                      }}
+                      title="Estornar lançamento para Pendente"
+                    >
+                      <RotateCcw size={13} />
+                      <span>Estornar</span>
+                    </button>
+                  ) : (
                     <button 
                       onClick={() => {
                         if (item.origem === 'cliente') {

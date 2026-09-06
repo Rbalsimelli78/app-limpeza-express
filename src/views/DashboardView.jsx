@@ -358,13 +358,30 @@ export const DashboardView = ({ onNovoAgendamento, onEditarAgendamento }) => {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', justifyContent: 'flex-end', marginTop: '0.25rem' }}>
                       <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Cliente:</span>
                       {ag.statusClientePagamento === 'pago' ? (
-                        <span className="badge badge-success" style={{ cursor: 'pointer' }} onClick={() => setStatusPagamentoCliente(ag.id, 'pendente')}>
-                          Pago ({ag.formaPagamentoCliente || 'PIX'})
-                        </span>
+                        <button 
+                          type="button"
+                          className="badge badge-success" 
+                          style={{ cursor: 'pointer', border: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }} 
+                          onClick={() => {
+                            if (window.confirm(`Deseja estornar o pagamento do cliente (${formatCurrency(ag.valorCliente)}) para Pendente?`)) {
+                              setStatusPagamentoCliente(ag.id, 'pendente');
+                            }
+                          }}
+                          title="Clique para estornar este pagamento para Pendente"
+                        >
+                          <span>✓ Pago</span>
+                          <span style={{ fontSize: '0.62rem', color: '#fca5a5', textDecoration: 'underline' }}>Estornar</span>
+                        </button>
                       ) : (
-                        <span className="badge badge-warning" style={{ cursor: 'pointer' }} onClick={() => setStatusPagamentoCliente(ag.id, 'pago')}>
-                          Pendente
-                        </span>
+                        <button 
+                          type="button"
+                          className="badge badge-warning" 
+                          style={{ cursor: 'pointer', border: 'none' }} 
+                          onClick={() => setStatusPagamentoCliente(ag.id, 'pago')}
+                          title="Clique para marcar como pago"
+                        >
+                          Pendente (Pagar)
+                        </button>
                       )}
                     </div>
                   </div>
@@ -418,7 +435,28 @@ export const DashboardView = ({ onNovoAgendamento, onEditarAgendamento }) => {
                             </span>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
                               {ae.statusPagamento === 'pago' ? (
-                                <span className="badge badge-success" style={{ fontSize: '0.65rem' }}>Pago</span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (window.confirm(`Deseja estornar o pagamento da diária de ${aj.nome} (${formatCurrency(ae.valorAPagar)}) para "A Pagar"?`)) {
+                                      setStatusPagamentoAjudante(ag.id, ae.ajudanteId, 'pendente');
+                                    }
+                                  }}
+                                  className="badge badge-success"
+                                  style={{ 
+                                    fontSize: '0.68rem', 
+                                    cursor: 'pointer', 
+                                    border: '1px solid #10b981', 
+                                    padding: '0.15rem 0.4rem',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '3px'
+                                  }}
+                                  title="Clique para ESTORNAR e voltar para 'A Pagar'"
+                                >
+                                  <span>✓ Pago</span>
+                                  <span style={{ fontSize: '0.6rem', color: '#fca5a5', textDecoration: 'underline' }}>Estornar</span>
+                                </button>
                               ) : (
                                 <>
                                   <button 

@@ -17,7 +17,8 @@ import {
   ArrowUpRight,
   User,
   MapPin,
-  Phone
+  Phone,
+  RotateCcw
 } from 'lucide-react';
 
 export const ModalExtratoCliente = ({ isOpen, onClose, cliente }) => {
@@ -561,14 +562,34 @@ export const ModalExtratoCliente = ({ isOpen, onClose, cliente }) => {
                             <button
                               type="button"
                               onClick={() => {
-                                const novoStatus = isPago ? 'pendente' : 'pago';
-                                setStatusPagamentoCliente(ag.id, novoStatus);
-                                showToast(`Status alterado para: ${novoStatus === 'pago' ? 'Pago' : 'Pendente'}`);
+                                if (isPago) {
+                                  if (window.confirm(`Deseja estornar o pagamento da faxina (${formatCurrency(ag.valorCliente)}) para "Pendente"?`)) {
+                                    setStatusPagamentoCliente(ag.id, 'pendente');
+                                  }
+                                } else {
+                                  setStatusPagamentoCliente(ag.id, 'pago');
+                                }
                               }}
                               className={`btn btn-sm ${isPago ? 'btn-secondary' : 'btn-primary'}`}
-                              style={{ padding: '0.25rem 0.5rem', fontSize: '0.725rem' }}
+                              style={{ 
+                                padding: '0.25rem 0.55rem', 
+                                fontSize: '0.725rem',
+                                color: isPago ? '#f87171' : '#ffffff',
+                                borderColor: isPago ? 'rgba(239, 68, 68, 0.4)' : undefined,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.25rem'
+                              }}
+                              title={isPago ? 'Estornar pagamento e voltar para Pendente' : 'Marcar como pago'}
                             >
-                              {isPago ? 'Marcar Pendente' : 'Marcar como Pago'}
+                              {isPago ? (
+                                <>
+                                  <RotateCcw size={12} />
+                                  <span>Estornar</span>
+                                </>
+                              ) : (
+                                <span>Receber / Pagar</span>
+                              )}
                             </button>
                           </td>
                         </tr>

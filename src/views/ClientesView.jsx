@@ -20,14 +20,15 @@ import {
   CheckCircle2,
   FileText
 } from 'lucide-react';
-import { formatPhone, formatCurrency } from '../utils/formatters';
+import { formatPhone, formatCurrency, formatDate } from '../utils/formatters';
 import { getWhatsAppUrl } from '../utils/whatsapp';
 import { ModalExtratoCliente } from '../components/ModalExtratoCliente';
 import { MapaLimpezasClientes } from '../components/MapaLimpezasClientes';
 
 export const ClientesView = ({ onNovoCliente, onEditarCliente, onAgendarParaCliente }) => {
-  const { clientes, agendamentos, planos, deleteCliente, updateCliente } = useApp();
+  const { clientes, agendamentos, planos, deleteCliente, updateCliente, setStatusPagamentoCliente } = useApp();
   const [abaVisao, setAbaVisao] = useState('cartoes'); // 'cartoes' | 'mapa_limpezas'
+  const [expandidosCliente, setExpandidosCliente] = useState({});
   const [busca, setBusca] = useState('');
   const [filtroCondominio, setFiltroCondominio] = useState('todos');
   const [filtroStatus, setFiltroStatus] = useState('todos'); // 'todos', 'ativo', 'inativo', 'pj'
@@ -279,7 +280,9 @@ export const ClientesView = ({ onNovoCliente, onEditarCliente, onAgendarParaClie
         ) : (
           clientesFiltrados.map(c => {
             const planoPadrao = planos.find(p => p.id === c.planoPadraoId);
-            const faxinasDoCliente = agendamentos.filter(a => a.clienteId === c.id);
+            const faxinasDoCliente = agendamentos
+              .filter(a => a.clienteId === c.id)
+              .sort((a, b) => new Date(b.dataHoraInicio) - new Date(a.dataHoraInicio));
             const totalGasto = faxinasDoCliente.reduce((acc, curr) => acc + Number(curr.valorCliente || 0), 0);
             const waUrl = getWhatsAppUrl(c.telefone, `Olá ${c.nome}! Como você está? Aqui é da Limpeza Express SP ✨`);
 
@@ -450,6 +453,99 @@ export const ClientesView = ({ onNovoCliente, onEditarCliente, onAgendarParaClie
                     Total: {formatCurrency(totalGasto)}
                   </span>
                 </div>
+
+                {/* Lista das Últimas Faxinas com Status e Ação de Estorno / Pagar */}
+                {faxinasDoCliente.length > 0 && (
+                  <div style={{ marginBottom: '0.85rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase' }}>
+                        {expandidosCliente[c.id] ? `Todas as Faxinas (${faxinasDoCliente.length}):` : 'Últimos Trabalhos:'}
+                      </span>
+                      {faxinasDoCliente.length > 2 && (
+                        <button
+                          type="button"
+                          onClick={() => setExpandidosCliente(prev => ({ ...prev, [c.id]: !prev[c.id] }))}
+                          style={{ background: 'none', border: 'none', color: 'var(--primary-400)', fontSize: '0.72rem', cursor: 'pointer', padding: 0, fontWeight: '600' }}
+                        >
+                          {expandidosCliente[c.id] ? 'Ver menos' : `Ver todas (${faxinasDoCliente.length})`}
+                        </button>
+                      )}
+                    </div>
+
+                    <div style={{ 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      gap: '0.35rem', 
+                      maxHeight: expandidosCliente[c.id] ? '220px' : 'none', 
+                      overflowY: expandidosCliente[c.id] ? 'auto' : 'visible' 
+                    }}>
+                      {(expandidosCliente[c.id] ? faxinasDoCliente : faxinasDoCliente.slice(0, 2)).map((ag) => {
+                        const isPago = ag.statusClientePagamento === 'pago';
+                        return (
+                          <div 
+                            key={ag.id} 
+                            style={{ 
+                              display: 'flex', 
+                              justifyContent: 'space-between', 
+                              alignItems: 'center', 
+                              fontSize: '0.78rem', 
+                              padding: '0.35rem 0.5rem', 
+                              background: 'var(--bg-card-hover)', 
+                              borderRadius: 'var(--radius-sm)' 
+                            }}
+                          >
+                            <div>
+                              <span style={{ fontWeight: '500' }}>{formatDate(ag.dataHoraInicio)}</span>
+                              <span style={{ color: 'var(--text-muted)', marginLeft: '0.35rem', fontSize: '0.72rem' }}>
+                                ({new Date(ag.dataHoraInicio).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })})
+                              </span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                              <strong style={{ color: 'var(--text-primary)' }}>{formatCurrency(ag.valorCliente)}</strong>
+                              {isPago ? (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (window.confirm(`Deseja estornar o pagamento da faxina de ${c.nome} (${formatCurrency(ag.valorCliente)}) para "Pendente"?`)) {
+                                      setStatusPagamentoCliente(ag.id, 'pendente');
+                                    }
+                                  }}
+                                  className="badge badge-success"
+                                  style={{ 
+                                    fontSize: '0.68rem', 
+                                    cursor: 'pointer', 
+                                    border: '1px solid #10b981',
+                                    background: 'rgba(16, 185, 129, 0.15)',
+                                    color: '#34d399',
+                                    display: 'inline-flex', 
+                                    alignItems: 'center', 
+                                    gap: '2px', 
+                                    padding: '0.15rem 0.45rem' 
+                                  }}
+                                  title="Clique para estornar este pagamento e voltar para Pendente"
+                                >
+                                  <CheckCircle2 size={11} />
+                                  <span>Pago</span>
+                                  <span style={{ fontSize: '0.6rem', color: '#fca5a5', marginLeft: '2px', textDecoration: 'underline' }}>Estornar</span>
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => setStatusPagamentoCliente(ag.id, 'pago')}
+                                  className="btn btn-primary btn-sm"
+                                  style={{ padding: '0.15rem 0.45rem', fontSize: '0.68rem' }}
+                                  title="Marcar faxina como paga pelo cliente"
+                                >
+                                  Pagar
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 {/* Botão de Extrato Financeiro & Gráfico */}
                 <button

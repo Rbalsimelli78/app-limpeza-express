@@ -507,7 +507,7 @@ export const AppProvider = ({ children }) => {
       return a;
     }));
     if (atualizado) salvarAgendamentoNuvem(atualizado);
-    showToast(`Pagamento do cliente marcado como "${statusClientePagamento}"!`);
+    showToast(statusClientePagamento === 'pago' ? 'Pagamento do cliente confirmado como Pago!' : 'Pagamento estornado com sucesso para "Pendente"!');
   };
 
   const setStatusPagamentoAjudante = (agendamentoId, ajudanteId, statusPagamento) => {
@@ -520,11 +520,15 @@ export const AppProvider = ({ children }) => {
         }
         return ae;
       });
-      atualizado = { ...ag, ajudantesEscaladas: novasEscaladas };
+      const pagamentosAjudantes = {
+        ...(ag.pagamentosAjudantes || {}),
+        [ajudanteId]: statusPagamento
+      };
+      atualizado = { ...ag, ajudantesEscaladas: novasEscaladas, pagamentosAjudantes };
       return atualizado;
     }));
     if (atualizado) salvarAgendamentoNuvem(atualizado);
-    showToast('Pagamento da ajudante atualizado!');
+    showToast(statusPagamento === 'pago' ? 'Pagamento da diária confirmado como Pago!' : 'Pagamento estornado com sucesso para "A Pagar"!');
   };
 
   // Cálculos Financeiros Dinâmicos

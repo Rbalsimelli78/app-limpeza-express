@@ -16,11 +16,15 @@ import {
   TrendingUp,
   Search,
   UserX,
-  CheckCircle2
+  CheckCircle2,
+  RotateCcw,
+  Calendar,
+  Building
 } from 'lucide-react';
 import { formatCurrency, formatPhone, formatDate, formatTime } from '../utils/formatters';
 import { getWhatsAppUrl } from '../utils/whatsapp';
 import { ModalExtratoAjudante } from '../components/ModalExtratoAjudante';
+import { ExtratoAnaliticoAjudantes } from '../components/ExtratoAnaliticoAjudantes';
 
 export const AjudantesView = ({ onNovaAjudante, onEditarAjudante }) => {
   const { 
@@ -33,6 +37,8 @@ export const AjudantesView = ({ onNovaAjudante, onEditarAjudante }) => {
     showToast 
   } = useApp();
 
+  const [abaVisao, setAbaVisao] = useState('cartoes'); // 'cartoes' | 'extrato_analitico'
+  const [expandidos, setExpandidos] = useState({});
   const [busca, setBusca] = useState('');
   const [filtroStatus, setFiltroStatus] = useState('todas'); // 'todas', 'ativo', 'inativo'
   const [ajudanteExtrato, setAjudanteExtrato] = useState(null);
@@ -92,6 +98,9 @@ export const AjudantesView = ({ onNovaAjudante, onEditarAjudante }) => {
       }
     });
 
+    // Ordena do trabalho mais recente para o mais antigo
+    historico.sort((a, b) => new Date(b.dataHora) - new Date(a.dataHora));
+
     return { totalPendente, totalPago, totalServicos, historico };
   };
 
@@ -115,8 +124,37 @@ export const AjudantesView = ({ onNovaAjudante, onEditarAjudante }) => {
         </button>
       </div>
 
-      {/* Busca e Filtro por Status */}
-      <div className="glass-card" style={{ padding: '1rem', marginBottom: '1.5rem' }}>
+      {/* Seletor de Visão: Cartões de Colaboradoras vs Extrato Analítico */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1.25rem' }}>
+        <div style={{ display: 'flex', gap: '0.4rem', background: 'rgba(255, 255, 255, 0.05)', padding: '0.3rem', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+          <button
+            type="button"
+            onClick={() => setAbaVisao('cartoes')}
+            className={`btn btn-sm ${abaVisao === 'cartoes' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{ border: 'none', gap: '0.45rem' }}
+          >
+            <UserCheck size={15} />
+            <span>Colaboradoras ({ajudantes.length})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setAbaVisao('extrato_analitico')}
+            className={`btn btn-sm ${abaVisao === 'extrato_analitico' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{ border: 'none', gap: '0.45rem' }}
+          >
+            <Calendar size={15} />
+            <span>Extrato Analítico de Diárias</span>
+          </button>
+        </div>
+      </div>
+
+      {abaVisao === 'extrato_analitico' ? (
+        <ExtratoAnaliticoAjudantes />
+      ) : (
+        <>
+          {/* Busca e Filtro por Status */}
+          <div className="glass-card" style={{ padding: '1rem', marginBottom: '1.5rem' }}>
         <div style={{ position: 'relative' }}>
           <Search size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
           <input 
@@ -287,11 +325,37 @@ export const AjudantesView = ({ onNovaAjudante, onEditarAjudante }) => {
                 {/* Histórico Recente de Diárias */}
                 {historico.length > 0 && (
                   <div style={{ marginBottom: '1rem' }}>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase' }}>
-                      Últimos Trabalhos:
-                    </span>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem', marginTop: '0.375rem' }}>
-                      {historico.slice(0, 3).map((h, i) => (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.375rem' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase' }}>
+                        {expandidos[aj.id] ? `Todas as Diárias (${historico.length}):` : 'Últimos Trabalhos:'}
+                      </span>
+                      {historico.length > 3 && (
+                        <button
+                          type="button"
+                          onClick={() => setExpandidos(prev => ({ ...prev, [aj.id]: !prev[aj.id] }))}
+                          style={{ 
+                            background: 'none', 
+                            border: 'none', 
+                            color: 'var(--accent-cyan)', 
+                            fontSize: '0.72rem', 
+                            fontWeight: '600', 
+                            cursor: 'pointer', 
+                            padding: 0 
+                          }}
+                        >
+                          {expandidos[aj.id] ? 'Ver menos' : `Ver todas (${historico.length})`}
+                        </button>
+                      )}
+                    </div>
+
+                    <div style={{ 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      gap: '0.375rem',
+                      maxHeight: expandidos[aj.id] ? '260px' : 'none',
+                      overflowY: expandidos[aj.id] ? 'auto' : 'visible'
+                    }}>
+                      {(expandidos[aj.id] ? historico : historico.slice(0, 3)).map((h, i) => (
                         <div 
                           key={i} 
                           style={{ 
@@ -310,15 +374,41 @@ export const AjudantesView = ({ onNovaAjudante, onEditarAjudante }) => {
                               ({formatDate(h.dataHora)})
                             </span>
                           </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
                             <span style={{ fontWeight: '600' }}>{formatCurrency(h.valor)}</span>
                             {h.statusPagamento === 'pago' ? (
-                              <span className="badge badge-success" style={{ fontSize: '0.65rem' }}>Pago</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (window.confirm(`Deseja estornar o pagamento desta diária (${formatCurrency(h.valor)}) para "A Pagar"?`)) {
+                                    setStatusPagamentoAjudante(h.agendamentoId, aj.id, 'pendente');
+                                  }
+                                }}
+                                className="badge badge-success"
+                                style={{ 
+                                  fontSize: '0.68rem', 
+                                  cursor: 'pointer', 
+                                  border: '1px solid #10b981',
+                                  background: 'rgba(16, 185, 129, 0.15)',
+                                  color: '#34d399',
+                                  padding: '0.15rem 0.45rem',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '3px'
+                                }}
+                                title="Clique para ESTORNAR e voltar para 'A Pagar'"
+                              >
+                                <CheckCircle2 size={11} />
+                                <span>Pago</span>
+                                <span style={{ fontSize: '0.6rem', color: '#fca5a5', marginLeft: '2px', textDecoration: 'underline' }}>Estornar</span>
+                              </button>
                             ) : (
                               <button 
+                                type="button"
                                 onClick={() => setStatusPagamentoAjudante(h.agendamentoId, aj.id, 'pago')}
                                 className="btn btn-primary btn-sm"
-                                style={{ padding: '0.15rem 0.35rem', fontSize: '0.68rem' }}
+                                style={{ padding: '0.15rem 0.45rem', fontSize: '0.68rem' }}
+                                title="Marcar diária como paga"
                               >
                                 Pagar
                               </button>
@@ -398,6 +488,8 @@ export const AjudantesView = ({ onNovaAjudante, onEditarAjudante }) => {
           })
         )}
       </div>
+        </>
+      )}
 
       {/* Modal de Extrato da Ajudante */}
       <ModalExtratoAjudante 

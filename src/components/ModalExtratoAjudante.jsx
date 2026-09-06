@@ -17,17 +17,21 @@ import {
   Copy,
   Check,
   CreditCard,
-  UserCheck
+  UserCheck,
+  Search,
+  RotateCcw
 } from 'lucide-react';
 
 export const ModalExtratoAjudante = ({ isOpen, onClose, ajudante }) => {
   const { agendamentos, clientes, setStatusPagamentoAjudante, showToast } = useApp();
 
-  // Filtros de Período
+  // Filtros de Período e Busca
   const [periodoTipo, setPeriodoTipo] = useState('todos');
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim] = useState('');
   const [pixCopiado, setPixCopiado] = useState(false);
+  const [statusFiltro, setStatusFiltro] = useState('todos'); // 'todos' | 'pendente' | 'pago'
+  const [buscaTabela, setBuscaTabela] = useState('');
 
   // Modo de Exibição: 'extrato' (foco nas diárias) | 'grafico' (foco no gráfico) | 'ambos' (ambos visíveis)
   const [modoVisualizacao, setModoVisualizacao] = useState('extrato');
@@ -51,24 +55,31 @@ export const ModalExtratoAjudante = ({ isOpen, onClose, ajudante }) => {
     setTimeout(() => setPixCopiado(false), 2500);
   };
 
-  // Montar Histórico Completo de Diárias da Ajudante
+  // Montar Histórico Completo de Diárias da Ajudante (suporta ajudantesEscaladas oficial e ajudantesIds legado)
   const todasAsDiarias = useMemo(() => {
     if (!ajudante) return [];
 
     const list = [];
     agendamentos.forEach(ag => {
-      if (ag.ajudantesIds && ag.ajudantesIds.includes(ajudante.id)) {
-        const cli = clientes.find(c => c.id === ag.clienteId);
-        const valorPago = (ag.valoresAjudantes && ag.valoresAjudantes[ajudante.id]) !== undefined
-          ? Number(ag.valoresAjudantes[ajudante.id])
-          : Number(ajudante.valorPadrao || 90);
+      const escala = (ag.ajudantesEscaladas || []).find(ae => ae.ajudanteId === ajudante.id);
+      const hasIdLegado = (ag.ajudantesIds || []).includes(ajudante.id);
 
-        const statusPag = (ag.pagamentosAjudantes && ag.pagamentosAjudantes[ajudante.id]) || 'pendente';
+      if (escala || hasIdLegado) {
+        const cli = clientes.find(c => c.id === ag.clienteId);
+        const valorPago = escala?.valorAPagar !== undefined
+          ? Number(escala.valorAPagar)
+          : (ag.valoresAjudantes && ag.valoresAjudantes[ajudante.id]) !== undefined
+            ? Number(ag.valoresAjudantes[ajudante.id])
+            : Number(ajudante.valorPadrao || 100);
+
+        const statusPag = escala?.statusPagamento 
+          || (ag.pagamentosAjudantes && ag.pagamentosAjudantes[ajudante.id]) 
+          || 'pendente';
 
         list.push({
           agendamentoId: ag.id,
           clienteNome: cli?.nome || 'Cliente',
-          endereco: cli ? `${cli.endereco}, ${cli.apartamento || ''} - ${cli.bairro || ''}` : 'São Paulo - SP',
+          clienteLocal: cli ? `${cli.condominio ? cli.condominio + (cli.torre ? ` (Torre ${cli.torre})` : '') + ' • ' : ''}${cli.bairro || cli.endereco || 'São Paulo - SP'}` : 'São Paulo - SP',
           dataHora: ag.dataHoraInicio,
           valor: valorPago,
           statusPagamento: statusPag
@@ -76,7 +87,7 @@ export const ModalExtratoAjudante = ({ isOpen, onClose, ajudante }) => {
       }
     });
 
-    return list;
+    return list.sort((a, b) => new Date(b.dataHora) - new Date(a.dataHora));
   }, [ajudante, agendamentos, clientes]);
 
   // Filtragem por Período
@@ -162,6 +173,20 @@ export const ModalExtratoAjudante = ({ isOpen, onClose, ajudante }) => {
 
     return { totalGeral: geral, totalPago: pago, totalPendente: pendente };
   }, [diariasFiltradas]);
+
+  // Diárias filtradas por status e busca textual para a tabela
+  const diariasExibidas = useMemo(() => {
+    return diariasFiltradas.filter(d => {
+      if (statusFiltro === 'pendente' && d.statusPagamento === 'pago') return false;
+      if (statusFiltro === 'pago' && d.statusPagamento !== 'pago') return false;
+      if (buscaTabela.trim()) {
+        const t = buscaTabela.toLowerCase();
+        const m = d.clienteNome?.toLowerCase().includes(t) || d.clienteLocal?.toLowerCase().includes(t);
+        if (!m) return false;
+      }
+      return true;
+    });
+  }, [diariasFiltradas, statusFiltro, buscaTabela]);
 
   // Dados para o Gráfico de Linhas (ordenados crescente)
   const dadosGrafico = useMemo(() => {
@@ -531,6 +556,49 @@ export const ModalExtratoAjudante = ({ isOpen, onClose, ajudante }) => {
               </div>
             </div>
 
+            {/* Barra de Filtro de Status e Busca na Tabela */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.6rem', marginBottom: '0.75rem' }}>
+              <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '600' }}>Exibir:</span>
+                <button
+                  type="button"
+                  onClick={() => setStatusFiltro('todos')}
+                  className={`badge ${statusFiltro === 'todos' ? 'badge-info' : 'badge-neutral'}`}
+                  style={{ cursor: 'pointer', border: 'none', padding: '0.25rem 0.55rem', fontSize: '0.725rem' }}
+                >
+                  Todas ({diariasFiltradas.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStatusFiltro('pendente')}
+                  className={`badge ${statusFiltro === 'pendente' ? 'badge-warning' : 'badge-neutral'}`}
+                  style={{ cursor: 'pointer', border: 'none', padding: '0.25rem 0.55rem', fontSize: '0.725rem' }}
+                >
+                  ⏳ A Pagar ({diariasFiltradas.filter(d => d.statusPagamento !== 'pago').length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStatusFiltro('pago')}
+                  className={`badge ${statusFiltro === 'pago' ? 'badge-success' : 'badge-neutral'}`}
+                  style={{ cursor: 'pointer', border: 'none', padding: '0.25rem 0.55rem', fontSize: '0.725rem' }}
+                >
+                  ✓ Pagas ({diariasFiltradas.filter(d => d.statusPagamento === 'pago').length})
+                </button>
+              </div>
+
+              <div style={{ position: 'relative', minWidth: '220px' }}>
+                <Search size={14} color="var(--text-muted)" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="Buscar cliente ou local..."
+                  value={buscaTabela}
+                  onChange={e => setBuscaTabela(e.target.value)}
+                  style={{ paddingLeft: '30px', fontSize: '0.78rem', height: '30px' }}
+                />
+              </div>
+            </div>
+
             {/* Tabela de Diárias */}
             <div style={{ 
               overflowX: 'auto', 
@@ -551,14 +619,14 @@ export const ModalExtratoAjudante = ({ isOpen, onClose, ajudante }) => {
                   </tr>
                 </thead>
                 <tbody>
-                  {diariasFiltradas.length === 0 ? (
+                  {diariasExibidas.length === 0 ? (
                     <tr>
                       <td colSpan="6" style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                         Nenhuma diária encontrada para o período selecionado.
                       </td>
                     </tr>
                   ) : (
-                    diariasFiltradas.map((d, index) => {
+                    diariasExibidas.map((d, index) => {
                       const isPago = d.statusPagamento === 'pago';
 
                       return (
@@ -606,14 +674,34 @@ export const ModalExtratoAjudante = ({ isOpen, onClose, ajudante }) => {
                             <button
                               type="button"
                               onClick={() => {
-                                const novoStatus = isPago ? 'pendente' : 'pago';
-                                setStatusPagamentoAjudante(d.agendamentoId, ajudante.id, novoStatus);
-                                showToast(`Diária marcada como: ${novoStatus === 'pago' ? 'Paga' : 'Pendente'}`);
+                                if (isPago) {
+                                  if (window.confirm(`Deseja estornar o pagamento desta diária (${formatCurrency(d.valor)}) para "A Pagar"?`)) {
+                                    setStatusPagamentoAjudante(d.agendamentoId, ajudante.id, 'pendente');
+                                  }
+                                } else {
+                                  setStatusPagamentoAjudante(d.agendamentoId, ajudante.id, 'pago');
+                                }
                               }}
                               className={`btn btn-sm ${isPago ? 'btn-secondary' : 'btn-primary'}`}
-                              style={{ padding: '0.25rem 0.5rem', fontSize: '0.725rem' }}
+                              style={{ 
+                                padding: '0.25rem 0.55rem', 
+                                fontSize: '0.725rem',
+                                color: isPago ? '#f87171' : '#ffffff',
+                                borderColor: isPago ? 'rgba(239, 68, 68, 0.4)' : undefined,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.25rem'
+                              }}
+                              title={isPago ? 'Estornar pagamento e voltar para A Pagar' : 'Marcar diária como paga'}
                             >
-                              {isPago ? 'Marcar A Pagar' : 'Pagar Agora'}
+                              {isPago ? (
+                                <>
+                                  <RotateCcw size={12} />
+                                  <span>Estornar</span>
+                                </>
+                              ) : (
+                                <span>Pagar Agora</span>
+                              )}
                             </button>
                           </td>
                         </tr>
