@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { X, User, MapPin, Phone, Home, Building, FileText, DollarSign, Briefcase } from 'lucide-react';
+import { X, User, MapPin, Phone, Home, Building, FileText, DollarSign, Briefcase, Clock, Sparkles, AlertTriangle } from 'lucide-react';
 
 export const ModalCliente = ({ isOpen, onClose, clienteEdicao = null }) => {
   const { planos, addCliente, updateCliente, showToast } = useApp();
@@ -25,6 +25,11 @@ export const ModalCliente = ({ isOpen, onClose, clienteEdicao = null }) => {
   const [observacoes, setObservacoes] = useState('');
   const [status, setStatus] = useState('ativo');
 
+  // Novos campos: Modalidade de Pagamento, Data Acordada e Grau de Sujidade
+  const [tipoPagamento, setTipoPagamento] = useState('diario'); // 'diario' | 'mensal' | 'quinzenal'
+  const [diaVencimento, setDiaVencimento] = useState(10); // 1 a 31
+  const [grauSujidade, setGrauSujidade] = useState('medio'); // 'baixo' | 'medio' | 'alto'
+
   useEffect(() => {
     if (clienteEdicao) {
       setTipoCliente(clienteEdicao.tipoCliente || (clienteEdicao.cnpj || clienteEdicao.emiteNF ? 'PJ' : 'PF'));
@@ -46,6 +51,9 @@ export const ModalCliente = ({ isOpen, onClose, clienteEdicao = null }) => {
       setEmailFaturamento(clienteEdicao.emailFaturamento || '');
       setObservacoes(clienteEdicao.observacoes || '');
       setStatus(clienteEdicao.status || 'ativo');
+      setTipoPagamento(clienteEdicao.tipoPagamento || (clienteEdicao.planoPadraoId?.includes('mensal') ? 'mensal' : 'diario'));
+      setDiaVencimento(clienteEdicao.diaVencimento || 10);
+      setGrauSujidade(clienteEdicao.grauSujidade || 'medio');
     } else {
       setTipoCliente('PF');
       setNome('');
@@ -66,6 +74,9 @@ export const ModalCliente = ({ isOpen, onClose, clienteEdicao = null }) => {
       setEmailFaturamento('');
       setObservacoes('');
       setStatus('ativo');
+      setTipoPagamento('diario');
+      setDiaVencimento(10);
+      setGrauSujidade('medio');
     }
   }, [clienteEdicao, isOpen]);
 
@@ -96,7 +107,10 @@ export const ModalCliente = ({ isOpen, onClose, clienteEdicao = null }) => {
       metragem,
       planoPadraoId,
       status: status || 'ativo',
-      observacoes
+      observacoes,
+      tipoPagamento: tipoPagamento || 'diario',
+      diaVencimento: Number(diaVencimento) || 10,
+      grauSujidade: grauSujidade || 'medio'
     };
 
     if (clienteEdicao) {
@@ -430,6 +444,182 @@ export const ModalCliente = ({ isOpen, onClose, clienteEdicao = null }) => {
                 </span>
               </div>
             )}
+
+            {/* SEÇÃO: CONDIÇÃO DE PAGAMENTO & DATA ACORDADA (DETECTOR DE INADIMPLÊNCIA) */}
+            <div style={{
+              background: 'rgba(255, 255, 255, 0.03)',
+              border: '1px solid var(--border-color)',
+              borderRadius: 'var(--radius-md)',
+              padding: '0.85rem 1rem',
+              marginBottom: '1rem'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.65rem' }}>
+                <Clock size={16} color="var(--primary-400)" />
+                <strong style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>
+                  Acordo de Pagamento & Vencimento (Controle de Inadimplência)
+                </strong>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: tipoPagamento === 'mensal' ? '1.3fr 1fr' : '1fr', gap: '0.75rem' }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label" style={{ fontSize: '0.75rem' }}>Modalidade de Pagamento</label>
+                  <select
+                    className="form-select"
+                    value={tipoPagamento}
+                    onChange={e => setTipoPagamento(e.target.value)}
+                    style={{ fontSize: '0.85rem' }}
+                  >
+                    <option value="diario">Diário (No Dia da Faxina / Por Atendimento)</option>
+                    <option value="mensal">Mensal (Fechamento do Mês com Vencimento Fixo)</option>
+                    <option value="quinzenal">Quinzenal (A cada 15 dias)</option>
+                  </select>
+                </div>
+
+                {tipoPagamento === 'mensal' && (
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label" style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                      <span>Dia do Vencimento no Mês</span>
+                      <span style={{ color: 'var(--primary-400)' }}>*</span>
+                    </label>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        type="number"
+                        min="1"
+                        max="31"
+                        className="form-input"
+                        placeholder="Ex: 10 (Todo dia 10)"
+                        value={diaVencimento}
+                        onChange={e => setDiaVencimento(Math.min(31, Math.max(1, Number(e.target.value) || 1)))}
+                        style={{ fontSize: '0.85rem' }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div style={{ 
+                marginTop: '0.65rem', 
+                fontSize: '0.75rem', 
+                color: 'var(--text-secondary)',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '0.4rem',
+                background: 'rgba(245, 158, 11, 0.08)',
+                border: '1px solid rgba(245, 158, 11, 0.25)',
+                padding: '0.45rem 0.65rem',
+                borderRadius: '4px'
+              }}>
+                <AlertTriangle size={14} color="#f59e0b" style={{ flexShrink: 0, marginTop: '2px' }} />
+                <span>
+                  {tipoPagamento === 'mensal' ? (
+                    <>
+                      <strong>Vencimento acordado:</strong> Todo dia <strong>{diaVencimento}</strong> de cada mês. Assim que passar deste dia sem quitação de faxinas, o sistema <strong>acusará inadimplência automaticamente</strong> com alerta visual e cobrança rápida no WhatsApp.
+                    </>
+                  ) : tipoPagamento === 'quinzenal' ? (
+                    <>
+                      <strong>Acordo quinzenal:</strong> Pagamento devido a cada 15 dias. Faxinas pendentes há mais de 15 dias serão acusadas como <strong>inadimplentes</strong>.
+                    </>
+                  ) : (
+                    <>
+                      <strong>Acordo diário:</strong> Pagamento devido no mesmo dia de cada faxina. Se o dia passar sem quitação, o sistema apontará <strong>pendência vencida</strong>.
+                    </>
+                  )}
+                </span>
+              </div>
+            </div>
+
+            {/* SEÇÃO: GRAU DE SUJIDADE DO IMÓVEL */}
+            <div style={{
+              background: 'rgba(255, 255, 255, 0.03)',
+              border: '1px solid var(--border-color)',
+              borderRadius: 'var(--radius-md)',
+              padding: '0.85rem 1rem',
+              marginBottom: '1rem'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.5rem' }}>
+                <Sparkles size={16} color="var(--primary-400)" />
+                <strong style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>
+                  Grau de Sujidade do Imóvel
+                </strong>
+              </div>
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.65rem' }}>
+                Orienta a equipe e as ajudantes sobre o nível de esforço e produtos necessários:
+              </p>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setGrauSujidade('baixo')}
+                  style={{
+                    padding: '0.55rem 0.5rem',
+                    borderRadius: 'var(--radius-sm)',
+                    border: grauSujidade === 'baixo' ? '2px solid #10b981' : '1px solid var(--border-color)',
+                    background: grauSujidade === 'baixo' ? 'rgba(16, 185, 129, 0.2)' : 'var(--bg-card)',
+                    color: grauSujidade === 'baixo' ? '#34d399' : 'var(--text-secondary)',
+                    fontWeight: grauSujidade === 'baixo' ? '700' : '500',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '0.2rem',
+                    fontSize: '0.78rem',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <span style={{ fontSize: '1.1rem' }}>🧹</span>
+                  <span>Baixo</span>
+                  <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Leve / Rotina</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setGrauSujidade('medio')}
+                  style={{
+                    padding: '0.55rem 0.5rem',
+                    borderRadius: 'var(--radius-sm)',
+                    border: grauSujidade === 'medio' ? '2px solid #f59e0b' : '1px solid var(--border-color)',
+                    background: grauSujidade === 'medio' ? 'rgba(245, 158, 11, 0.2)' : 'var(--bg-card)',
+                    color: grauSujidade === 'medio' ? '#fbbf24' : 'var(--text-secondary)',
+                    fontWeight: grauSujidade === 'medio' ? '700' : '500',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '0.2rem',
+                    fontSize: '0.78rem',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <span style={{ fontSize: '1.1rem' }}>🧼</span>
+                  <span>Médio</span>
+                  <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Padrão Normal</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setGrauSujidade('alto')}
+                  style={{
+                    padding: '0.55rem 0.5rem',
+                    borderRadius: 'var(--radius-sm)',
+                    border: grauSujidade === 'alto' ? '2px solid #ef4444' : '1px solid var(--border-color)',
+                    background: grauSujidade === 'alto' ? 'rgba(239, 68, 68, 0.2)' : 'var(--bg-card)',
+                    color: grauSujidade === 'alto' ? '#f87171' : 'var(--text-secondary)',
+                    fontWeight: grauSujidade === 'alto' ? '700' : '500',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '0.2rem',
+                    fontSize: '0.78rem',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <span style={{ fontSize: '1.1rem' }}>🔥</span>
+                  <span>Alto / Pesada</span>
+                  <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Gordura / Crítica</span>
+                </button>
+              </div>
+            </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
               <div className="form-group">

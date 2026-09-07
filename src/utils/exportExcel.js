@@ -706,3 +706,242 @@ export const exportMapaLimpezasXlsx = async ({
   URL.revokeObjectURL(url);
 };
 
+// ==========================================
+// EXPORTAÇÃO EXCEL (.XLSX) - FLUXO DE CAIXA GERAL / FILTRADO
+// ==========================================
+export const exportFluxoCaixaXlsx = async ({
+  lancamentos = [],
+  clienteFiltroNome = null,
+  totalRecebido = 0,
+  totalAReceber = 0,
+  totalPagoAjudantes = 0,
+  totalAPagarAjudantes = 0,
+  lucroRealizado = 0,
+  lucroProjetado = 0,
+  periodoDesc = 'Extrato Atual'
+}) => {
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'Limpeza Express SP';
+  workbook.created = new Date();
+
+  const worksheet = workbook.addWorksheet('Fluxo de Caixa');
+
+  // Larguras das colunas
+  worksheet.columns = [
+    { key: 'colData', width: 14 },
+    { key: 'colDia', width: 16 },
+    { key: 'colTipo', width: 14 },
+    { key: 'colDesc', width: 38 },
+    { key: 'colPessoa', width: 26 },
+    { key: 'colForma', width: 14 },
+    { key: 'colStatus', width: 16 },
+    { key: 'colValor', width: 18 }
+  ];
+
+  // 1. Título Institucional
+  const titleRow = worksheet.addRow(['LIMPEZA EXPRESS SP - FLUXO DE CAIXA & BALANÇO FINANCEIRO']);
+  titleRow.height = 32;
+  worksheet.mergeCells('A1:H1');
+  const titleCell = worksheet.getCell('A1');
+  titleCell.font = { name: 'Calibri', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
+  titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF065F46' } };
+  titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
+
+  // 2. Metadados do Relatório
+  worksheet.addRow([]);
+  const rCli = worksheet.addRow(['Filtro de Cliente:', clienteFiltroNome || 'Todos os Clientes']);
+  rCli.getCell(1).font = { bold: true, color: { argb: 'FF475569' } };
+  rCli.getCell(2).font = { bold: true, size: 11, color: { argb: 'FF0F172A' } };
+
+  const rPer = worksheet.addRow(['Período / Apuração:', periodoDesc]);
+  rPer.getCell(1).font = { bold: true, color: { argb: 'FF475569' } };
+  rPer.getCell(2).font = { bold: true, color: { argb: 'FF059669' } };
+
+  const dataHoraEmissao = new Date().toLocaleDateString('pt-BR') + ' às ' + new Date().toLocaleTimeString('pt-BR');
+  const rEmissao = worksheet.addRow(['Data de Emissão:', dataHoraEmissao]);
+  rEmissao.getCell(1).font = { bold: true, color: { argb: 'FF475569' } };
+
+  worksheet.addRow([]); // Espaçamento
+
+  // 3. Resumo Financeiro (KPIs)
+  const kpiHeaderRow = worksheet.addRow(['RESUMO EXECUTIVO DO FLUXO DE CAIXA']);
+  kpiHeaderRow.font = { bold: true, size: 11, color: { argb: 'FF1E293B' } };
+  worksheet.mergeCells(`A${kpiHeaderRow.number}:H${kpiHeaderRow.number}`);
+
+  const addKpiRow = (label, value, colorArgb, isCurrency = true) => {
+    const row = worksheet.addRow([label, value]);
+    row.getCell(1).font = { bold: true, color: { argb: 'FF334155' } };
+    if (isCurrency) {
+      row.getCell(2).numFmt = '"R$ "#,##0.00';
+    }
+    row.getCell(2).font = { bold: true, color: { argb: colorArgb || 'FF0F172A' } };
+    return row;
+  };
+
+  addKpiRow('Entradas Recebidas (Clientes):', Number(totalRecebido), 'FF065F46');
+  addKpiRow('Ainda a Receber (Pendências):', Number(totalAReceber), 'FFB45309');
+  addKpiRow('Saídas Pagas (Ajudantes):', Number(totalPagoAjudantes), 'FFB91C1C');
+  addKpiRow('Pendente a Pagar (Ajudantes):', Number(totalAPagarAjudantes), 'FFD97706');
+  addKpiRow('LUCRO LÍQUIDO REALIZADO:', Number(lucroRealizado), 'FF059669');
+  addKpiRow('LUCRO TOTAL PROJETADO:', Number(lucroProjetado), 'FF4338CA');
+
+  worksheet.addRow([]); // Espaço
+
+  // 4. Cabeçalho da Tabela de Lançamentos
+  const tableHeaderRow = worksheet.addRow([
+    'DATA',
+    'DIA DA SEMANA',
+    'TIPO',
+    'DESCRIÇÃO / SERVIÇO',
+    'CLIENTE / AJUDANTE',
+    'FORMA',
+    'STATUS',
+    'VALOR'
+  ]);
+  tableHeaderRow.height = 24;
+
+  tableHeaderRow.eachCell((cell) => {
+    cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F172A' } };
+    cell.alignment = { vertical: 'middle', horizontal: 'center' };
+  });
+
+  // 5. Linhas de Lançamentos
+  let somaEntradas = 0;
+  let somaSaidas = 0;
+
+  lancamentos.forEach((item, idx) => {
+    const d = item.data ? new Date(item.data) : new Date();
+    const dataStr = d.toLocaleDateString('pt-BR');
+    const diaSemana = d.toLocaleDateString('pt-BR', { weekday: 'long' });
+    const diaCap = diaSemana.charAt(0).toUpperCase() + diaSemana.slice(1);
+
+    const isEntrada = item.tipo === 'entrada';
+    const isPago = item.status === 'pago';
+    const valorNum = Number(item.valor || 0);
+
+    if (isEntrada) somaEntradas += valorNum;
+    else somaSaidas += valorNum;
+
+    const rowValues = [
+      dataStr,
+      diaCap,
+      isEntrada ? 'ENTRADA' : 'SAÍDA',
+      item.descricao || '',
+      item.clienteNome || item.origem || '',
+      item.forma || 'PIX',
+      isPago ? 'PAGO' : 'PENDENTE',
+      isEntrada ? valorNum : -valorNum
+    ];
+
+    const row = worksheet.addRow(rowValues);
+    row.height = 20;
+
+    const isEven = idx % 2 === 0;
+    const bgArgb = isEven ? 'FFFFFFFF' : 'FFF8FAFC';
+
+    row.eachCell((cell, colNumber) => {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bgArgb } };
+      cell.border = {
+        bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+        top: { style: 'thin', color: { argb: 'FFE2E8F0' } }
+      };
+
+      if (colNumber === 1 || colNumber === 2 || colNumber === 6) {
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      } else if (colNumber === 3) { // Tipo
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.font = { bold: true, color: { argb: isEntrada ? 'FF059669' : 'FFB45309' } };
+      } else if (colNumber === 7) { // Status
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.font = { bold: true, color: { argb: isPago ? 'FF065F46' : 'FFD97706' } };
+      } else if (colNumber === 8) { // Valor
+        cell.alignment = { horizontal: 'right', vertical: 'middle' };
+        cell.numFmt = '"R$ "#,##0.00;[Red]-"R$ "#,##0.00';
+        cell.font = { bold: true, color: { argb: isEntrada ? 'FF059669' : 'FFB91C1C' } };
+      } else {
+        cell.alignment = { horizontal: 'left', vertical: 'middle' };
+      }
+    });
+  });
+
+  // 6. Linhas de Totais do Extrato
+  if (lancamentos.length > 0) {
+    const totalRow = worksheet.addRow([
+      'TOTAL DE ENTRADAS:',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      somaEntradas
+    ]);
+    totalRow.height = 22;
+    totalRow.getCell(1).font = { bold: true };
+    worksheet.mergeCells(`A${totalRow.number}:G${totalRow.number}`);
+    totalRow.getCell(8).numFmt = '"R$ "#,##0.00';
+    totalRow.getCell(8).font = { bold: true, color: { argb: 'FF059669' } };
+
+    const saidasRow = worksheet.addRow([
+      'TOTAL DE SAÍDAS (CUSTOS):',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      somaSaidas
+    ]);
+    saidasRow.height = 22;
+    saidasRow.getCell(1).font = { bold: true };
+    worksheet.mergeCells(`A${saidasRow.number}:G${saidasRow.number}`);
+    saidasRow.getCell(8).numFmt = '"R$ "#,##0.00';
+    saidasRow.getCell(8).font = { bold: true, color: { argb: 'FFB91C1C' } };
+
+    const saldoRow = worksheet.addRow([
+      'SALDO LÍQUIDO APURADO:',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      somaEntradas - somaSaidas
+    ]);
+    saldoRow.height = 24;
+    saldoRow.getCell(1).font = { bold: true, size: 11 };
+    worksheet.mergeCells(`A${saldoRow.number}:G${saldoRow.number}`);
+    saldoRow.getCell(8).numFmt = '"R$ "#,##0.00';
+    saldoRow.getCell(8).font = { bold: true, size: 12, color: { argb: 'FF065F46' } };
+
+    [totalRow, saidasRow, saldoRow].forEach(r => {
+      r.eachCell(cell => {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+          bottom: { style: 'thin', color: { argb: 'FFCBD5E1' } }
+        };
+      });
+    });
+  }
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  });
+
+  const sufixoNome = clienteFiltroNome ? `_${clienteFiltroNome.toLowerCase().replace(/[^a-z0-9]/g, '_')}` : '_geral';
+  const dataHojeStr = new Date().toISOString().split('T')[0];
+  const filename = `fluxo_caixa${sufixoNome}_${dataHojeStr}.xlsx`;
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+

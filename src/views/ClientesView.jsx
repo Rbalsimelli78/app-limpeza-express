@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { 
   Users, 
@@ -18,12 +18,15 @@ import {
   UserCheck,
   UserX,
   CheckCircle2,
-  FileText
+  FileText,
+  AlertTriangle,
+  Clock
 } from 'lucide-react';
 import { formatPhone, formatCurrency, formatDate } from '../utils/formatters';
 import { getWhatsAppUrl } from '../utils/whatsapp';
 import { ModalExtratoCliente } from '../components/ModalExtratoCliente';
 import { MapaLimpezasClientes } from '../components/MapaLimpezasClientes';
+import { calcularInadimplenciaCliente, getGrauSujidadeInfo } from '../utils/inadimplencia';
 
 export const ClientesView = ({ onNovoCliente, onEditarCliente, onAgendarParaCliente }) => {
   const { clientes, agendamentos, planos, deleteCliente, updateCliente, setStatusPagamentoCliente } = useApp();
@@ -31,12 +34,26 @@ export const ClientesView = ({ onNovoCliente, onEditarCliente, onAgendarParaClie
   const [expandidosCliente, setExpandidosCliente] = useState({});
   const [busca, setBusca] = useState('');
   const [filtroCondominio, setFiltroCondominio] = useState('todos');
-  const [filtroStatus, setFiltroStatus] = useState('todos'); // 'todos', 'ativo', 'inativo', 'pj'
+  const [filtroStatus, setFiltroStatus] = useState('todos'); // 'todos', 'ativo', 'inativo', 'pj', 'inadimplente'
   const [clienteExtrato, setClienteExtrato] = useState(null);
 
   const agora = new Date();
   const mesAtual = agora.getMonth();
   const anoAtual = agora.getFullYear();
+
+  // Cálculo da situação de inadimplência de todos os clientes
+  const inadimplenciasPorCliente = useMemo(() => {
+    const map = {};
+    clientes.forEach(c => {
+      map[c.id] = calcularInadimplenciaCliente(c, agendamentos);
+    });
+    return map;
+  }, [clientes, agendamentos]);
+
+  // Contagem de clientes inadimplentes
+  const qtdInadimplentes = useMemo(() => {
+    return clientes.filter(c => inadimplenciasPorCliente[c.id]?.isInadimplente).length;
+  }, [clientes, inadimplenciasPorCliente]);
 
   // Contagem de clientes ativos sem agendamento no mês corrente para badge
   const qtdSemAgendamentoMesAtual = clientes.filter(c => {
@@ -64,6 +81,7 @@ export const ClientesView = ({ onNovoCliente, onEditarCliente, onAgendarParaClie
     if (filtroStatus === 'ativo' && c.status === 'inativo') return false;
     if (filtroStatus === 'inativo' && c.status !== 'inativo') return false;
     if (filtroStatus === 'pj' && !(c.tipoCliente === 'PJ' || c.emiteNF || c.cnpj)) return false;
+    if (filtroStatus === 'inadimplente' && !inadimplenciasPorCliente[c.id]?.isInadimplente) return false;
 
     // 2. Filtro de Busca em Texto
     const termo = busca.toLowerCase();
@@ -172,7 +190,7 @@ export const ClientesView = ({ onNovoCliente, onEditarCliente, onAgendarParaClie
           />
         </div>
 
-        {/* Filtro por Status (Ativos / Inativos) */}
+        {/* Filtro por Status (Ativos / Inativos / Inadimplentes) */}
         <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.85rem', flexWrap: 'wrap', alignItems: 'center' }}>
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.25rem', marginRight: '0.25rem' }}>
             <UserCheck size={13} color="var(--primary-400)" />
@@ -196,6 +214,28 @@ export const ClientesView = ({ onNovoCliente, onEditarCliente, onAgendarParaClie
           >
             <CheckCircle2 size={12} />
             <span>Ativos ({qtdAtivos})</span>
+          </button>
+
+          {/* Botão de Destaque para Inadimplentes */}
+          <button
+            type="button"
+            onClick={() => setFiltroStatus('inadimplente')}
+            className={`badge ${filtroStatus === 'inadimplente' ? 'badge-danger' : 'badge-neutral'}`}
+            style={{ 
+              cursor: 'pointer', 
+              border: qtdInadimplentes > 0 ? '1px solid rgba(239, 68, 68, 0.6)' : 'none', 
+              padding: '0.35rem 0.75rem', 
+              fontSize: '0.75rem', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '0.35rem',
+              background: filtroStatus === 'inadimplente' ? '#ef4444' : (qtdInadimplentes > 0 ? 'rgba(239, 68, 68, 0.18)' : undefined),
+              color: filtroStatus === 'inadimplente' ? '#ffffff' : (qtdInadimplentes > 0 ? '#fca5a5' : undefined),
+              fontWeight: qtdInadimplentes > 0 ? '700' : 'normal'
+            }}
+          >
+            <AlertTriangle size={12} color={filtroStatus === 'inadimplente' ? '#ffffff' : '#ef4444'} />
+            <span>Inadimplentes ({qtdInadimplentes})</span>
           </button>
 
           <button
@@ -285,15 +325,69 @@ export const ClientesView = ({ onNovoCliente, onEditarCliente, onAgendarParaClie
               .sort((a, b) => new Date(b.dataHoraInicio) - new Date(a.dataHoraInicio));
             const totalGasto = faxinasDoCliente.reduce((acc, curr) => acc + Number(curr.valorCliente || 0), 0);
             const waUrl = getWhatsAppUrl(c.telefone, `Olá ${c.nome}! Como você está? Aqui é da Limpeza Express SP ✨`);
+            const inad = inadimplenciasPorCliente[c.id];
+            const sujInfo = getGrauSujidadeInfo(c.grauSujidade);
 
             return (
-              <div key={c.id} className="glass-card" style={{ display: 'flex', flexDirection: 'column' }}>
+              <div 
+                key={c.id} 
+                className="glass-card" 
+                style={{ 
+                  display: 'flex', 
+                  flexDirection: 'column',
+                  border: inad?.isInadimplente ? '1.5px solid rgba(239, 68, 68, 0.6)' : undefined,
+                  boxShadow: inad?.isInadimplente ? '0 0 16px rgba(239, 68, 68, 0.12)' : undefined
+                }}
+              >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.35rem', flexWrap: 'wrap' }}>
                       <span className={`badge ${c.status === 'inativo' ? 'badge-danger' : 'badge-success'}`} style={{ fontSize: '0.7rem' }}>
                         {c.status === 'inativo' ? 'Inativo' : 'Ativo'}
                       </span>
+
+                      {/* Badge Situação Financeira / Inadimplência */}
+                      {inad?.isInadimplente ? (
+                        <span className="badge" style={{ fontSize: '0.7rem', background: '#ef4444', color: '#ffffff', fontWeight: '800', display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}>
+                          <AlertTriangle size={11} />
+                          <span>INADIMPLENTE</span>
+                        </span>
+                      ) : inad?.totalPendente > 0 ? (
+                        <span className="badge badge-warning" style={{ fontSize: '0.7rem' }}>
+                          A Vencer
+                        </span>
+                      ) : (
+                        <span className="badge badge-success" style={{ fontSize: '0.7rem' }}>
+                          Em Dia
+                        </span>
+                      )}
+
+                      {/* Badge Grau de Sujidade */}
+                      <span 
+                        className="badge" 
+                        style={{ 
+                          fontSize: '0.7rem', 
+                          background: sujInfo.bg, 
+                          color: sujInfo.color, 
+                          border: `1px solid ${sujInfo.border}`,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.25rem'
+                        }}
+                        title={`Grau de Sujidade: ${sujInfo.label} (${sujInfo.tag})`}
+                      >
+                        <span>{sujInfo.icone}</span>
+                        <span>{sujInfo.label}</span>
+                      </span>
+
+                      {/* Badge Modalidade de Pagamento */}
+                      <span className="badge badge-neutral" style={{ fontSize: '0.7rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                        <Clock size={11} />
+                        <span>
+                          {c.tipoPagamento === 'mensal' ? `Mensal (Venc. dia ${c.diaVencimento || 10})` : c.tipoPagamento === 'quinzenal' ? 'Quinzenal' : 'Diário (No dia)'}
+                        </span>
+                      </span>
+
                       {c.tipoCliente === 'PJ' && (
                         <span className="badge" style={{ fontSize: '0.7rem', background: 'rgba(168, 85, 247, 0.2)', color: '#e9d5ff', border: '1px solid rgba(168, 85, 247, 0.4)', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
                           <Building size={11} />
@@ -318,6 +412,49 @@ export const ClientesView = ({ onNovoCliente, onEditarCliente, onAgendarParaClie
                     {c.tipoCliente === 'PJ' ? `${c.dormitorios || 2} Salas • ${c.metragem || 'Comercial'}` : `${c.dormitorios || 2} Dorms • ${c.metragem || '80-100m²'}`}
                   </span>
                 </div>
+
+                {/* BANNER DE ALERTA DE INADIMPLÊNCIA & COBRANÇA RÁPIDA */}
+                {inad?.isInadimplente && (
+                  <div style={{
+                    background: 'rgba(239, 68, 68, 0.12)',
+                    border: '1px solid rgba(239, 68, 68, 0.4)',
+                    borderRadius: 'var(--radius-sm)',
+                    padding: '0.65rem 0.85rem',
+                    marginBottom: '0.85rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.45rem'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: '#f87171', fontWeight: '700', fontSize: '0.825rem' }}>
+                        <AlertTriangle size={15} />
+                        <span>INADIMPLENTE ({inad.diasAtrasoMax} dia{inad.diasAtrasoMax > 1 ? 's' : ''} em atraso)</span>
+                      </div>
+                      <span style={{ color: '#ffffff', fontWeight: '800', fontSize: '0.9rem', background: '#ef4444', padding: '0.15rem 0.6rem', borderRadius: '4px' }}>
+                        {formatCurrency(inad.totalVencido)}
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      <span style={{ fontSize: '0.75rem', color: '#fca5a5' }}>
+                        {c.tipoPagamento === 'mensal' 
+                          ? `Vencimento acordado dia ${c.diaVencimento || 10} ultrapassado com faxinas em aberto.` 
+                          : 'Faxina realizada com prazo de pagamento vencido.'}
+                      </span>
+                      <a
+                        href={getWhatsAppUrl(c.telefone, `Olá ${c.nome}! Tudo bem? Aqui é da Limpeza Express SP ✨\n\nConstatamos em nosso controle financeiro uma pendência no valor de ${formatCurrency(inad.totalVencido)} referente às faxinas realizadas.\n\nVocê poderia verificar e nos encaminhar o comprovante PIX por gentileza? Nossa chave PIX é o nosso CNPJ/Telefone.\n\nMuito obrigado pela parceria! 🙏`)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="btn btn-whatsapp btn-sm"
+                        style={{ fontSize: '0.75rem', padding: '0.25rem 0.65rem', height: 'auto', gap: '0.35rem', fontWeight: '600' }}
+                        title="Enviar lembrete amigável de cobrança no WhatsApp"
+                      >
+                        <MessageCircle size={14} />
+                        <span>Cobrar WhatsApp</span>
+                      </a>
+                    </div>
+                  </div>
+                )}
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
                   {/* Bloco de Dados PJ e Nota Fiscal */}
@@ -529,15 +666,22 @@ export const ClientesView = ({ onNovoCliente, onEditarCliente, onAgendarParaClie
                                   <span style={{ fontSize: '0.6rem', color: '#fca5a5', marginLeft: '2px', textDecoration: 'underline' }}>Estornar</span>
                                 </button>
                               ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => setStatusPagamentoCliente(ag.id, 'pago')}
-                                  className="btn btn-primary btn-sm"
-                                  style={{ padding: '0.15rem 0.45rem', fontSize: '0.68rem' }}
-                                  title="Marcar faxina como paga pelo cliente"
-                                >
-                                  Pagar
-                                </button>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                  {inad?.faxinasAtrasadas?.some(fa => fa.id === ag.id) && (
+                                    <span className="badge" style={{ fontSize: '0.62rem', background: '#ef4444', color: '#fff', padding: '0.1rem 0.35rem', fontWeight: '700' }}>
+                                      Vencida
+                                    </span>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => setStatusPagamentoCliente(ag.id, 'pago')}
+                                    className="btn btn-primary btn-sm"
+                                    style={{ padding: '0.15rem 0.45rem', fontSize: '0.68rem' }}
+                                    title="Marcar faxina como paga pelo cliente"
+                                  >
+                                    Pagar
+                                  </button>
+                                </div>
                               )}
                             </div>
                           </div>

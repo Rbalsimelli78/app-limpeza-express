@@ -764,3 +764,333 @@ export const imprimirExtratoAjudante = ({
 
   executarImpressaoIframe(html);
 };
+
+// ==========================================
+// IMPRESSÃO / EXPORTAÇÃO PDF - FLUXO DE CAIXA & BALANÇO
+// ==========================================
+export const imprimirFluxoCaixa = ({
+  lancamentos = [],
+  clienteFiltroNome = null,
+  totalRecebido = 0,
+  totalAReceber = 0,
+  totalPagoAjudantes = 0,
+  totalAPagarAjudantes = 0,
+  lucroRealizado = 0,
+  lucroProjetado = 0,
+  periodoDesc = 'Extrato Atual'
+}) => {
+  const dataHoraEmissao = new Date().toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+
+  let somaEntradas = 0;
+  let somaSaidas = 0;
+  lancamentos.forEach(l => {
+    const val = Number(l.valor || 0);
+    if (l.tipo === 'entrada') somaEntradas += val;
+    else somaSaidas += val;
+  });
+  const saldoLiquido = somaEntradas - somaSaidas;
+
+  const html = `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Fluxo de Caixa - Limpeza Express SP</title>
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 10mm 12mm 12mm 12mm;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      color: #1e293b;
+      background: #ffffff;
+      padding: 10px;
+      font-size: 11px;
+      line-height: 1.35;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+
+    /* Cabeçalho Institucional */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid #065f46;
+      padding-bottom: 10px;
+      margin-bottom: 12px;
+    }
+    .brand h1 {
+      font-size: 17px;
+      font-weight: 800;
+      color: #065f46;
+      letter-spacing: -0.5px;
+      text-transform: uppercase;
+    }
+    .brand p {
+      font-size: 10.5px;
+      color: #64748b;
+      margin-top: 1px;
+    }
+    .report-badge {
+      text-align: right;
+    }
+    .report-badge .tag {
+      display: inline-block;
+      background: #065f46;
+      color: #ffffff;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+    .report-badge .date {
+      font-size: 9.5px;
+      color: #64748b;
+      margin-top: 3px;
+    }
+
+    /* Meta Info */
+    .meta-box {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 8px 12px;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .meta-item {
+      font-size: 11px;
+    }
+    .meta-item strong {
+      color: #334155;
+    }
+
+    /* Grid de Resumo Financeiro */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .kpi-card {
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 8px 10px;
+      background: #ffffff;
+    }
+    .kpi-card.green { border-left: 3.5px solid #059669; }
+    .kpi-card.amber { border-left: 3.5px solid #d97706; }
+    .kpi-card.red   { border-left: 3.5px solid #dc2626; }
+    .kpi-card.blue  { border-left: 3.5px solid #4f46e5; }
+    .kpi-title {
+      font-size: 9px;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      margin-bottom: 3px;
+    }
+    .kpi-val {
+      font-size: 14px;
+      font-weight: 800;
+      color: #0f172a;
+    }
+
+    /* Tabela de Lançamentos */
+    .table-container {
+      margin-bottom: 14px;
+    }
+    .section-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: #0f172a;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 10px;
+    }
+    th {
+      background: #0f172a;
+      color: #ffffff;
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 9px;
+      padding: 6px 7px;
+      text-align: left;
+    }
+    td {
+      padding: 5.5px 7px;
+      border-bottom: 1px solid #f1f5f9;
+      vertical-align: middle;
+    }
+    tr:nth-child(even) td {
+      background: #f8fafc;
+    }
+    .badge-tipo {
+      display: inline-block;
+      padding: 2px 5px;
+      border-radius: 3px;
+      font-size: 8.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .badge-entrada { background: #dcfce7; color: #15803d; }
+    .badge-saida   { background: #fee2e2; color: #b91c1c; }
+    .badge-pago    { background: #e0f2fe; color: #0369a1; }
+    .badge-pendente{ background: #fef3c7; color: #b45309; }
+
+    .row-total td {
+      background: #f1f5f9 !important;
+      font-weight: 700;
+      border-top: 1.5px solid #0f172a;
+      font-size: 10.5px;
+      padding: 7px;
+    }
+
+    /* Rodapé */
+    .footer {
+      border-top: 1px solid #e2e8f0;
+      padding-top: 8px;
+      margin-top: 12px;
+      display: flex;
+      justify-content: space-between;
+      color: #94a3b8;
+      font-size: 9px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="brand">
+      <h1>Limpeza Express SP</h1>
+      <p>Gestão Profissional de Serviços de Faxina Residencial & Corporativa</p>
+    </div>
+    <div class="report-badge">
+      <div class="tag">Fluxo de Caixa</div>
+      <div class="date">Emissão: ${dataHoraEmissao}</div>
+    </div>
+  </div>
+
+  <div class="meta-box">
+    <div class="meta-item">
+      <strong>Filtro Aplicado:</strong> ${clienteFiltroNome ? `Cliente: ${clienteFiltroNome}` : 'Todos os Clientes & Operações'}
+    </div>
+    <div class="meta-item">
+      <strong>Período:</strong> ${periodoDesc}
+    </div>
+    <div class="meta-item">
+      <strong>Total de Lançamentos:</strong> ${lancamentos.length} registro(s)
+    </div>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi-card green">
+      <div class="kpi-title">Entradas Recebidas</div>
+      <div class="kpi-val" style="color: #059669;">${formatCurrency(totalRecebido)}</div>
+    </div>
+    <div class="kpi-card amber">
+      <div class="kpi-title">Ainda a Receber</div>
+      <div class="kpi-val" style="color: #d97706;">${formatCurrency(totalAReceber)}</div>
+    </div>
+    <div class="kpi-card red">
+      <div class="kpi-title">Saídas (Ajudantes)</div>
+      <div class="kpi-val" style="color: #dc2626;">${formatCurrency(totalPagoAjudantes)}</div>
+    </div>
+    <div class="kpi-card blue">
+      <div class="kpi-title">Lucro Líquido Realizado</div>
+      <div class="kpi-val" style="color: #4f46e5;">${formatCurrency(lucroRealizado)}</div>
+    </div>
+  </div>
+
+  <div class="table-container">
+    <div class="section-title">
+      <span>Extrato Analítico de Lançamentos</span>
+      <span style="font-size: 9.5px; color: #64748b;">Saldo Líquido do Filtro: <strong>${formatCurrency(saldoLiquido)}</strong></span>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 12%;">Data</th>
+          <th style="width: 9%; text-align: center;">Tipo</th>
+          <th style="width: 32%;">Descrição / Lançamento</th>
+          <th style="width: 21%;">Pessoa (Cliente / Ajudante)</th>
+          <th style="width: 8%; text-align: center;">Forma</th>
+          <th style="width: 8%; text-align: center;">Status</th>
+          <th style="width: 10%; text-align: right;">Valor</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${lancamentos.map(item => {
+          const d = item.data ? new Date(item.data) : new Date();
+          const dataStr = d.toLocaleDateString('pt-BR');
+          const isEntrada = item.tipo === 'entrada';
+          const isPago = item.status === 'pago';
+          const valNum = Number(item.valor || 0);
+
+          return `
+          <tr>
+            <td><strong>${dataStr}</strong></td>
+            <td style="text-align: center;">
+              <span class="badge-tipo ${isEntrada ? 'badge-entrada' : 'badge-saida'}">
+                ${isEntrada ? 'ENTRADA' : 'SAÍDA'}
+              </span>
+            </td>
+            <td>${item.descricao || ''}</td>
+            <td>${item.clienteNome || item.origem || 'Geral'}</td>
+            <td style="text-align: center;">${item.forma || 'PIX'}</td>
+            <td style="text-align: center;">
+              <span class="badge-tipo ${isPago ? 'badge-pago' : 'badge-pendente'}">
+                ${isPago ? 'PAGO' : 'PENDENTE'}
+              </span>
+            </td>
+            <td style="text-align: right; font-weight: 700; color: ${isEntrada ? '#059669' : '#dc2626'};">
+              ${isEntrada ? '+' : '-'} ${formatCurrency(valNum)}
+            </td>
+          </tr>
+          `;
+        }).join('')}
+        <tr class="row-total">
+          <td colspan="6" style="text-align: right; text-transform: uppercase;">Total de Entradas:</td>
+          <td style="text-align: right; color: #059669;">+ ${formatCurrency(somaEntradas)}</td>
+        </tr>
+        <tr class="row-total">
+          <td colspan="6" style="text-align: right; text-transform: uppercase;">Total de Saídas (Custos):</td>
+          <td style="text-align: right; color: #dc2626;">- ${formatCurrency(somaSaidas)}</td>
+        </tr>
+        <tr class="row-total" style="background: #e2e8f0 !important;">
+          <td colspan="6" style="text-align: right; text-transform: uppercase; font-size: 11px;">SALDO LÍQUIDO APURADO:</td>
+          <td style="text-align: right; color: #065f46; font-size: 12px;">${formatCurrency(saldoLiquido)}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="footer">
+    <span>Limpeza Express SP • Controle Financeiro de Caixa</span>
+    <span>Para salvar em PDF, selecione a impressora "Salvar como PDF" na janela de impressão</span>
+  </div>
+</body>
+</html>
+  `;
+
+  executarImpressaoIframe(html);
+};
+

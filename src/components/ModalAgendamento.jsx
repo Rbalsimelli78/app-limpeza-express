@@ -5,6 +5,7 @@ import { generateGoogleCalendarUrl } from '../utils/calendar';
 import { generateRecurrenceDates, toDatetimeLocalString } from '../utils/recurrence';
 import { formatCurrency } from '../utils/formatters';
 import { findAgendamentoConflicts } from '../utils/conflicts';
+import { getGrauSujidadeInfo } from '../utils/inadimplencia';
 
 export const ModalAgendamento = ({ 
   isOpen, 
@@ -501,6 +502,58 @@ export const ModalAgendamento = ({
                 ))}
               </select>
             </div>
+
+            {/* Informações Rápidas do Cliente: Sujidade, Modalidade de Pagto & Vencimento */}
+            {clienteSelecionado && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '0.45rem',
+                marginTop: '-0.35rem',
+                marginBottom: '1rem',
+                fontSize: '0.75rem'
+              }}>
+                {(() => {
+                  const suj = getGrauSujidadeInfo(clienteSelecionado.grauSujidade);
+                  return (
+                    <span 
+                      className="badge" 
+                      style={{ 
+                        background: suj.bg, 
+                        color: suj.color, 
+                        border: `1px solid ${suj.border}`,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.25rem'
+                      }}
+                      title="Nível de sujidade cadastrado para o imóvel"
+                    >
+                      <span>{suj.icone}</span>
+                      <span>{suj.label}</span>
+                    </span>
+                  );
+                })()}
+
+                <span className="badge badge-neutral" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                  <Clock size={11} />
+                  <span>
+                    {clienteSelecionado.tipoPagamento === 'mensal'
+                      ? `Pagamento Mensal (Venc. dia ${clienteSelecionado.diaVencimento || 10})`
+                      : clienteSelecionado.tipoPagamento === 'quinzenal'
+                      ? 'Pagamento Quinzenal'
+                      : 'Pagamento Diário (No dia)'}
+                  </span>
+                </span>
+
+                {clienteSelecionado.valorFechado && (
+                  <span className="badge badge-success" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                    <DollarSign size={11} />
+                    <span>Valor Fechado: R$ {Number(clienteSelecionado.valorFechado).toFixed(2).replace('.', ',')}</span>
+                  </span>
+                )}
+              </div>
+            )}
 
             {/* Aviso em Destaque de Nota Fiscal (NF) & PJ */}
             {clienteSelecionado && (clienteSelecionado.emiteNF || clienteSelecionado.tipoCliente === 'PJ') && (
