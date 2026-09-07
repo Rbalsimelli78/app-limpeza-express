@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { LineChart } from './LineChart';
+import { PaymentStatusBadge } from './PaymentStatusBadge';
 import { exportExtratoClienteXlsx, exportExtratoClienteCsv } from '../utils/exportExcel';
 import { imprimirExtratoCliente } from '../utils/printStatement';
 import { buildExtratoClienteText, getWhatsAppUrl } from '../utils/whatsapp';
@@ -545,17 +546,7 @@ export const ModalExtratoCliente = ({ isOpen, onClose, cliente }) => {
                           </td>
 
                           <td style={{ padding: '0.625rem 0.875rem' }}>
-                            {isPago ? (
-                              <span className="badge badge-success" style={{ fontSize: '0.7rem' }}>
-                                <CheckCircle2 size={12} />
-                                <span>Pago</span>
-                              </span>
-                            ) : (
-                              <span className="badge badge-warning" style={{ fontSize: '0.7rem' }}>
-                                <Clock size={12} />
-                                <span>Pendente</span>
-                              </span>
-                            )}
+                            <PaymentStatusBadge agendamento={ag} cliente={cliente} variant="badge" />
                           </td>
 
                           <td style={{ padding: '0.625rem 0.875rem', textAlign: 'right' }}>

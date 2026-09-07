@@ -29,6 +29,7 @@ import { formatCurrency, formatTime } from '../utils/formatters';
 import { generateGoogleCalendarUrl, downloadIcsFile } from '../utils/calendar';
 import { getWhatsAppUrl, buildLembreteClienteText, buildEscalaAjudanteText } from '../utils/whatsapp';
 import { checkHasConflict } from '../utils/conflicts';
+import { getAgendamentoStatusPagamento } from '../utils/inadimplencia';
 
 export const ModalDiaAgenda = ({
   isOpen,
@@ -64,8 +65,10 @@ export const ModalDiaAgenda = ({
   const dataExtenso = formatadorData.format(dataObj);
   const dataExtensoCapitalizada = dataExtenso.charAt(0).toUpperCase() + dataExtenso.slice(1);
 
-  // Totais do Dia
+  // Totais do Dia (Faturado, Recebido e Pendente)
   const totalFaturadoDia = agendamentosDoDia.reduce((acc, ag) => acc + (Number(ag.valorCliente) || 0), 0);
+  const totalRecebidoDia = agendamentosDoDia.reduce((acc, ag) => ag.statusClientePagamento === 'pago' ? acc + (Number(ag.valorCliente) || 0) : acc, 0);
+  const totalPendenteDia = totalFaturadoDia - totalRecebidoDia;
 
   const copiarPix = (chave, id) => {
     if (!chave) return;
@@ -103,6 +106,11 @@ export const ModalDiaAgenda = ({
 
             <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>
               <strong>{agendamentosDoDia.length}</strong> {agendamentosDoDia.length === 1 ? 'cliente agendado' : 'clientes agendados'} • Faturamento previsto: <strong style={{ color: 'var(--primary-400)' }}>{formatCurrency(totalFaturadoDia)}</strong>
+              {totalFaturadoDia > 0 && (
+                <span style={{ marginLeft: '6px', fontSize: '0.75rem', opacity: 0.9 }}>
+                  (🟢 {formatCurrency(totalRecebidoDia)} pago • 🟡 {formatCurrency(totalPendenteDia)} a receber)
+                </span>
+              )}
             </p>
           </div>
 
@@ -192,6 +200,7 @@ export const ModalDiaAgenda = ({
               const cliente = clientes.find(c => c.id === ag.clienteId);
               const plano = planos.find(p => p.id === ag.planoId);
               const isPago = ag.statusClientePagamento === 'pago';
+              const statusPagamento = getAgendamentoStatusPagamento(ag, cliente);
               const conflito = checkHasConflict(ag, agendamentosDoDia, ajudantes);
 
               const nomesAjudantes = (ag.ajudantesEscaladas || []).map(ae => {
@@ -319,36 +328,57 @@ export const ModalDiaAgenda = ({
                         {formatCurrency(ag.valorCliente)}
                       </div>
 
-                      <div style={{ marginTop: '0.2rem' }}>
-                        {isPago ? (
+                      <div style={{ marginTop: '0.2rem', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '3px' }}>
+                        {statusPagamento.status === 'pago' ? (
                           <span 
                             onClick={() => {
                               if (setStatusPagamentoCliente) {
                                 setStatusPagamentoCliente(ag.id, 'pendente');
-                                if (showToast) showToast('Marcado como Pendente');
+                                if (showToast) showToast('Pagamento estornado para Pendente');
                               }
                             }}
                             className="badge badge-success" 
-                            style={{ cursor: 'pointer', fontSize: '0.7rem' }}
-                            title="Clique para alternar para Pendente"
+                            style={{ cursor: 'pointer', fontSize: '0.72rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                            title="Clique para estornar / alternar para Pendente"
                           >
-                            <CheckCircle2 size={11} />
+                            <span style={{ width: '13px', height: '13px', borderRadius: '50%', background: '#fff', color: '#10b981', fontSize: '0.6rem', fontWeight: '900', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>$</span>
                             <span>PAGO</span>
+                          </span>
+                        ) : statusPagamento.status === 'inadimplente' ? (
+                          <span 
+                            onClick={() => {
+                              if (setStatusPagamentoCliente) {
+                                setStatusPagamentoCliente(ag.id, 'pago');
+                                if (showToast) showToast('Pagamento confirmado como Pago!');
+                              }
+                            }}
+                            className="badge badge-danger" 
+                            style={{ cursor: 'pointer', fontSize: '0.72rem', display: 'inline-flex', alignItems: 'center', gap: '4px', border: '1px solid #f87171' }}
+                            title="Pagamento em atraso! Clique para confirmar recebimento (Marcar como Pago)"
+                          >
+                            <span style={{ minWidth: '15px', height: '13px', padding: '0 1.5px', borderRadius: '3px', background: '#fff', color: '#ef4444', fontSize: '0.56rem', fontWeight: '900', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>$!</span>
+                            <span>INADIMPLENTE ({statusPagamento.diasAtraso ? `${statusPagamento.diasAtraso}d atraso` : 'VENCIDO'})</span>
                           </span>
                         ) : (
                           <span 
                             onClick={() => {
                               if (setStatusPagamentoCliente) {
                                 setStatusPagamentoCliente(ag.id, 'pago');
-                                if (showToast) showToast('Marcado como Pago');
+                                if (showToast) showToast('Pagamento confirmado como Pago!');
                               }
                             }}
                             className="badge badge-warning" 
-                            style={{ cursor: 'pointer', fontSize: '0.7rem' }}
-                            title="Clique para alternar para Pago"
+                            style={{ cursor: 'pointer', fontSize: '0.72rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                            title="No prazo acordado. Clique para confirmar recebimento (Marcar como Pago)"
                           >
-                            <AlertCircle size={11} />
-                            <span>A RECEBER</span>
+                            <span style={{ width: '13px', height: '13px', borderRadius: '50%', background: '#1e293b', color: '#fbbf24', fontSize: '0.6rem', fontWeight: '900', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>$</span>
+                            <span>PENDENTE (A RECEBER)</span>
+                          </span>
+                        )}
+
+                        {cliente?.tipoPagamento && (
+                          <span style={{ fontSize: '0.675rem', color: 'var(--text-muted)' }}>
+                            Acordo: {cliente.tipoPagamento === 'mensal' ? `Mensal (dia ${cliente.diaVencimento || 10})` : cliente.tipoPagamento === 'quinzenal' ? 'Quinzenal (+15d)' : 'Diário'}
                           </span>
                         )}
                       </div>

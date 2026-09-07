@@ -29,6 +29,8 @@ import { CalendarView } from '../components/CalendarView';
 import { ModalDiaAgenda } from '../components/ModalDiaAgenda';
 import { ModalViradaMes } from '../components/ModalViradaMes';
 import { ErrorBoundary } from '../components/ErrorBoundary';
+import { PaymentStatusBadge } from '../components/PaymentStatusBadge';
+import { getAgendamentoStatusPagamento } from '../utils/inadimplencia';
 
 export const AgendaView = ({ onNovoAgendamento, onEditarAgendamento }) => {
   const { 
@@ -45,6 +47,7 @@ export const AgendaView = ({ onNovoAgendamento, onEditarAgendamento }) => {
 
   const [modoVisualizacao, setModoVisualizacao] = useState('calendario'); // 'calendario' | 'lista'
   const [filtroStatus, setFiltroStatus] = useState('todos');
+  const [filtroPagamento, setFiltroPagamento] = useState('todos');
   const [busca, setBusca] = useState('');
 
   // Estado para o Modal de Detalhes do Dia
@@ -65,8 +68,14 @@ export const AgendaView = ({ onNovoAgendamento, onEditarAgendamento }) => {
 
     if (!matchBusca) return false;
 
-    if (filtroStatus === 'todos') return true;
-    return ag.statusServico === filtroStatus;
+    if (filtroStatus !== 'todos' && ag.statusServico !== filtroStatus) return false;
+
+    if (filtroPagamento !== 'todos') {
+      const stPag = getAgendamentoStatusPagamento(ag, cliente);
+      if (stPag.status !== filtroPagamento) return false;
+    }
+
+    return true;
   }).sort((a, b) => new Date(a.dataHoraInicio) - new Date(b.dataHoraInicio));
 
   // Ao clicar em um dia no calendário
@@ -181,11 +190,26 @@ export const AgendaView = ({ onNovoAgendamento, onEditarAgendamento }) => {
               value={filtroStatus}
               onChange={e => setFiltroStatus(e.target.value)}
             >
-              <option value="todos">Todos os Status</option>
+              <option value="todos">Status Serviço (Todos)</option>
               <option value="confirmado">Confirmados</option>
               <option value="agendado">Agendados</option>
               <option value="concluido">Concluídos</option>
               <option value="cancelado">Cancelados</option>
+            </select>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <DollarSign size={15} color="var(--primary-400)" />
+            <select 
+              className="form-select"
+              style={{ height: '38px', fontSize: '0.85rem' }}
+              value={filtroPagamento}
+              onChange={e => setFiltroPagamento(e.target.value)}
+            >
+              <option value="todos">Pagamento (Todos)</option>
+              <option value="pago">🟢 Pagos ($)</option>
+              <option value="pendente">🟡 Pendentes no Prazo ($)</option>
+              <option value="inadimplente">🔴 Inadimplentes Vencidos ($!)</option>
             </select>
           </div>
         </div>
@@ -283,13 +307,11 @@ export const AgendaView = ({ onNovoAgendamento, onEditarAgendamento }) => {
                       </p>
                     </div>
 
-                    <div style={{ textAlign: 'right' }}>
+                    <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
                       <div style={{ fontSize: '1.3rem', fontWeight: '700', color: 'var(--primary-400)', fontFamily: 'var(--font-display)' }}>
                         {formatCurrency(ag.valorCliente)}
                       </div>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                        Pagamento: <strong style={{ color: isPago ? 'var(--primary-500)' : 'var(--accent-gold)' }}>{ag.statusClientePagamento?.toUpperCase()}</strong>
-                      </span>
+                      <PaymentStatusBadge agendamento={ag} cliente={cliente} variant="badge" />
                     </div>
                   </div>
 

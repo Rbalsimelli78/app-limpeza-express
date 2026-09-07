@@ -27,6 +27,8 @@ import {
   MESES_NOMES 
 } from '../utils/recurrence';
 import { checkHasConflict } from '../utils/conflicts';
+import { PaymentStatusBadge } from './PaymentStatusBadge';
+import { getAgendamentoStatusPagamento } from '../utils/inadimplencia';
 
 export const CalendarView = ({ 
   agendamentos = [], 
@@ -161,11 +163,14 @@ export const CalendarView = ({
     return mapa;
   }, [agendamentos]);
 
-  // Estatísticas do Mês Atual para o Topo
+  // Estatísticas do Mês Atual para o Topo (Serviço e Financeiro)
   const estatisticasMes = useMemo(() => {
     let totalFaxinas = 0;
     let concluidas = 0;
     let pendentes = 0;
+    let totalPagos = 0;
+    let totalPendentesPagamento = 0;
+    let totalInadimplentes = 0;
 
     Object.entries(agendamentosPorDia).forEach(([dataStr, lista]) => {
       const [a, m] = dataStr.split('-').map(Number);
@@ -177,12 +182,18 @@ export const CalendarView = ({
           } else {
             pendentes++;
           }
+
+          const cli = clientes.find(c => c.id === ag.clienteId);
+          const stPag = getAgendamentoStatusPagamento(ag, cli);
+          if (stPag.status === 'pago') totalPagos++;
+          else if (stPag.status === 'inadimplente') totalInadimplentes++;
+          else if (stPag.status === 'pendente') totalPendentesPagamento++;
         });
       }
     });
 
-    return { totalFaxinas, concluidas, pendentes };
-  }, [agendamentosPorDia, ano, mes]);
+    return { totalFaxinas, concluidas, pendentes, totalPagos, totalPendentesPagamento, totalInadimplentes };
+  }, [agendamentosPorDia, ano, mes, clientes]);
 
   // 1. DADOS DA VISÃO MENSAL (Grade de 35 a 42 dias)
   const diasCalendarioMensal = useMemo(() => {
@@ -387,35 +398,77 @@ export const CalendarView = ({
             </button>
           </div>
 
-          {/* Badges de Status Geral do Mês */}
-          <div style={{ display: 'flex', gap: '0.4rem' }}>
-            <span 
-              className="badge" 
-              style={{ 
-                background: 'rgba(16, 185, 129, 0.15)', 
-                color: '#34d399', 
-                border: '1px solid rgba(16, 185, 129, 0.35)', 
-                fontSize: '0.75rem', 
-                padding: '0.3rem 0.55rem' 
-              }}
-              title="Faxinas com limpeza já concluída"
-            >
-              ✓ {estatisticasMes.concluidas} concluída(s)
-            </span>
+          {/* Badges de Status Geral do Mês e Legenda de Pagamentos */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.4rem' }}>
+            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+              <span 
+                className="badge" 
+                style={{ 
+                  background: 'rgba(16, 185, 129, 0.15)', 
+                  color: '#34d399', 
+                  border: '1px solid rgba(16, 185, 129, 0.35)', 
+                  fontSize: '0.75rem', 
+                  padding: '0.3rem 0.55rem' 
+                }}
+                title="Faxinas com limpeza já concluída"
+              >
+                ✓ {estatisticasMes.concluidas} concluída(s)
+              </span>
 
-            <span 
-              className="badge" 
+              <span 
+                className="badge" 
+                style={{ 
+                  background: 'rgba(245, 158, 11, 0.15)', 
+                  color: '#fbbf24', 
+                  border: '1px solid rgba(245, 158, 11, 0.35)', 
+                  fontSize: '0.75rem', 
+                  padding: '0.3rem 0.55rem' 
+                }}
+                title="Faxinas agendadas e confirmadas a realizar"
+              >
+                ⏳ {estatisticasMes.pendentes} a realizar
+              </span>
+            </div>
+
+            {/* Legenda Explicativa dos Ícones de $ no Calendário */}
+            <div 
+              className="payment-legend-bar"
               style={{ 
-                background: 'rgba(245, 158, 11, 0.15)', 
-                color: '#fbbf24', 
-                border: '1px solid rgba(245, 158, 11, 0.35)', 
-                fontSize: '0.75rem', 
-                padding: '0.3rem 0.55rem' 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '8px', 
+                flexWrap: 'wrap', 
+                fontSize: '0.7rem', 
+                background: 'rgba(255, 255, 255, 0.03)', 
+                padding: '3px 8px', 
+                borderRadius: 'var(--radius-sm)',
+                border: '1px solid var(--border-color)'
               }}
-              title="Faxinas agendadas e confirmadas a realizar"
             >
-              ⏳ {estatisticasMes.pendentes} a realizar
-            </span>
+              <span style={{ fontWeight: '700', color: 'var(--text-muted)' }}>Pagamento:</span>
+
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }} title="Cliente já pagou a faxina">
+                <span style={{ width: '13px', height: '13px', borderRadius: '50%', background: '#10b981', color: '#fff', fontSize: '0.6rem', fontWeight: '900', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>$</span>
+                <span style={{ color: '#34d399', fontWeight: '600' }}>Pago ({estatisticasMes.totalPagos})</span>
+              </span>
+
+              <span>•</span>
+
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }} title="Pendente dentro do prazo acordado">
+                <span style={{ width: '13px', height: '13px', borderRadius: '50%', background: '#f59e0b', color: '#1e293b', fontSize: '0.6rem', fontWeight: '900', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>$</span>
+                <span style={{ color: '#fbbf24', fontWeight: '600' }}>Pendente ({estatisticasMes.totalPendentesPagamento})</span>
+              </span>
+
+              {estatisticasMes.totalInadimplentes > 0 && (
+                <>
+                  <span>•</span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }} title="Pagamento em atraso / vencido">
+                    <span style={{ minWidth: '15px', height: '13px', padding: '0 1.5px', borderRadius: '3px', background: '#ef4444', color: '#fff', fontSize: '0.56rem', fontWeight: '900', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #fee2e2' }}>$!</span>
+                    <span style={{ color: '#f87171', fontWeight: '700' }}>Inadimplente ({estatisticasMes.totalInadimplentes})</span>
+                  </span>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -568,6 +621,8 @@ export const CalendarView = ({
                                 background: feita ? '#10b981' : '#f59e0b',
                                 flexShrink: 0
                               }}></span>
+                              {/* Ícone de Pagamento ($ Pago / $ Pendente / $! Inadimplente) */}
+                              <PaymentStatusBadge agendamento={ag} cliente={cli} variant="icon" />
                               <span style={{ fontWeight: '600' }}>{nomeCli}</span>
                               {ajudanteTxt && (
                                 <span style={{ opacity: 0.85, fontSize: '0.62rem' }}>
@@ -700,23 +755,26 @@ export const CalendarView = ({
                           className="hover-card"
                           title={conflito ? `⚠️ Choque detectado! Clique para editar ou ver detalhes` : 'Clique para editar ou ver detalhes'}
                         >
-                          {/* Horário e Status */}
+                          {/* Horário, Status do Serviço e Status de Pagamento */}
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
                             <span style={{ fontSize: '0.7rem', fontWeight: '700', color: feita ? '#34d399' : '#fbbf24' }}>
                               🕒 {horaIni}{horaFim ? ` - ${horaFim}` : ''}
                             </span>
-                            <span 
-                              style={{ 
-                                fontSize: '0.6rem', 
-                                padding: '1px 4px', 
-                                borderRadius: '3px',
-                                background: feita ? '#10b981' : '#f59e0b',
-                                color: '#000',
-                                fontWeight: '700'
-                              }}
-                            >
-                              {feita ? 'FEITA' : 'PEND'}
-                            </span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                              <span 
+                                style={{ 
+                                  fontSize: '0.6rem', 
+                                  padding: '1px 4px', 
+                                  borderRadius: '3px', 
+                                  background: feita ? '#10b981' : '#f59e0b',
+                                  color: '#000',
+                                  fontWeight: '700'
+                                }}
+                              >
+                                {feita ? 'FEITA' : 'PEND'}
+                              </span>
+                              <PaymentStatusBadge agendamento={ag} cliente={cli} variant="icon" />
+                            </div>
                           </div>
 
                           {/* Alerta de Choque de Horário / Ajudante no card */}
@@ -897,6 +955,8 @@ export const CalendarView = ({
                           >
                             {feita ? '✓ Faxina Concluída' : '⏳ A Realizar / Confirmada'}
                           </span>
+
+                          <PaymentStatusBadge agendamento={ag} cliente={cli} variant="badge" showValor={true} />
 
                           <span className="badge badge-info" style={{ fontSize: '0.75rem' }}>
                             {plano?.nome || 'Plano Padrão'}

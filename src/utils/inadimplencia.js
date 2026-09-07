@@ -155,3 +155,166 @@ export const getGrauSujidadeInfo = (grau) => {
       };
   }
 };
+
+/**
+ * Determina o status de pagamento específico de um agendamento individual:
+ * 1. 'pago': Se agendamento.statusClientePagamento === 'pago' (Verde)
+ * 2. 'inadimplente': Se pendente e já ultrapassou o vencimento acordado (Vermelho)
+ * 3. 'pendente': Se pendente e ainda está no prazo ou agendado no futuro (Amarelo)
+ * 4. 'cancelado': Se agendamento.statusServico === 'cancelado'
+ * 
+ * @param {Object} agendamento 
+ * @param {Object} cliente 
+ * @param {Date} agora 
+ * @returns {Object}
+ */
+export const getAgendamentoStatusPagamento = (agendamento, cliente, agora = new Date()) => {
+  if (!agendamento) {
+    return {
+      status: 'pendente',
+      label: 'Pendente',
+      cor: '#f59e0b',
+      corTexto: '#fbbf24',
+      bg: 'rgba(245, 158, 11, 0.2)',
+      border: '#f59e0b',
+      simbolo: '$',
+      badgeClass: 'badge-warning',
+      title: 'Pendente',
+      diasAtraso: 0
+    };
+  }
+
+  // Cancelado
+  if (agendamento.statusServico === 'cancelado') {
+    return {
+      status: 'cancelado',
+      label: 'Cancelado',
+      cor: '#94a3b8',
+      corTexto: '#cbd5e1',
+      bg: 'rgba(148, 163, 184, 0.2)',
+      border: '#94a3b8',
+      simbolo: '-',
+      badgeClass: 'badge-neutral',
+      title: 'Serviço Cancelado',
+      diasAtraso: 0
+    };
+  }
+
+  // 1. PAGO
+  if (agendamento.statusClientePagamento === 'pago') {
+    return {
+      status: 'pago',
+      label: 'Pago',
+      cor: '#10b981',
+      corTexto: '#34d399',
+      bg: 'rgba(16, 185, 129, 0.22)',
+      border: '#10b981',
+      simbolo: '$',
+      badgeClass: 'badge-success',
+      title: 'Pagamento: PAGO',
+      diasAtraso: 0
+    };
+  }
+
+  // Se marcado explicitamente como inadimplente
+  if (agendamento.statusClientePagamento === 'inadimplente') {
+    return {
+      status: 'inadimplente',
+      label: 'Inadimplente',
+      cor: '#ef4444',
+      corTexto: '#f87171',
+      bg: 'rgba(239, 68, 68, 0.25)',
+      border: '#ef4444',
+      simbolo: '$!',
+      badgeClass: 'badge-danger',
+      title: 'Pagamento: INADIMPLENTE (em atraso)',
+      diasAtraso: 1
+    };
+  }
+
+  // 2. VERIFICAR SE ESTÁ VENCIDO / INADIMPLENTE
+  let vencido = false;
+  let diasAtraso = 0;
+  let motivo = '';
+
+  if (agendamento.dataHoraInicio) {
+    const dataAg = new Date(agendamento.dataHoraInicio);
+    const hojeAno = agora.getFullYear();
+    const hojeMes = agora.getMonth();
+    const hojeDia = agora.getDate();
+
+    const agAno = dataAg.getFullYear();
+    const agMes = dataAg.getMonth();
+    const agDia = dataAg.getDate();
+
+    const tipoPagamento = cliente?.tipoPagamento || (cliente?.planoPadraoId?.includes('mensal') ? 'mensal' : 'diario');
+    const diaVencimento = Number(cliente?.diaVencimento) || 10;
+
+    if (tipoPagamento === 'mensal') {
+      // Regra Mensal:
+      // Se faxina é de mês anterior, já fechou o mês e venceu no diaVencimento do mês seguinte
+      if (agAno < hojeAno || (agAno === hojeAno && agMes < hojeMes)) {
+        vencido = true;
+        const dataVenc = new Date(agAno, agMes + 1, diaVencimento);
+        const diffMs = agora.getTime() - dataVenc.getTime();
+        diasAtraso = Math.max(1, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+        motivo = `Mês anterior - Vencimento dia ${diaVencimento}`;
+      } else if (agAno === hojeAno && agMes === hojeMes) {
+        // Mês atual: se hoje já passou do dia de vencimento e a faxina já ocorreu
+        if (hojeDia > diaVencimento && dataAg < agora) {
+          vencido = true;
+          diasAtraso = hojeDia - diaVencimento;
+          motivo = `Vencido dia ${diaVencimento}`;
+        }
+      }
+    } else if (tipoPagamento === 'quinzenal') {
+      // Regra Quinzenal: vence 15 dias após a data da faxina
+      const dataLimite = new Date(dataAg.getTime() + (15 * 24 * 60 * 60 * 1000));
+      if (agora > dataLimite) {
+        vencido = true;
+        const diffMs = agora.getTime() - dataLimite.getTime();
+        diasAtraso = Math.max(1, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+        motivo = `+15 dias da faxina`;
+      }
+    } else {
+      // Regra Diária / Avulsa (padrão): vence no próprio dia da faxina
+      const fimDia = new Date(agAno, agMes, agDia, 23, 59, 59);
+      if (agora > fimDia) {
+        vencido = true;
+        const diffMs = agora.getTime() - fimDia.getTime();
+        diasAtraso = Math.max(1, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+        motivo = `Faxina realizada sem pagamento`;
+      }
+    }
+  }
+
+  if (vencido) {
+    return {
+      status: 'inadimplente',
+      label: 'Inadimplente',
+      cor: '#ef4444',
+      corTexto: '#f87171',
+      bg: 'rgba(239, 68, 68, 0.22)',
+      border: '#ef4444',
+      simbolo: '$!',
+      badgeClass: 'badge-danger',
+      title: `Pagamento: INADIMPLENTE (${diasAtraso}d atraso - ${motivo})`,
+      diasAtraso
+    };
+  }
+
+  // 3. PENDENTE DENTRO DO PRAZO
+  return {
+    status: 'pendente',
+    label: 'Pendente',
+    cor: '#f59e0b',
+    corTexto: '#fbbf24',
+    bg: 'rgba(245, 158, 11, 0.18)',
+    border: '#f59e0b',
+    simbolo: '$',
+    badgeClass: 'badge-warning',
+    title: 'Pagamento: PENDENTE (no prazo / a receber)',
+    diasAtraso: 0
+  };
+};
+
