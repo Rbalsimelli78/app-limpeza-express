@@ -19,7 +19,9 @@ import {
   CreditCard,
   UserCheck,
   Search,
-  RotateCcw
+  RotateCcw,
+  ChevronDown,
+  FileText
 } from 'lucide-react';
 
 export const ModalExtratoAjudante = ({ isOpen, onClose, ajudante }) => {
@@ -29,6 +31,9 @@ export const ModalExtratoAjudante = ({ isOpen, onClose, ajudante }) => {
   const [periodoTipo, setPeriodoTipo] = useState('todos');
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim] = useState('');
+
+  // Dropdown de Opções de Impressão (com ou sem gráfico)
+  const [menuImprimirAberto, setMenuImprimirAberto] = useState(false);
   const [pixCopiado, setPixCopiado] = useState(false);
   const [statusFiltro, setStatusFiltro] = useState('todos'); // 'todos' | 'pendente' | 'pago'
   const [buscaTabela, setBuscaTabela] = useState('');
@@ -249,7 +254,7 @@ export const ModalExtratoAjudante = ({ isOpen, onClose, ajudante }) => {
     window.open(url, '_blank');
   };
 
-  const handleImprimir = () => {
+  const handleImprimir = (comGrafico = false) => {
     imprimirExtratoAjudante({
       ajudante,
       historicoDiarias: diariasFiltradas,
@@ -257,7 +262,8 @@ export const ModalExtratoAjudante = ({ isOpen, onClose, ajudante }) => {
       totalPago,
       totalPendente,
       periodoDesc,
-      dadosGrafico
+      dadosGrafico,
+      incluirGrafico: comGrafico
     });
   };
 
@@ -544,15 +550,128 @@ export const ModalExtratoAjudante = ({ isOpen, onClose, ajudante }) => {
                   <span>Encaminhar WhatsApp</span>
                 </button>
 
-                <button 
-                  type="button" 
-                  onClick={handleImprimir}
-                  className="btn btn-secondary btn-sm"
-                  title="Imprimir ou Salvar em PDF (Formato Oficial A4)"
-                >
-                  <Printer size={15} />
-                  <span>Imprimir / PDF</span>
-                </button>
+                {/* Botão de Impressão com Opção de Imprimir com ou sem Gráfico */}
+                <div style={{ position: 'relative' }}>
+                  <button 
+                    type="button" 
+                    onClick={() => setMenuImprimirAberto(prev => !prev)}
+                    className="btn btn-secondary btn-sm"
+                    title="Imprimir ou Salvar em PDF (Formato Oficial A4)"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                  >
+                    <Printer size={15} />
+                    <span>Imprimir / PDF</span>
+                    <ChevronDown size={13} style={{ transform: menuImprimirAberto ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+                  </button>
+
+                  {menuImprimirAberto && (
+                    <>
+                      <div 
+                        style={{ position: 'fixed', inset: 0, zIndex: 999 }} 
+                        onClick={() => setMenuImprimirAberto(false)} 
+                      />
+                      <div style={{
+                        position: 'absolute',
+                        right: 0,
+                        top: 'calc(100% + 6px)',
+                        background: 'var(--bg-secondary)',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: 'var(--radius-md)',
+                        boxShadow: 'var(--shadow-lg)',
+                        padding: '0.4rem',
+                        minWidth: '260px',
+                        zIndex: 1000,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.25rem'
+                      }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMenuImprimirAberto(false);
+                            handleImprimir(false);
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.6rem',
+                            padding: '0.6rem 0.75rem',
+                            borderRadius: 'var(--radius-sm)',
+                            border: 'none',
+                            background: 'transparent',
+                            color: 'var(--text-primary)',
+                            cursor: 'pointer',
+                            textAlign: 'left',
+                            fontSize: '0.8rem',
+                            transition: 'background 0.15s'
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-card-hover)'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                        >
+                          <div style={{
+                            width: '28px',
+                            height: '28px',
+                            borderRadius: '6px',
+                            background: 'rgba(16, 185, 129, 0.15)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0
+                          }}>
+                            <FileText size={16} color="var(--primary-400)" />
+                          </div>
+                          <div>
+                            <strong style={{ display: 'block', fontSize: '0.825rem', color: 'var(--text-primary)' }}>📄 Imprimir sem Gráfico</strong>
+                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Recomendado para envio e comprovante</span>
+                          </div>
+                        </button>
+
+                        <div style={{ height: '1px', background: 'var(--border-color)', margin: '0.15rem 0' }} />
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMenuImprimirAberto(false);
+                            handleImprimir(true);
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.6rem',
+                            padding: '0.6rem 0.75rem',
+                            borderRadius: 'var(--radius-sm)',
+                            border: 'none',
+                            background: 'transparent',
+                            color: 'var(--text-primary)',
+                            cursor: 'pointer',
+                            textAlign: 'left',
+                            fontSize: '0.8rem',
+                            transition: 'background 0.15s'
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-card-hover)'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                        >
+                          <div style={{
+                            width: '28px',
+                            height: '28px',
+                            borderRadius: '6px',
+                            background: 'rgba(6, 182, 212, 0.15)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0
+                          }}>
+                            <TrendingUp size={16} color="var(--accent-cyan)" />
+                          </div>
+                          <div>
+                            <strong style={{ display: 'block', fontSize: '0.825rem', color: 'var(--text-primary)' }}>📊 Imprimir com Gráfico</strong>
+                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Inclui curva visual de diárias</span>
+                          </div>
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
 

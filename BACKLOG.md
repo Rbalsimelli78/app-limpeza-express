@@ -8,10 +8,9 @@ Este documento gerencia o backlog de tarefas técnicas, correções de bugs, oti
 
 | ID | Tipo | Descrição | Prioridade | Esforço Est. | Status |
 | :---: | :---: | :--- | :---: | :---: | :---: |
-| ID | Tipo | Descrição | Prioridade | Esforço Est. | Status |
-| :---: | :---: | :--- | :---: | :---: | :---: |
 | **BUG-01** | 🐛 Bugfix | [Corrigir violação de Hooks do React no ModalPreviewEscalaSemanal](#bug-01--correção-de-hooks-no-modalpreviewescalasemanal) | 🔴 Alta | 15 min | ✅ Concluído |
 | **FEAT-07**| ✨ Melhoria | [Cálculo da Virada de Mês ancorado na última faxina com linha amarela informativa](#feat-07--cálculo-de-virada-de-mês-ancorado-na-última-faxina) | 🔴 Alta | 30 min | ✅ Concluído |
+| **FEAT-08**| ✨ Melhoria | [Opção de Imprimir / Salvar em PDF com ou sem Gráfico de Evolução](#feat-08--impressão-de-extrato-com-ou-sem-gráfico) | 🟡 Média | 20 min | ✅ Concluído |
 | **PWA-02** | 📱 PWA | [Criar manifest.json e suporte PWA completo para celular](#pwa-02--manifestjson-e-instalação-pwa-no-celular) | 🟡 Média | 30 min | 📝 A Fazer |
 | **PERF-03**| ⚡ Otimização | [Code-Splitting e Lazy Loading do ExcelJS (reduzir bundle de 2MB)](#perf-03--code-splitting--lazy-loading-do-exceljs) | 🟡 Média | 30 min | 📝 A Fazer |
 | **SEC-04** | 🔒 Segurança | [Proteção e hash de senhas / migração de autenticação](#sec-04--segurança-e-autenticação-reforçada) | 🟡 Média | 1 hora | 📝 A Fazer |
@@ -104,6 +103,19 @@ Este documento gerencia o backlog de tarefas técnicas, correções de bugs, oti
   - [ ] Configurar Vitest (integrado com o Vite).
   - [ ] Cobrir cenários de sobreposição de horários de faxinas da mesma ajudante.
   - [ ] Cobrir cálculo de status de inadimplência e tolerância de dias.
+
+### FEAT-08 — Impressão de Extrato Com ou Sem Gráfico
+* **Arquivos:** [`src/utils/printStatement.js`](./src/utils/printStatement.js), [`src/components/ModalExtratoCliente.jsx`](./src/components/ModalExtratoCliente.jsx), [`src/components/ModalExtratoAjudante.jsx`](./src/components/ModalExtratoAjudante.jsx)
+* **Severidade:** 🟡 Média (Flexibilidade de envio ao cliente final)
+* **Status:** ✅ Concluído em 20/09/2026.
+* **Problema:** 
+  A impressão e geração de PDF do extrato sempre incluía o gráfico de evolução financeira, ocupando espaço desnecessário no documento impresso/PDF quando enviado para o cliente.
+* **Critérios de Aceite:**
+  - [x] Adicionar parâmetro `incluirGrafico = false` no utilitário de impressão A4.
+  - [x] Transformar o botão "Imprimir / PDF" em menu seletor interativo com as opções:
+    - **📄 Imprimir sem Gráfico**: *Recomendado para envio ao cliente* (formato limpo A4 apenas com lançamentos e totais).
+    - **📊 Imprimir com Gráfico**: *Inclui a curva visual de evolução de pagamentos*.
+  - [x] Aplicar a mesma consistência no extrato de diárias das colaboradoras.
 
 ---
 

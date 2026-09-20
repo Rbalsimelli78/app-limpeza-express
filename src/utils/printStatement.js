@@ -55,13 +55,16 @@ export const imprimirExtratoCliente = ({
   totalPago = 0,
   totalPendente = 0,
   periodoDesc = 'Todo o Histórico',
-  dadosGrafico = []
+  dadosGrafico = [],
+  incluirGrafico = false
 }) => {
-  const chartImgBase64 = generateChartImageBase64(dadosGrafico, {
-    title: `Evolução dos Pagamentos - ${cliente.nome}`,
-    width: 720,
-    height: 220
-  });
+  const chartImgBase64 = (incluirGrafico && dadosGrafico && dadosGrafico.length > 0)
+    ? generateChartImageBase64(dadosGrafico, {
+        title: `Evolução dos Pagamentos - ${cliente.nome}`,
+        width: 720,
+        height: 220
+      })
+    : null;
 
   const dataHoraEmissao = new Date().toLocaleDateString('pt-BR', {
     day: '2-digit',
@@ -417,13 +420,16 @@ export const imprimirExtratoAjudante = ({
   totalPago = 0,
   totalPendente = 0,
   periodoDesc = 'Todo o Histórico',
-  dadosGrafico = []
+  dadosGrafico = [],
+  incluirGrafico = false
 }) => {
-  const chartImgBase64 = generateChartImageBase64(dadosGrafico, {
-    title: `Evolução das Diárias - ${ajudante.nome}`,
-    width: 720,
-    height: 220
-  });
+  const chartImgBase64 = (incluirGrafico && dadosGrafico && dadosGrafico.length > 0)
+    ? generateChartImageBase64(dadosGrafico, {
+        title: `Evolução das Diárias - ${ajudante.nome}`,
+        width: 720,
+        height: 220
+      })
+    : null;
 
   const dataHoraEmissao = new Date().toLocaleDateString('pt-BR', {
     day: '2-digit',
