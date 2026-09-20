@@ -1137,4 +1137,350 @@ export const exportFechamentoMesXlsx = async ({
   URL.revokeObjectURL(url);
 };
 
+// =========================================================================
+// EXPORTAÇÃO EXCEL (.XLSX) - COMPARATIVO FINANCEIRO POR PERÍODO
+// =========================================================================
+export const exportComparativoPeriodoXlsx = async ({
+  periodoDesc = 'Período Personalizado',
+  meses = [],
+  totais = {}
+}) => {
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'Limpeza Express SP';
+  workbook.created = new Date();
+
+  const worksheet = workbook.addWorksheet('Comparativo Financeiro');
+
+  // Largura da primeira coluna (descrições) e das colunas dos meses
+  const colCount = meses.length + 2; // Coluna A (métrica) + meses + Coluna Total
+  worksheet.getColumn(1).width = 38;
+  for (let c = 2; c <= colCount; c++) {
+    worksheet.getColumn(c).width = 17;
+  }
+
+  // 1. TÍTULO INSTITUCIONAL
+  const titleRow = worksheet.addRow(['LIMPEZA EXPRESS SP — COMPARATIVO FINANCEIRO POR PERÍODO']);
+  titleRow.height = 30;
+  worksheet.mergeCells(1, 1, 1, colCount);
+  titleRow.font = { bold: true, size: 14, color: { argb: 'FFFFFFFF' } };
+  titleRow.alignment = { horizontal: 'center', vertical: 'middle' };
+  titleRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF065F46' } };
+
+  // Subtítulo
+  const dataHojeStr = new Date().toLocaleDateString('pt-BR');
+  const subRow = worksheet.addRow([`Período Analisado: ${periodoDesc}  |  Emitido em: ${dataHojeStr}`]);
+  subRow.height = 20;
+  worksheet.mergeCells(2, 1, 2, colCount);
+  subRow.font = { italic: true, size: 10, color: { argb: 'FF475569' } };
+  subRow.alignment = { horizontal: 'center', vertical: 'middle' };
+
+  worksheet.addRow([]); // Espaço
+
+  // 2. RESUMO DOS TOTAIS DO PERÍODO
+  const cardRowHeader = worksheet.addRow(['RESUMO EXECUTIVO DO PERÍODO']);
+  cardRowHeader.font = { bold: true, size: 11, color: { argb: 'FF1E293B' } };
+
+  const cards = [
+    ['Faturamento Bruto', totais.totalAnoRecBruta || 0],
+    ['Diárias das Ajudantes', totais.totalAnoCustoAj || 0],
+    ['Margem de Contribuição', totais.totalAnoMargemCont || 0],
+    ['Gastos Operacionais & Insumos', totais.totalAnoGastos || 0],
+    ['Lucro Líquido Real (Sobra de Caixa)', totais.totalAnoLucro || 0]
+  ];
+
+  cards.forEach(([lbl, val]) => {
+    const r = worksheet.addRow([lbl, val]);
+    r.font = { size: 10, bold: lbl.includes('Lucro') || lbl.includes('Margem') };
+    r.getCell(2).numFmt = '"R$ "#,##0.00';
+    if (lbl.includes('Lucro')) {
+      r.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBEAFE' } };
+      r.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBEAFE' } };
+    }
+  });
+
+  worksheet.addRow([]); // Espaço
+
+  // Helper para adicionar linha de cabeçalho de tabela com cor amarela executiva
+  const addHeaderTabela = (tituloSecao, headers) => {
+    const secRow = worksheet.addRow([tituloSecao]);
+    secRow.height = 24;
+    worksheet.mergeCells(secRow.number, 1, secRow.number, colCount);
+    secRow.font = { bold: true, size: 11, color: { argb: 'FF854D0E' } };
+    secRow.alignment = { vertical: 'middle' };
+    secRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF08A' } };
+
+    const hRow = worksheet.addRow(headers);
+    hRow.height = 22;
+    hRow.font = { bold: true, size: 10, color: { argb: 'FFFFFFFF' } };
+    hRow.alignment = { vertical: 'middle', horizontal: 'center' };
+    hRow.getCell(1).alignment = { vertical: 'middle', horizontal: 'left' };
+    hRow.eachCell((cell, colIdx) => {
+      const isTotal = colIdx === colCount;
+      cell.fill = { 
+        type: 'pattern', 
+        pattern: 'solid', 
+        fgColor: { argb: isTotal ? 'FF047857' : 'FF1E293B' } 
+      };
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+        bottom: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+        left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+        right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
+      };
+    });
+  };
+
+  // 3. TABELA 1: MATRIZ DE RESULTADOS MÊS A MÊS
+  const headersMeses = ['Métrica / Conta', ...meses.map(m => m.nomeCurto || m.mesAno), 'TOTAL PERÍODO'];
+  addHeaderTabela('1. MATRIZ DE RESULTADOS FINANCEIROS MÊS A MÊS', headersMeses);
+
+  const addMatrizRow = (label, getVal, totalVal, isCurrency = true, isPct = false, bgHighlight = null, fontColor = null, isBold = false) => {
+    const rowValues = [label];
+    meses.forEach(m => {
+      rowValues.push(getVal(m));
+    });
+    rowValues.push(totalVal);
+
+    const r = worksheet.addRow(rowValues);
+    r.height = 20;
+    r.font = { size: 10, bold: isBold };
+    if (fontColor) r.font.color = { argb: fontColor };
+
+    r.eachCell((cell, colIdx) => {
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+        bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+        left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+        right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
+      };
+
+      if (colIdx > 1) {
+        cell.alignment = { horizontal: 'right' };
+        if (isCurrency) {
+          cell.numFmt = '"R$ "#,##0.00';
+        } else if (isPct) {
+          cell.numFmt = '0.0"%"';
+        }
+      }
+
+      if (bgHighlight) {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bgHighlight } };
+      } else if (colIdx === colCount) {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+      }
+    });
+  };
+
+  // Linhas da Matriz
+  addMatrizRow(
+    'Qtd de Limpezas Realizadas', 
+    m => m.totalLimpezas || 0, 
+    totais.totalAnoLimpezas || 0, 
+    false, 
+    false, 
+    null, 
+    null, 
+    true
+  );
+
+  addMatrizRow(
+    '(+) Receita Bruta (Clientes)', 
+    m => m.recBruta || 0, 
+    totais.totalAnoRecBruta || 0, 
+    true, 
+    false, 
+    'FFF0FDF4', 
+    'FF15803D', 
+    true
+  );
+
+  addMatrizRow(
+    '(-) Diárias da Equipe (Ajudantes)', 
+    m => m.custoAj || 0, 
+    totais.totalAnoCustoAj || 0, 
+    true, 
+    false, 
+    null, 
+    'FFDC2626', 
+    false
+  );
+
+  addMatrizRow(
+    '(-) Impostos & Taxas (DAS MEI, Taxas)', 
+    m => m.impostos || 0, 
+    totais.totalAnoImpostos || 0, 
+    true, 
+    false, 
+    null, 
+    'FFB45309', 
+    false
+  );
+
+  addMatrizRow(
+    '(=) MARGEM DE CONTRIBUIÇÃO', 
+    m => m.margemCont || 0, 
+    totais.totalAnoMargemCont || 0, 
+    true, 
+    false, 
+    'FFFEF3C7', 
+    'FF92400E', 
+    true
+  );
+
+  addMatrizRow(
+    '% Margem de Contribuição', 
+    m => m.margemContPct || 0, 
+    totais.totalAnoMargemContPct || 0, 
+    false, 
+    true, 
+    null, 
+    'FF64748B', 
+    false
+  );
+
+  addMatrizRow(
+    '(-) Insumos & Produtos de Limpeza', 
+    m => m.insumos || 0, 
+    totais.totalInsumos || meses.reduce((s, m) => s + (m.insumos || 0), 0), 
+    true, 
+    false, 
+    null, 
+    'FF7E22CE', 
+    false
+  );
+
+  addMatrizRow(
+    '(-) Investimentos / Máquinas (ex: Aspirador)', 
+    m => m.invest || 0, 
+    totais.totalInvest || meses.reduce((s, m) => s + (m.invest || 0), 0), 
+    true, 
+    false, 
+    null, 
+    'FF1D4ED8', 
+    false
+  );
+
+  addMatrizRow(
+    '(-) Outros Custos Fixos & Gerais', 
+    m => (m.gastosTotal - (m.insumos || 0) - (m.invest || 0)) || 0, 
+    totais.totalAnoGastos - (totais.totalInsumos || 0) - (totais.totalInvest || 0), 
+    true, 
+    false, 
+    null, 
+    'FF475569', 
+    false
+  );
+
+  addMatrizRow(
+    '(=) LUCRO LÍQUIDO REAL (SOBRA DE CAIXA)', 
+    m => m.lucro || 0, 
+    totais.totalAnoLucro || 0, 
+    true, 
+    false, 
+    'FFDBEAFE', 
+    'FF1E3A8A', 
+    true
+  );
+
+  addMatrizRow(
+    '% Margem Líquida Real', 
+    m => m.lucroPct || 0, 
+    totais.totalAnoLucroPct || 0, 
+    false, 
+    true, 
+    null, 
+    'FF1E40AF', 
+    true
+  );
+
+  worksheet.addRow([]); // Espaço
+
+  // 4. TABELA 2: EVOLUÇÃO DAS DESPESAS POR CATEGORIA
+  const headersDespesas = ['Categoria de Despesa', ...meses.map(m => m.nomeCurto || m.mesAno), 'TOTAL PERÍODO'];
+  addHeaderTabela('2. EVOLUÇÃO DETALHADA DAS DESPESAS POR CATEGORIA', headersDespesas);
+
+  addMatrizRow(
+    'Diárias das Ajudantes (Equipe)', 
+    m => m.custoAj || 0, 
+    totais.totalAnoCustoAj || 0, 
+    true, 
+    false, 
+    null, 
+    'FFDC2626', 
+    false
+  );
+
+  addMatrizRow(
+    'Impostos & Taxas (DAS MEI, Taxas)', 
+    m => m.impostos || 0, 
+    totais.totalAnoImpostos || 0, 
+    true, 
+    false, 
+    null, 
+    'FFB45309', 
+    false
+  );
+
+  addMatrizRow(
+    'Insumos & Produtos de Limpeza', 
+    m => m.insumos || 0, 
+    totais.totalInsumos || meses.reduce((s, m) => s + (m.insumos || 0), 0), 
+    true, 
+    false, 
+    null, 
+    'FF7E22CE', 
+    false
+  );
+
+  addMatrizRow(
+    'Investimentos / Bens Duráveis (Máquinas)', 
+    m => m.invest || 0, 
+    totais.totalInvest || meses.reduce((s, m) => s + (m.invest || 0), 0), 
+    true, 
+    false, 
+    null, 
+    'FF1D4ED8', 
+    false
+  );
+
+  addMatrizRow(
+    'Custos Fixos & Gerais', 
+    m => (m.gastosTotal - (m.insumos || 0) - (m.invest || 0)) || 0, 
+    totais.totalAnoGastos - (totais.totalInsumos || 0) - (totais.totalInvest || 0), 
+    true, 
+    false, 
+    null, 
+    'FF475569', 
+    false
+  );
+
+  // Total Geral de Despesas
+  addMatrizRow(
+    'TOTAL GERAL DE DESPESAS DO MÊS', 
+    m => (m.custoAj + m.impostos + m.gastosTotal) || 0, 
+    (totais.totalAnoCustoAj + totais.totalAnoImpostos + totais.totalAnoGastos) || 0, 
+    true, 
+    false, 
+    'FFFEE2E2', 
+    'FF991B1B', 
+    true
+  );
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  });
+
+  const filename = `comparativo_${periodoDesc.replace(/[^a-zA-Z0-9]/g, '_')}_limpeza_express.xlsx`;
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+
+
 

@@ -1362,4 +1362,363 @@ export const imprimirFechamentoMes = ({
   executarImpressaoIframe(html);
 };
 
+// =========================================================================
+// IMPRESSÃO / PDF: COMPARATIVO FINANCEIRO POR PERÍODO
+// =========================================================================
+export const imprimirComparativoPeriodo = ({
+  periodoDesc = 'Período Personalizado',
+  meses = [],
+  totais = {}
+}) => {
+  const dataHojeStr = new Date().toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+
+  const totalInsumosCalculado = totais.totalInsumos || meses.reduce((s, m) => s + (m.insumos || 0), 0);
+  const totalInvestCalculado = totais.totalInvest || meses.reduce((s, m) => s + (m.invest || 0), 0);
+  const totalOutrasCalculado = totais.totalAnoGastos - totalInsumosCalculado - totalInvestCalculado;
+  const totalDespesasGeral = (totais.totalAnoCustoAj || 0) + (totais.totalAnoImpostos || 0) + (totais.totalAnoGastos || 0);
+
+  const html = `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Comparativo Financeiro - ${periodoDesc} - Limpeza Express SP</title>
+  <style>
+    @page {
+      size: A4 landscape;
+      margin: 10mm;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      color: #0f172a;
+      background: #ffffff;
+      margin: 0;
+      padding: 0;
+      font-size: 10px;
+      line-height: 1.3;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 2px solid #059669;
+      padding-bottom: 8px;
+      margin-bottom: 12px;
+    }
+    .brand-title {
+      font-size: 16px;
+      font-weight: 800;
+      color: #065f46;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .brand-subtitle {
+      font-size: 11px;
+      color: #475569;
+      font-weight: 600;
+    }
+    .badge-periodo {
+      background: #ecfdf5;
+      color: #065f46;
+      border: 1px solid #a7f3d0;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-weight: 700;
+      font-size: 10px;
+    }
+    .kpis-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+    .kpi-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 4px;
+      padding: 6px 8px;
+    }
+    .kpi-label {
+      font-size: 8px;
+      text-transform: uppercase;
+      color: #64748b;
+      font-weight: 700;
+      display: block;
+      margin-bottom: 2px;
+    }
+    .kpi-val {
+      font-size: 13px;
+      font-weight: 800;
+      color: #0f172a;
+    }
+    .kpi-sub {
+      font-size: 8px;
+      color: #64748b;
+    }
+    .secao-titulo {
+      background: #f1f5f9;
+      border-left: 3px solid #059669;
+      padding: 4px 8px;
+      font-size: 10px;
+      font-weight: 700;
+      color: #1e293b;
+      margin: 10px 0 6px 0;
+      display: flex;
+      justify-content: space-between;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 8px;
+      font-size: 9px;
+    }
+    th, td {
+      padding: 4px 6px;
+      border: 1px solid #cbd5e1;
+      text-align: right;
+    }
+    th:first-child, td:first-child {
+      text-align: left;
+    }
+    th {
+      background: #1e293b;
+      color: #ffffff;
+      font-weight: 700;
+      font-size: 8.5px;
+    }
+    th.th-total {
+      background: #047857;
+    }
+    .row-highlight-green {
+      background: #f0fdf4;
+      font-weight: 700;
+      color: #15803d;
+    }
+    .row-highlight-amber {
+      background: #fef3c7;
+      font-weight: 700;
+      color: #92400e;
+    }
+    .row-highlight-blue {
+      background: #dbeafe;
+      font-weight: 800;
+      color: #1e3a8a;
+      font-size: 9.5px;
+    }
+    .row-highlight-red {
+      background: #fee2e2;
+      font-weight: 700;
+      color: #991b1b;
+    }
+    .footer {
+      margin-top: 12px;
+      padding-top: 6px;
+      border-top: 1px solid #cbd5e1;
+      display: flex;
+      justify-content: space-between;
+      color: #64748b;
+      font-size: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <div class="brand-title">Limpeza Express SP</div>
+      <div class="brand-subtitle">Relatório Executivo & Comparativo Financeiro por Período</div>
+    </div>
+    <div style="text-align: right;">
+      <div class="badge-periodo">Período: ${periodoDesc}</div>
+      <div style="font-size: 8px; color: #64748b; margin-top: 3px;">Emitido em: ${dataHojeStr}</div>
+    </div>
+  </div>
+
+  <!-- Cards de KPIs do Período -->
+  <div class="kpis-grid">
+    <div class="kpi-card" style="border-top: 3px solid #10b981;">
+      <span class="kpi-label">Faturamento Total</span>
+      <div class="kpi-val" style="color: #047857;">${formatCurrency(totais.totalAnoRecBruta)}</div>
+      <span class="kpi-sub">${totais.totalAnoLimpezas || 0} limpezas no período</span>
+    </div>
+
+    <div class="kpi-card" style="border-top: 3px solid #ef4444;">
+      <span class="kpi-label">Diárias Ajudantes</span>
+      <div class="kpi-val" style="color: #dc2626;">${formatCurrency(totais.totalAnoCustoAj)}</div>
+      <span class="kpi-sub">${totais.totalAnoRecBruta > 0 ? ((totais.totalAnoCustoAj / totais.totalAnoRecBruta) * 100).toFixed(1) : '0.0'}% da receita</span>
+    </div>
+
+    <div class="kpi-card" style="border-top: 3px solid #f59e0b;">
+      <span class="kpi-label">Margem Contribuição</span>
+      <div class="kpi-val" style="color: #b45309;">${formatCurrency(totais.totalAnoMargemCont)}</div>
+      <span class="kpi-sub">Média: ${(totais.totalAnoMargemContPct || 0).toFixed(1)}%</span>
+    </div>
+
+    <div class="kpi-card" style="border-top: 3px solid #a855f7;">
+      <span class="kpi-label">Total de Despesas</span>
+      <div class="kpi-val" style="color: #7e22ce;">${formatCurrency(totalDespesasGeral)}</div>
+      <span class="kpi-sub">Insumos, equipe e impostos</span>
+    </div>
+
+    <div class="kpi-card" style="border-top: 3px solid #3b82f6; background: #eff6ff;">
+      <span class="kpi-label">Lucro Líquido Real</span>
+      <div class="kpi-val" style="color: #1d4ed8;">${formatCurrency(totais.totalAnoLucro)}</div>
+      <span class="kpi-sub">Margem Líquida: ${(totais.totalAnoLucroPct || 0).toFixed(1)}%</span>
+    </div>
+  </div>
+
+  <!-- Tabela 1: Matriz de Resultados Financeiros Mês a Mês -->
+  <div class="secao-titulo">
+    <span>1. Matriz de Resultados Financeiros Mês a Mês</span>
+    <span>Valores expressos em Reais (R$)</span>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 25%;">Métrica / Conta</th>
+        ${meses.map(m => `<th>${m.nomeCurto || m.mesAno}</th>`).join('')}
+        <th class="th-total">TOTAL PERÍODO</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Qtd de Limpezas Realizadas</strong></td>
+        ${meses.map(m => `<td>${m.totalLimpezas}</td>`).join('')}
+        <td style="font-weight: 800; background: #f8fafc;">${totais.totalAnoLimpezas || 0}</td>
+      </tr>
+
+      <tr class="row-highlight-green">
+        <td>(+) Receita Bruta (Clientes)</td>
+        ${meses.map(m => `<td>${m.recBruta > 0 ? formatCurrency(m.recBruta) : '-'}</td>`).join('')}
+        <td style="background: #dcfce7; font-weight: 800;">${formatCurrency(totais.totalAnoRecBruta)}</td>
+      </tr>
+
+      <tr>
+        <td style="color: #dc2626;">(-) Diárias da Equipe (Ajudantes)</td>
+        ${meses.map(m => `<td style="color: #dc2626;">${m.custoAj > 0 ? formatCurrency(m.custoAj) : '-'}</td>`).join('')}
+        <td style="color: #dc2626; font-weight: 700; background: #fee2e2;">${formatCurrency(totais.totalAnoCustoAj)}</td>
+      </tr>
+
+      <tr>
+        <td style="color: #b45309;">(-) Impostos & Taxas</td>
+        ${meses.map(m => `<td style="color: #b45309;">${m.impostos > 0 ? formatCurrency(m.impostos) : '-'}</td>`).join('')}
+        <td style="color: #b45309; font-weight: 700;">${formatCurrency(totais.totalAnoImpostos)}</td>
+      </tr>
+
+      <tr class="row-highlight-amber">
+        <td>(=) MARGEM DE CONTRIBUIÇÃO</td>
+        ${meses.map(m => `<td>${m.margemCont !== 0 ? formatCurrency(m.margemCont) : '-'}</td>`).join('')}
+        <td style="background: #fde68a; font-weight: 800;">${formatCurrency(totais.totalAnoMargemCont)}</td>
+      </tr>
+
+      <tr style="font-size: 8px; color: #64748b;">
+        <td>% Margem de Contribuição</td>
+        ${meses.map(m => `<td>${m.recBruta > 0 ? m.margemContPct.toFixed(1) + '%' : '-'}</td>`).join('')}
+        <td style="font-weight: 700;">${(totais.totalAnoMargemContPct || 0).toFixed(1)}%</td>
+      </tr>
+
+      <tr>
+        <td style="color: #7e22ce;">(-) Insumos & Produtos de Limpeza</td>
+        ${meses.map(m => `<td style="color: #7e22ce;">${m.insumos > 0 ? formatCurrency(m.insumos) : '-'}</td>`).join('')}
+        <td style="color: #7e22ce; font-weight: 700;">${formatCurrency(totalInsumosCalculado)}</td>
+      </tr>
+
+      <tr>
+        <td style="color: #1d4ed8;">(-) Investimentos / Máquinas (Bens Duráveis)</td>
+        ${meses.map(m => `<td style="color: #1d4ed8;">${m.invest > 0 ? formatCurrency(m.invest) : '-'}</td>`).join('')}
+        <td style="color: #1d4ed8; font-weight: 700;">${formatCurrency(totalInvestCalculado)}</td>
+      </tr>
+
+      <tr>
+        <td style="color: #475569;">(-) Custos Fixos & Gerais</td>
+        ${meses.map(m => {
+          const outras = (m.gastosTotal - (m.insumos || 0) - (m.invest || 0)) || 0;
+          return `<td style="color: #475569;">${outras > 0 ? formatCurrency(outras) : '-'}</td>`;
+        }).join('')}
+        <td style="color: #475569; font-weight: 700;">${formatCurrency(totalOutrasCalculado)}</td>
+      </tr>
+
+      <tr class="row-highlight-blue">
+        <td>(=) LUCRO LÍQUIDO REAL (SOBRA DE CAIXA)</td>
+        ${meses.map(m => `<td>${m.lucro !== 0 ? formatCurrency(m.lucro) : '-'}</td>`).join('')}
+        <td style="background: #bfdbfe; font-weight: 900;">${formatCurrency(totais.totalAnoLucro)}</td>
+      </tr>
+
+      <tr style="font-size: 8px; color: #1e3a8a; font-weight: 700; background: #eff6ff;">
+        <td>% Margem Líquida Real</td>
+        ${meses.map(m => `<td>${m.recBruta > 0 ? m.lucroPct.toFixed(1) + '%' : '-'}</td>`).join('')}
+        <td style="font-weight: 800;">${(totais.totalAnoLucroPct || 0).toFixed(1)}%</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Tabela 2: Evolução das Despesas por Categoria -->
+  <div class="secao-titulo" style="border-left-color: #ef4444;">
+    <span>2. Evolução Detalhada das Despesas por Categoria</span>
+    <span>Composição de Custos e Gastos Operacionais</span>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 25%;">Categoria de Despesa</th>
+        ${meses.map(m => `<th>${m.nomeCurto || m.mesAno}</th>`).join('')}
+        <th class="th-total" style="background: #991b1b;">TOTAL PERÍODO</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td style="color: #dc2626;">Diárias das Ajudantes (Equipe)</td>
+        ${meses.map(m => `<td>${m.custoAj > 0 ? formatCurrency(m.custoAj) : '-'}</td>`).join('')}
+        <td style="font-weight: 700; color: #dc2626;">${formatCurrency(totais.totalAnoCustoAj)}</td>
+      </tr>
+      <tr>
+        <td style="color: #b45309;">Impostos & Taxas (DAS MEI, Taxas)</td>
+        ${meses.map(m => `<td>${m.impostos > 0 ? formatCurrency(m.impostos) : '-'}</td>`).join('')}
+        <td style="font-weight: 700; color: #b45309;">${formatCurrency(totais.totalAnoImpostos)}</td>
+      </tr>
+      <tr>
+        <td style="color: #7e22ce;">Insumos & Produtos de Limpeza</td>
+        ${meses.map(m => `<td>${m.insumos > 0 ? formatCurrency(m.insumos) : '-'}</td>`).join('')}
+        <td style="font-weight: 700; color: #7e22ce;">${formatCurrency(totalInsumosCalculado)}</td>
+      </tr>
+      <tr>
+        <td style="color: #1d4ed8;">Investimentos / Máquinas (ex: Aspirador)</td>
+        ${meses.map(m => `<td>${m.invest > 0 ? formatCurrency(m.invest) : '-'}</td>`).join('')}
+        <td style="font-weight: 700; color: #1d4ed8;">${formatCurrency(totalInvestCalculado)}</td>
+      </tr>
+      <tr>
+        <td style="color: #475569;">Custos Fixos & Gerais</td>
+        ${meses.map(m => {
+          const outras = (m.gastosTotal - (m.insumos || 0) - (m.invest || 0)) || 0;
+          return `<td>${outras > 0 ? formatCurrency(outras) : '-'}</td>`;
+        }).join('')}
+        <td style="font-weight: 700; color: #475569;">${formatCurrency(totalOutrasCalculado)}</td>
+      </tr>
+      <tr class="row-highlight-red">
+        <td>TOTAL GERAL DE DESPESAS DO MÊS</td>
+        ${meses.map(m => {
+          const totMes = (m.custoAj + m.impostos + m.gastosTotal) || 0;
+          return `<td>${totMes > 0 ? formatCurrency(totMes) : '-'}</td>`;
+        }).join('')}
+        <td style="background: #fca5a5; font-weight: 900; color: #7f1d1d;">${formatCurrency(totalDespesasGeral)}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="footer">
+    <span>Limpeza Express SP • Sistema de Gestão Financeira & Tomada de Decisão</span>
+    <span>Documento gerado automaticamente em ${dataHojeStr}</span>
+  </div>
+</body>
+</html>
+  `;
+
+  executarImpressaoIframe(html);
+};
+
 

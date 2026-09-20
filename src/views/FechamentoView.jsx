@@ -29,12 +29,13 @@ import {
   UserCheck,
   ShieldCheck,
   Percent,
-  Sparkles
+  Sparkles,
+  Filter
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import { ModalDespesa } from '../components/ModalDespesa';
-import { exportFechamentoMesXlsx } from '../utils/exportExcel';
-import { imprimirFechamentoMes } from '../utils/printStatement';
+import { exportFechamentoMesXlsx, exportComparativoPeriodoXlsx } from '../utils/exportExcel';
+import { imprimirFechamentoMes, imprimirComparativoPeriodo } from '../utils/printStatement';
 
 const MESES_NOMES = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -63,7 +64,16 @@ export const FechamentoView = () => {
 
   const [modoAba, setModoAba] = useState('fechamento'); // 'fechamento' | 'comparativo'
   const [modoVisao, setModoVisao] = useState('projecao'); // 'concluidos' (Apenas Realizado) | 'projecao' (Todos com Projeções)
-  const [anoComparativo, setAnoComparativo] = useState(() => new Date().getFullYear());
+  
+  // Filtro de Período Flexível (pode analisar de qualquer Mês/Ano até qualquer Mês/Ano)
+  const [mesInicioFiltro, setMesInicioFiltro] = useState(() => {
+    const hoje = new Date();
+    return { ano: hoje.getFullYear(), mes: 0 }; // Janeiro do ano atual
+  });
+  const [mesFimFiltro, setMesFimFiltro] = useState(() => {
+    const hoje = new Date();
+    return { ano: hoje.getFullYear(), mes: 11 }; // Dezembro do ano atual
+  });
 
   // Controle de Drilldowns expansíveis por id
   const [clientesExpandidos, setClientesExpandidos] = useState({});
@@ -377,25 +387,47 @@ export const FechamentoView = () => {
   };
 
   // =========================================================================
-  // DADOS PARA O COMPARATIVO ANUAL (JAN A DEZ)
+  // DADOS PARA O COMPARATIVO POR PERÍODO (ANUAL OU INTERVALO PERSONALIZADO)
   // =========================================================================
-  const dadosComparativoAno = useMemo(() => {
-    const meses = [];
+  const dadosComparativoPeriodo = useMemo(() => {
+    let startTotal = mesInicioFiltro.ano * 12 + mesInicioFiltro.mes;
+    let endTotal = mesFimFiltro.ano * 12 + mesFimFiltro.mes;
 
-    for (let m = 0; m < 12; m++) {
-      const mesStr = `${anoComparativo}-${String(m + 1).padStart(2, '0')}`;
+    // Normaliza caso início seja posterior ao fim
+    if (startTotal > endTotal) {
+      const tmp = startTotal;
+      startTotal = endTotal;
+      endTotal = tmp;
+    }
+
+    const meses = [];
+    const anoInicial = Math.floor(startTotal / 12);
+    const anoFinal = Math.floor(endTotal / 12);
+    const cruzaAnos = anoInicial !== anoFinal;
+
+    for (let t = startTotal; t <= endTotal; t++) {
+      const ano = Math.floor(t / 12);
+      const m = t % 12;
+      const mesStr = `${ano}-${String(m + 1).padStart(2, '0')}`;
       
+      // Nome curto com ano caso cruze múltiplos anos (ex: Nov/26, Mar/27)
+      const nomeCurto = cruzaAnos 
+        ? `${MESES_NOMES[m].substring(0, 3)}/${String(ano).slice(2)}`
+        : MESES_NOMES[m].substring(0, 3);
+      
+      const nomeCompleto = `${MESES_NOMES[m]} de ${ano}`;
+
       // Agendamentos deste mês
       const ags = agendamentos.filter(ag => {
         if (!ag.dataHoraInicio || ag.statusServico === 'cancelado') return false;
         const d = new Date(ag.dataHoraInicio);
-        return d.getFullYear() === anoComparativo && d.getMonth() === m;
+        return d.getFullYear() === ano && d.getMonth() === m;
       });
 
       const recBruta = ags.reduce((sum, ag) => sum + Number(ag.valorCliente || 0), 0);
       const totalLimpezas = ags.length;
 
-      // Diárias
+      // Diárias da equipe
       let custoAj = 0;
       ags.forEach(ag => {
         (ag.ajudantesEscaladas || []).forEach(ae => {
@@ -418,13 +450,15 @@ export const FechamentoView = () => {
       const margemCont = recBruta - custoAj - impostos;
       const margemContPct = recBruta > 0 ? (margemCont / recBruta) * 100 : 0;
       const gastosTotal = insumos + invest + outras;
+      const totalDespesasMes = custoAj + impostos + gastosTotal;
       const lucro = margemCont - gastosTotal;
       const lucroPct = recBruta > 0 ? (lucro / recBruta) * 100 : 0;
 
       meses.push({
+        ano,
         mesIndex: m,
-        nomeCurto: MESES_NOMES[m].substring(0, 3),
-        nomeCompleto: MESES_NOMES[m],
+        nomeCurto,
+        nomeCompleto,
         mesAno: mesStr,
         totalLimpezas,
         recBruta,
@@ -434,7 +468,9 @@ export const FechamentoView = () => {
         margemContPct,
         insumos,
         invest,
+        outras,
         gastosTotal,
+        totalDespesasMes,
         lucro,
         lucroPct,
         isFechado: !!mesesFechados[mesStr]?.fechado
@@ -444,26 +480,108 @@ export const FechamentoView = () => {
     const totalAnoRecBruta = meses.reduce((sum, m) => sum + m.recBruta, 0);
     const totalAnoCustoAj = meses.reduce((sum, m) => sum + m.custoAj, 0);
     const totalAnoImpostos = meses.reduce((sum, m) => sum + m.impostos, 0);
+    const totalInsumos = meses.reduce((sum, m) => sum + m.insumos, 0);
+    const totalInvest = meses.reduce((sum, m) => sum + m.invest, 0);
+    const totalOutras = meses.reduce((sum, m) => sum + m.outras, 0);
     const totalAnoMargemCont = totalAnoRecBruta - totalAnoCustoAj - totalAnoImpostos;
-    const totalAnoGastos = meses.reduce((sum, m) => sum + m.gastosTotal, 0);
+    const totalAnoGastos = totalInsumos + totalInvest + totalOutras;
+    const totalGeralDespesas = totalAnoCustoAj + totalAnoImpostos + totalAnoGastos;
     const totalAnoLucro = totalAnoMargemCont - totalAnoGastos;
     const totalAnoLimpezas = meses.reduce((sum, m) => sum + m.totalLimpezas, 0);
 
+    // Descrição do período
+    const mesIniIdx = startTotal % 12;
+    const anoIniVal = Math.floor(startTotal / 12);
+    const mesFimIdx = endTotal % 12;
+    const anoFimVal = Math.floor(endTotal / 12);
+
+    let periodoDesc = '';
+    if (anoIniVal === anoFimVal) {
+      if (mesIniIdx === 0 && mesFimIdx === 11) {
+        periodoDesc = `Janeiro a Dezembro de ${anoIniVal}`;
+      } else if (mesIniIdx === mesFimIdx) {
+        periodoDesc = `${MESES_NOMES[mesIniIdx]} de ${anoIniVal}`;
+      } else {
+        periodoDesc = `${MESES_NOMES[mesIniIdx]} a ${MESES_NOMES[mesFimIdx]} de ${anoIniVal}`;
+      }
+    } else {
+      periodoDesc = `${MESES_NOMES[mesIniIdx]}/${anoIniVal} a ${MESES_NOMES[mesFimIdx]}/${anoFimVal}`;
+    }
+
     return {
       meses,
+      periodoDesc,
       totais: {
         totalAnoRecBruta,
         totalAnoCustoAj,
         totalAnoImpostos,
+        totalInsumos,
+        totalInvest,
+        totalOutras,
         totalAnoMargemCont,
         totalAnoMargemContPct: totalAnoRecBruta > 0 ? (totalAnoMargemCont / totalAnoRecBruta) * 100 : 0,
         totalAnoGastos,
+        totalGeralDespesas,
         totalAnoLucro,
         totalAnoLucroPct: totalAnoRecBruta > 0 ? (totalAnoLucro / totalAnoRecBruta) * 100 : 0,
         totalAnoLimpezas
       }
     };
-  }, [anoComparativo, agendamentos, despesas, mesesFechados]);
+  }, [mesInicioFiltro, mesFimFiltro, agendamentos, despesas, mesesFechados]);
+
+  // Ações de Exportação do Comparativo por Período
+  const handleExportarExcelComparativo = () => {
+    exportComparativoPeriodoXlsx({
+      periodoDesc: dadosComparativoPeriodo.periodoDesc,
+      meses: dadosComparativoPeriodo.meses,
+      totais: dadosComparativoPeriodo.totais
+    });
+  };
+
+  const handleImprimirComparativo = () => {
+    imprimirComparativoPeriodo({
+      periodoDesc: dadosComparativoPeriodo.periodoDesc,
+      meses: dadosComparativoPeriodo.meses,
+      totais: dadosComparativoPeriodo.totais
+    });
+  };
+
+  // Funções de Presets de Período
+  const aplicarPresetAno = (ano) => {
+    setMesInicioFiltro({ ano, mes: 0 });
+    setMesFimFiltro({ ano, mes: 11 });
+  };
+
+  const aplicarPresetUltimos6 = () => {
+    const h = new Date();
+    const fim = { ano: h.getFullYear(), mes: h.getMonth() };
+    let aIni = h.getFullYear();
+    let mIni = h.getMonth() - 5;
+    if (mIni < 0) {
+      aIni -= 1;
+      mIni += 12;
+    }
+    setMesInicioFiltro({ ano: aIni, mes: mIni });
+    setMesFimFiltro(fim);
+  };
+
+  const aplicarPresetUltimos12 = () => {
+    const h = new Date();
+    const fim = { ano: h.getFullYear(), mes: h.getMonth() };
+    let aIni = h.getFullYear();
+    let mIni = h.getMonth() - 11;
+    if (mIni < 0) {
+      aIni -= 1;
+      mIni += 12;
+    }
+    setMesInicioFiltro({ ano: aIni, mes: mIni });
+    setMesFimFiltro(fim);
+  };
+
+  const aplicarPresetNov26Mar27 = () => {
+    setMesInicioFiltro({ ano: 2026, mes: 10 }); // Nov 2026
+    setMesFimFiltro({ ano: 2027, mes: 2 });  // Mar 2027
+  };
 
   return (
     <div style={{ paddingBottom: '3rem' }}>
@@ -509,11 +627,11 @@ export const FechamentoView = () => {
             }}
           >
             <BarChart3 size={16} />
-            <span>Comparativo Anual (Jan a Dez)</span>
+            <span>Comparativo por Período & Anual</span>
           </button>
         </div>
 
-        {/* Botões Globais de Ação */}
+        {/* Botões Globais de Ação (contextuais de acordo com a aba selecionada) */}
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           <button
             onClick={() => {
@@ -530,23 +648,23 @@ export const FechamentoView = () => {
           </button>
 
           <button
-            onClick={handleExportarExcel}
+            onClick={modoAba === 'fechamento' ? handleExportarExcel : handleExportarExcelComparativo}
             className="btn btn-secondary btn-sm"
             style={{ gap: '0.4rem' }}
-            title="Baixar planilha Excel completa (.xlsx) com a DRE formatada"
+            title={modoAba === 'fechamento' ? "Baixar planilha Excel (.xlsx) com a DRE do mês formatada" : "Baixar planilha Excel (.xlsx) com o Comparativo Financeiro por Período"}
           >
             <FileSpreadsheet size={15} color="#10b981" />
-            <span>Excel (.xlsx)</span>
+            <span>{modoAba === 'fechamento' ? 'Excel Fechamento (.xlsx)' : 'Excel Comparativo (.xlsx)'}</span>
           </button>
 
           <button
-            onClick={handleImprimir}
+            onClick={modoAba === 'fechamento' ? handleImprimir : handleImprimirComparativo}
             className="btn btn-secondary btn-sm"
             style={{ gap: '0.4rem' }}
-            title="Imprimir relatório gerencial executivo em formato A4 / PDF"
+            title={modoAba === 'fechamento' ? "Imprimir extrato de fechamento do mês em formato A4 / PDF" : "Imprimir relatório comparativo por período em formato A4 / PDF"}
           >
             <Printer size={15} color="#60a5fa" />
-            <span>Imprimir / PDF</span>
+            <span>{modoAba === 'fechamento' ? 'Imprimir / PDF' : 'Imprimir Comparativo (PDF)'}</span>
           </button>
         </div>
       </div>
@@ -1549,92 +1667,245 @@ export const FechamentoView = () => {
       )}
 
       {/* ===================================================================== */}
-      {/* ABA 2: COMPARATIVO ANUAL (JAN A DEZ) */}
+      {/* ABA 2: COMPARATIVO POR PERÍODO & EVOLUÇÃO DAS DESPESAS */}
       {/* ===================================================================== */}
       {modoAba === 'comparativo' && (
         <div className="glass-card" style={{ padding: '1.25rem' }}>
+          {/* Cabeçalho da Aba Comparativo */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
             <div>
               <h3 style={{ fontSize: '1.2rem', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <BarChart3 size={20} color="var(--primary-400)" />
-                <span>Evolução Anual & Sazonalidade (Janeiro a Dezembro de {anoComparativo})</span>
+                <span>Evolução Financeira & Comparativo por Período</span>
               </h3>
-              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                Acompanhe o crescimento da Receita Bruta, Margem de Contribuição e Lucro Líquido ao longo do ano
+              <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                Período selecionado: <strong style={{ color: 'var(--primary-400)' }}>{dadosComparativoPeriodo.periodoDesc}</strong> ({dadosComparativoPeriodo.meses.length} {dadosComparativoPeriodo.meses.length === 1 ? 'mês' : 'meses'})
               </span>
             </div>
 
-            {/* Seletor de Ano */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            {/* Ações Rápidas de Exportação na Aba Comparativo */}
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
               <button
-                onClick={() => setAnoComparativo(prev => prev - 1)}
+                onClick={handleExportarExcelComparativo}
                 className="btn btn-secondary btn-sm"
+                style={{ gap: '0.4rem', border: '1px solid #10b981', background: 'rgba(16, 185, 129, 0.08)' }}
+                title="Baixar planilha Excel (.xlsx) com as tabelas do comparativo formatadas"
               >
-                ◀ {anoComparativo - 1}
+                <FileSpreadsheet size={15} color="#10b981" />
+                <span>Excel (.xlsx)</span>
               </button>
-              <span style={{ fontSize: '1.1rem', fontWeight: '800', color: 'var(--primary-400)', minWidth: '70px', textAlign: 'center' }}>
-                {anoComparativo}
-              </span>
               <button
-                onClick={() => setAnoComparativo(prev => prev + 1)}
+                onClick={handleImprimirComparativo}
                 className="btn btn-secondary btn-sm"
+                style={{ gap: '0.4rem', border: '1px solid #38bdf8', background: 'rgba(56, 189, 248, 0.08)' }}
+                title="Imprimir relatório comparativo por período em formato A4 ou salvar em PDF"
               >
-                {anoComparativo + 1} ▶
+                <Printer size={15} color="#38bdf8" />
+                <span>Imprimir / PDF</span>
               </button>
             </div>
           </div>
 
-          {/* Totais do Ano em Destaque */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem', marginBottom: '1.5rem' }}>
-            <div style={{ padding: '0.75rem', background: 'var(--bg-input)', borderRadius: 'var(--radius-sm)' }}>
-              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Faturamento do Ano</span>
-              <div style={{ fontSize: '1.25rem', fontWeight: '800', color: 'var(--primary-400)' }}>
-                {formatCurrency(dadosComparativoAno.totais.totalAnoRecBruta)}
-              </div>
-              <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>{dadosComparativoAno.totais.totalAnoLimpezas} limpezas realizadas</span>
+          {/* Barra de Seleção de Período Flexível (Atalhos + Dropdowns De/Até) */}
+          <div style={{ 
+            background: 'var(--bg-input)', 
+            padding: '0.85rem 1rem', 
+            borderRadius: 'var(--radius-md)', 
+            marginBottom: '1.5rem', 
+            display: 'flex', 
+            flexWrap: 'wrap', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            gap: '0.75rem',
+            border: '1px solid var(--border-color)'
+          }}>
+            {/* Atalhos Rápidos */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)', marginRight: '0.2rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <Filter size={13} color="var(--primary-400)" />
+                Atalhos:
+              </span>
+              <button 
+                onClick={() => aplicarPresetAno(2026)} 
+                className="btn btn-secondary btn-sm" 
+                style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem' }}
+              >
+                Ano 2026
+              </button>
+              <button 
+                onClick={() => aplicarPresetAno(2027)} 
+                className="btn btn-secondary btn-sm" 
+                style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem' }}
+              >
+                Ano 2027
+              </button>
+              <button 
+                onClick={aplicarPresetNov26Mar27} 
+                className="btn btn-secondary btn-sm" 
+                style={{ 
+                  padding: '0.25rem 0.6rem', 
+                  fontSize: '0.75rem', 
+                  borderColor: 'var(--primary-500)', 
+                  color: 'var(--primary-400)',
+                  background: 'rgba(16, 185, 129, 0.1)'
+                }}
+                title="Exemplo: De Novembro/2026 até Março/2027"
+              >
+                Nov/26 a Mar/27
+              </button>
+              <button 
+                onClick={aplicarPresetUltimos6} 
+                className="btn btn-secondary btn-sm" 
+                style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem' }}
+              >
+                Últimos 6M
+              </button>
+              <button 
+                onClick={aplicarPresetUltimos12} 
+                className="btn btn-secondary btn-sm" 
+                style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem' }}
+              >
+                Últimos 12M
+              </button>
             </div>
 
-            <div style={{ padding: '0.75rem', background: 'var(--bg-input)', borderRadius: 'var(--radius-sm)' }}>
+            {/* Seletores Personalizados De -> Até */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+              {/* De */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)' }}>De:</span>
+                <select 
+                  value={mesInicioFiltro.mes} 
+                  onChange={e => setMesInicioFiltro(prev => ({ ...prev, mes: Number(e.target.value) }))}
+                  style={{ 
+                    padding: '0.3rem 0.5rem', 
+                    fontSize: '0.78rem', 
+                    background: 'var(--bg-card)', 
+                    color: 'var(--text-primary)', 
+                    border: '1px solid var(--border-color)', 
+                    borderRadius: 'var(--radius-sm)' 
+                  }}
+                >
+                  {MESES_NOMES.map((nome, idx) => (
+                    <option key={idx} value={idx}>{nome}</option>
+                  ))}
+                </select>
+                <select 
+                  value={mesInicioFiltro.ano} 
+                  onChange={e => setMesInicioFiltro(prev => ({ ...prev, ano: Number(e.target.value) }))}
+                  style={{ 
+                    padding: '0.3rem 0.5rem', 
+                    fontSize: '0.78rem', 
+                    background: 'var(--bg-card)', 
+                    color: 'var(--text-primary)', 
+                    border: '1px solid var(--border-color)', 
+                    borderRadius: 'var(--radius-sm)' 
+                  }}
+                >
+                  {[2024, 2025, 2026, 2027, 2028, 2029].map(a => (
+                    <option key={a} value={a}>{a}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Até */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)' }}>Até:</span>
+                <select 
+                  value={mesFimFiltro.mes} 
+                  onChange={e => setMesFimFiltro(prev => ({ ...prev, mes: Number(e.target.value) }))}
+                  style={{ 
+                    padding: '0.3rem 0.5rem', 
+                    fontSize: '0.78rem', 
+                    background: 'var(--bg-card)', 
+                    color: 'var(--text-primary)', 
+                    border: '1px solid var(--border-color)', 
+                    borderRadius: 'var(--radius-sm)' 
+                  }}
+                >
+                  {MESES_NOMES.map((nome, idx) => (
+                    <option key={idx} value={idx}>{nome}</option>
+                  ))}
+                </select>
+                <select 
+                  value={mesFimFiltro.ano} 
+                  onChange={e => setMesFimFiltro(prev => ({ ...prev, ano: Number(e.target.value) }))}
+                  style={{ 
+                    padding: '0.3rem 0.5rem', 
+                    fontSize: '0.78rem', 
+                    background: 'var(--bg-card)', 
+                    color: 'var(--text-primary)', 
+                    border: '1px solid var(--border-color)', 
+                    borderRadius: 'var(--radius-sm)' 
+                  }}
+                >
+                  {[2024, 2025, 2026, 2027, 2028, 2029].map(a => (
+                    <option key={a} value={a}>{a}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Totais do Período em Destaque (5 KPIs) */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem', marginBottom: '1.5rem' }}>
+            <div style={{ padding: '0.75rem', background: 'var(--bg-input)', borderRadius: 'var(--radius-sm)', borderTop: '3px solid var(--primary-500)' }}>
+              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Faturamento do Período</span>
+              <div style={{ fontSize: '1.25rem', fontWeight: '800', color: 'var(--primary-400)' }}>
+                {formatCurrency(dadosComparativoPeriodo.totais.totalAnoRecBruta)}
+              </div>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>{dadosComparativoPeriodo.totais.totalAnoLimpezas} limpezas realizadas</span>
+            </div>
+
+            <div style={{ padding: '0.75rem', background: 'var(--bg-input)', borderRadius: 'var(--radius-sm)', borderTop: '3px solid #ef4444)' }}>
               <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Diárias das Ajudantes</span>
               <div style={{ fontSize: '1.25rem', fontWeight: '800', color: '#f87171' }}>
-                {formatCurrency(dadosComparativoAno.totais.totalAnoCustoAj)}
+                {formatCurrency(dadosComparativoPeriodo.totais.totalAnoCustoAj)}
               </div>
               <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
-                {dadosComparativoAno.totais.totalAnoRecBruta > 0 ? ((dadosComparativoAno.totais.totalAnoCustoAj / dadosComparativoAno.totais.totalAnoRecBruta) * 100).toFixed(1) : 0}% da receita
+                {dadosComparativoPeriodo.totais.totalAnoRecBruta > 0 ? ((dadosComparativoPeriodo.totais.totalAnoCustoAj / dadosComparativoPeriodo.totais.totalAnoRecBruta) * 100).toFixed(1) : 0}% da receita
               </span>
             </div>
 
-            <div style={{ padding: '0.75rem', background: 'var(--bg-input)', borderRadius: 'var(--radius-sm)' }}>
-              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Margem Contribuição Anual</span>
+            <div style={{ padding: '0.75rem', background: 'var(--bg-input)', borderRadius: 'var(--radius-sm)', borderTop: '3px solid #fbbf24' }}>
+              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Margem Contribuição</span>
               <div style={{ fontSize: '1.25rem', fontWeight: '800', color: '#fbbf24' }}>
-                {formatCurrency(dadosComparativoAno.totais.totalAnoMargemCont)}
+                {formatCurrency(dadosComparativoPeriodo.totais.totalAnoMargemCont)}
               </div>
-              <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>Média: {dadosComparativoAno.totais.totalAnoMargemContPct.toFixed(1)}%</span>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>Média: {dadosComparativoPeriodo.totais.totalAnoMargemContPct.toFixed(1)}%</span>
             </div>
 
-            <div style={{ padding: '0.75rem', background: 'var(--bg-input)', borderRadius: 'var(--radius-sm)' }}>
+            <div style={{ padding: '0.75rem', background: 'var(--bg-input)', borderRadius: 'var(--radius-sm)', borderTop: '3px solid #c084fc' }}>
+              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Total de Despesas</span>
+              <div style={{ fontSize: '1.25rem', fontWeight: '800', color: '#c084fc' }}>
+                {formatCurrency(dadosComparativoPeriodo.totais.totalGeralDespesas)}
+              </div>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>Equipe, insumos e impostos</span>
+            </div>
+
+            <div style={{ padding: '0.75rem', background: 'var(--bg-input)', borderRadius: 'var(--radius-sm)', borderTop: '3px solid #3b82f6' }}>
               <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Lucro Líquido Acumulado</span>
               <div style={{ fontSize: '1.25rem', fontWeight: '800', color: '#60a5fa' }}>
-                {formatCurrency(dadosComparativoAno.totais.totalAnoLucro)}
+                {formatCurrency(dadosComparativoPeriodo.totais.totalAnoLucro)}
               </div>
-              <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>Margem Líquida Anual: {dadosComparativoAno.totais.totalAnoLucroPct.toFixed(1)}%</span>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>Margem Líquida: {dadosComparativoPeriodo.totais.totalAnoLucroPct.toFixed(1)}%</span>
             </div>
           </div>
 
-          {/* Tabela Matricial dos 12 Meses */}
-          <div style={{ overflowX: 'auto', marginBottom: '1.5rem' }}>
+          {/* Tabela Matricial do Período */}
+          <div style={{ overflowX: 'auto', marginBottom: '1.75rem' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
               <thead>
                 <tr style={{ background: 'var(--bg-input)', borderBottom: '2px solid var(--border-color)' }}>
-                  <th style={{ padding: '0.65rem', textAlign: 'left' }}>Métrica / Conta</th>
-                  {dadosComparativoAno.meses.map(m => (
-                    <th key={m.mesIndex} style={{ padding: '0.65rem 0.45rem', textAlign: 'right', minWidth: '75px' }}>
+                  <th style={{ padding: '0.65rem', textAlign: 'left', minWidth: '170px' }}>Métrica / Conta</th>
+                  {dadosComparativoPeriodo.meses.map(m => (
+                    <th key={m.mesAno} style={{ padding: '0.65rem 0.45rem', textAlign: 'right', minWidth: '85px' }}>
                       {m.nomeCurto}
                       {m.isFechado && <span title="Mês Fechado" style={{ marginLeft: '3px' }}>🔒</span>}
                     </th>
                   ))}
-                  <th style={{ padding: '0.65rem 0.65rem', textAlign: 'right', background: 'rgba(16, 185, 129, 0.15)', minWidth: '95px' }}>
-                    TOTAL ANO
+                  <th style={{ padding: '0.65rem 0.65rem', textAlign: 'right', background: 'rgba(16, 185, 129, 0.15)', minWidth: '105px' }}>
+                    TOTAL PERÍODO
                   </th>
                 </tr>
               </thead>
@@ -1642,125 +1913,174 @@ export const FechamentoView = () => {
                 {/* Linha 1: Limpezas */}
                 <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
                   <td style={{ padding: '0.55rem', fontWeight: '600' }}>Qtd de Limpezas</td>
-                  {dadosComparativoAno.meses.map(m => (
-                    <td key={m.mesIndex} style={{ padding: '0.55rem 0.45rem', textAlign: 'right' }}>
+                  {dadosComparativoPeriodo.meses.map(m => (
+                    <td key={m.mesAno} style={{ padding: '0.55rem 0.45rem', textAlign: 'right' }}>
                       {m.totalLimpezas}
                     </td>
                   ))}
                   <td style={{ padding: '0.55rem', textAlign: 'right', fontWeight: '800', color: 'var(--primary-400)' }}>
-                    {dadosComparativoAno.totais.totalAnoLimpezas}
+                    {dadosComparativoPeriodo.totais.totalAnoLimpezas}
                   </td>
                 </tr>
 
                 {/* Linha 2: Receita Bruta */}
                 <tr style={{ borderBottom: '1px solid var(--border-color)', background: 'rgba(16, 185, 129, 0.04)' }}>
                   <td style={{ padding: '0.55rem', fontWeight: '700', color: 'var(--primary-400)' }}>(+) Receita Bruta</td>
-                  {dadosComparativoAno.meses.map(m => (
-                    <td key={m.mesIndex} style={{ padding: '0.55rem 0.45rem', textAlign: 'right', fontWeight: '600' }}>
+                  {dadosComparativoPeriodo.meses.map(m => (
+                    <td key={m.mesAno} style={{ padding: '0.55rem 0.45rem', textAlign: 'right', fontWeight: '600' }}>
                       {m.recBruta > 0 ? formatCurrency(m.recBruta) : '-'}
                     </td>
                   ))}
                   <td style={{ padding: '0.55rem', textAlign: 'right', fontWeight: '800', color: 'var(--primary-400)' }}>
-                    {formatCurrency(dadosComparativoAno.totais.totalAnoRecBruta)}
+                    {formatCurrency(dadosComparativoPeriodo.totais.totalAnoRecBruta)}
                   </td>
                 </tr>
 
                 {/* Linha 3: Diárias */}
                 <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
                   <td style={{ padding: '0.55rem', color: '#f87171' }}>(-) Diárias da Equipe</td>
-                  {dadosComparativoAno.meses.map(m => (
-                    <td key={m.mesIndex} style={{ padding: '0.55rem 0.45rem', textAlign: 'right', color: '#f87171' }}>
+                  {dadosComparativoPeriodo.meses.map(m => (
+                    <td key={m.mesAno} style={{ padding: '0.55rem 0.45rem', textAlign: 'right', color: '#f87171' }}>
                       {m.custoAj > 0 ? formatCurrency(m.custoAj) : '-'}
                     </td>
                   ))}
                   <td style={{ padding: '0.55rem', textAlign: 'right', fontWeight: '700', color: '#f87171' }}>
-                    {formatCurrency(dadosComparativoAno.totais.totalAnoCustoAj)}
+                    {formatCurrency(dadosComparativoPeriodo.totais.totalAnoCustoAj)}
                   </td>
                 </tr>
 
                 {/* Linha 4: Impostos */}
                 <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
                   <td style={{ padding: '0.55rem', color: '#fbbf24' }}>(-) Impostos & Taxas</td>
-                  {dadosComparativoAno.meses.map(m => (
-                    <td key={m.mesIndex} style={{ padding: '0.55rem 0.45rem', textAlign: 'right', color: '#fbbf24' }}>
+                  {dadosComparativoPeriodo.meses.map(m => (
+                    <td key={m.mesAno} style={{ padding: '0.55rem 0.45rem', textAlign: 'right', color: '#fbbf24' }}>
                       {m.impostos > 0 ? formatCurrency(m.impostos) : '-'}
                     </td>
                   ))}
                   <td style={{ padding: '0.55rem', textAlign: 'right', color: '#fbbf24', fontWeight: '700' }}>
-                    {formatCurrency(dadosComparativoAno.totais.totalAnoImpostos)}
+                    {formatCurrency(dadosComparativoPeriodo.totais.totalAnoImpostos)}
                   </td>
                 </tr>
 
                 {/* Linha 5: Margem Contribuição */}
                 <tr style={{ borderBottom: '2px solid var(--border-color)', background: 'rgba(245, 158, 11, 0.08)', fontWeight: '700' }}>
                   <td style={{ padding: '0.65rem 0.55rem', color: '#fbbf24' }}>(=) Margem Contribuição</td>
-                  {dadosComparativoAno.meses.map(m => (
-                    <td key={m.mesIndex} style={{ padding: '0.65rem 0.45rem', textAlign: 'right', color: '#fbbf24' }}>
+                  {dadosComparativoPeriodo.meses.map(m => (
+                    <td key={m.mesAno} style={{ padding: '0.65rem 0.45rem', textAlign: 'right', color: '#fbbf24' }}>
                       {m.margemCont !== 0 ? formatCurrency(m.margemCont) : '-'}
                     </td>
                   ))}
                   <td style={{ padding: '0.65rem', textAlign: 'right', color: '#fbbf24', fontWeight: '800' }}>
-                    {formatCurrency(dadosComparativoAno.totais.totalAnoMargemCont)}
+                    {formatCurrency(dadosComparativoPeriodo.totais.totalAnoMargemCont)}
                   </td>
                 </tr>
 
                 {/* Linha 6: % Margem */}
                 <tr style={{ borderBottom: '1px solid var(--border-color)', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
                   <td style={{ padding: '0.45rem 0.55rem' }}>% Margem Contribuição</td>
-                  {dadosComparativoAno.meses.map(m => (
-                    <td key={m.mesIndex} style={{ padding: '0.45rem 0.45rem', textAlign: 'right' }}>
+                  {dadosComparativoPeriodo.meses.map(m => (
+                    <td key={m.mesAno} style={{ padding: '0.45rem 0.45rem', textAlign: 'right' }}>
                       {m.recBruta > 0 ? `${m.margemContPct.toFixed(1)}%` : '-'}
                     </td>
                   ))}
                   <td style={{ padding: '0.45rem', textAlign: 'right', fontWeight: '700' }}>
-                    {dadosComparativoAno.totais.totalAnoMargemContPct.toFixed(1)}%
+                    {dadosComparativoPeriodo.totais.totalAnoMargemContPct.toFixed(1)}%
                   </td>
                 </tr>
 
-                {/* Linha 7: Insumos & Gastos */}
+                {/* Linha 7: Insumos Operacionais */}
                 <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
-                  <td style={{ padding: '0.55rem', color: '#c084fc' }}>(-) Insumos & Máquinas</td>
-                  {dadosComparativoAno.meses.map(m => (
-                    <td key={m.mesIndex} style={{ padding: '0.55rem 0.45rem', textAlign: 'right', color: '#c084fc' }}>
-                      {m.gastosTotal > 0 ? formatCurrency(m.gastosTotal) : '-'}
+                  <td style={{ padding: '0.55rem', color: '#c084fc' }}>(-) Insumos & Produtos</td>
+                  {dadosComparativoPeriodo.meses.map(m => (
+                    <td key={m.mesAno} style={{ padding: '0.55rem 0.45rem', textAlign: 'right', color: '#c084fc' }}>
+                      {m.insumos > 0 ? formatCurrency(m.insumos) : '-'}
                     </td>
                   ))}
                   <td style={{ padding: '0.55rem', textAlign: 'right', color: '#c084fc', fontWeight: '700' }}>
-                    {formatCurrency(dadosComparativoAno.totais.totalAnoGastos)}
+                    {formatCurrency(dadosComparativoPeriodo.totais.totalInsumos)}
                   </td>
                 </tr>
 
-                {/* Linha 8: Lucro Líquido Real */}
+                {/* Linha 8: Investimentos / Máquinas */}
+                <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
+                  <td style={{ padding: '0.55rem', color: '#60a5fa' }}>(-) Investimentos / Máquinas</td>
+                  {dadosComparativoPeriodo.meses.map(m => (
+                    <td key={m.mesAno} style={{ padding: '0.55rem 0.45rem', textAlign: 'right', color: '#60a5fa' }}>
+                      {m.invest > 0 ? formatCurrency(m.invest) : '-'}
+                    </td>
+                  ))}
+                  <td style={{ padding: '0.55rem', textAlign: 'right', color: '#60a5fa', fontWeight: '700' }}>
+                    {formatCurrency(dadosComparativoPeriodo.totais.totalInvest)}
+                  </td>
+                </tr>
+
+                {/* Linha 9: Outros Custos Fixos & Gerais */}
+                <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
+                  <td style={{ padding: '0.55rem', color: '#94a3b8' }}>(-) Custos Fixos & Gerais</td>
+                  {dadosComparativoPeriodo.meses.map(m => (
+                    <td key={m.mesAno} style={{ padding: '0.55rem 0.45rem', textAlign: 'right', color: '#94a3b8' }}>
+                      {m.outras > 0 ? formatCurrency(m.outras) : '-'}
+                    </td>
+                  ))}
+                  <td style={{ padding: '0.55rem', textAlign: 'right', color: '#94a3b8', fontWeight: '700' }}>
+                    {formatCurrency(dadosComparativoPeriodo.totais.totalOutras)}
+                  </td>
+                </tr>
+
+                {/* Linha 10: Lucro Líquido Real */}
                 <tr style={{ background: 'rgba(59, 130, 246, 0.12)', fontWeight: '800', fontSize: '0.85rem' }}>
                   <td style={{ padding: '0.75rem 0.55rem', color: '#60a5fa' }}>(=) Lucro Líquido Real</td>
-                  {dadosComparativoAno.meses.map(m => (
-                    <td key={m.mesIndex} style={{ padding: '0.75rem 0.45rem', textAlign: 'right', color: m.lucro >= 0 ? '#60a5fa' : '#f87171' }}>
+                  {dadosComparativoPeriodo.meses.map(m => (
+                    <td key={m.mesAno} style={{ padding: '0.75rem 0.45rem', textAlign: 'right', color: m.lucro >= 0 ? '#60a5fa' : '#f87171' }}>
                       {m.lucro !== 0 ? formatCurrency(m.lucro) : '-'}
                     </td>
                   ))}
                   <td style={{ padding: '0.75rem', textAlign: 'right', color: '#60a5fa', fontWeight: '900' }}>
-                    {formatCurrency(dadosComparativoAno.totais.totalAnoLucro)}
+                    {formatCurrency(dadosComparativoPeriodo.totais.totalAnoLucro)}
                   </td>
                 </tr>
               </tbody>
             </table>
           </div>
 
-          {/* Gráfico Visual de Barras (Evolução da Receita vs Lucro) */}
-          <div style={{ marginTop: '1rem', padding: '1rem', background: 'var(--bg-input)', borderRadius: 'var(--radius-md)' }}>
-            <span style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.75rem' }}>
-              Gráfico Visual de Rentabilidade Mês a Mês ({anoComparativo}):
-            </span>
+          {/* ================================================================= */}
+          {/* GRÁFICO 1: EVOLUÇÃO DA RENTABILIDADE (RECEITA BRUTA vs LUCRO REAL) */}
+          {/* ================================================================= */}
+          <div style={{ marginTop: '1.25rem', padding: '1.25rem', background: 'var(--bg-input)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <span style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <TrendingUp size={16} color="var(--primary-400)" />
+                <span>1. Gráfico de Rentabilidade Mês a Mês ({dadosComparativoPeriodo.periodoDesc}):</span>
+              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <span style={{ width: '10px', height: '10px', background: 'var(--primary-500)', borderRadius: '2px' }} />
+                  <span>Receita Bruta</span>
+                </span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <span style={{ width: '10px', height: '10px', background: '#3b82f6', borderRadius: '2px' }} />
+                  <span>Lucro Líquido Real</span>
+                </span>
+              </div>
+            </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: '0.4rem', height: '140px', alignItems: 'flex-end', paddingTop: '10px' }}>
-              {dadosComparativoAno.meses.map(m => {
-                const maxVal = Math.max(...dadosComparativoAno.meses.map(x => x.recBruta), 1000);
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: `repeat(${dadosComparativoPeriodo.meses.length}, minmax(45px, 1fr))`, 
+              gap: '0.5rem', 
+              height: '140px', 
+              alignItems: 'flex-end', 
+              paddingTop: '10px',
+              overflowX: 'auto'
+            }}>
+              {dadosComparativoPeriodo.meses.map(m => {
+                const maxVal = Math.max(...dadosComparativoPeriodo.meses.map(x => x.recBruta), 1000);
                 const alturaRec = Math.max(8, (m.recBruta / maxVal) * 110);
                 const alturaLucro = Math.max(4, (Math.max(0, m.lucro) / maxVal) * 110);
 
                 return (
-                  <div key={m.mesIndex} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
-                    <div style={{ display: 'flex', alignItems: 'flex-end', gap: '2px', width: '100%', justifyContent: 'center' }}>
+                  <div key={m.mesAno} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-end', gap: '3px', width: '100%', justifyContent: 'center' }}>
                       {/* Barra Receita */}
                       <div 
                         style={{ 
@@ -1768,7 +2088,7 @@ export const FechamentoView = () => {
                           height: `${alturaRec}px`, 
                           background: 'var(--primary-500)', 
                           borderRadius: '3px 3px 0 0',
-                          opacity: m.recBruta > 0 ? 0.9 : 0.2
+                          opacity: m.recBruta > 0 ? 0.9 : 0.25
                         }} 
                         title={`${m.nomeCompleto}: Receita ${formatCurrency(m.recBruta)}`}
                       />
@@ -1779,12 +2099,115 @@ export const FechamentoView = () => {
                           height: `${alturaLucro}px`, 
                           background: '#3b82f6', 
                           borderRadius: '3px 3px 0 0',
-                          opacity: m.lucro > 0 ? 0.9 : 0.2
+                          opacity: m.lucro > 0 ? 0.9 : 0.25
                         }} 
-                        title={`${m.nomeCompleto}: Lucro ${formatCurrency(m.lucro)}`}
+                        title={`${m.nomeCompleto}: Lucro Líquido ${formatCurrency(m.lucro)}`}
                       />
                     </div>
-                    <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                    <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '6px', whiteSpace: 'nowrap' }}>
+                      {m.nomeCurto}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* ================================================================= */}
+          {/* GRÁFICO 2: EVOLUÇÃO DETALHADA DAS DESPESAS (SOLICITADO PELO USUÁRIO) */}
+          {/* ================================================================= */}
+          <div style={{ marginTop: '1.25rem', padding: '1.25rem', background: 'var(--bg-input)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <div>
+                <span style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <ArrowDownRight size={16} color="#f87171" />
+                  <span>2. Gráfico de Evolução das Despesas por Mês ({dadosComparativoPeriodo.periodoDesc}):</span>
+                </span>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', marginTop: '2px' }}>
+                  Acompanhe a distribuição para onde foi o dinheiro da empresa mês a mês: Diárias, Insumos, Máquinas e Impostos
+                </span>
+              </div>
+
+              {/* Total de Despesas no Período */}
+              <div style={{ textAlign: 'right' }}>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Total de Despesas: </span>
+                <strong style={{ fontSize: '0.95rem', color: '#f87171' }}>{formatCurrency(dadosComparativoPeriodo.totais.totalGeralDespesas)}</strong>
+              </div>
+            </div>
+
+            {/* Barras Empilhadas de Despesas por Mês */}
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: `repeat(${dadosComparativoPeriodo.meses.length}, minmax(45px, 1fr))`, 
+              gap: '0.5rem', 
+              height: '160px', 
+              alignItems: 'flex-end', 
+              paddingTop: '20px',
+              overflowX: 'auto'
+            }}>
+              {dadosComparativoPeriodo.meses.map(m => {
+                const maxDesp = Math.max(...dadosComparativoPeriodo.meses.map(x => x.totalDespesasMes), 500);
+                const alturaTotal = Math.max(10, (m.totalDespesasMes / maxDesp) * 120);
+
+                // Proporções relativas dentro da barra de despesas
+                const pAj = m.totalDespesasMes > 0 ? (m.custoAj / m.totalDespesasMes) : 0;
+                const pImp = m.totalDespesasMes > 0 ? (m.impostos / m.totalDespesasMes) : 0;
+                const pIns = m.totalDespesasMes > 0 ? (m.insumos / m.totalDespesasMes) : 0;
+                const pInv = m.totalDespesasMes > 0 ? (m.invest / m.totalDespesasMes) : 0;
+                const pOut = m.totalDespesasMes > 0 ? (m.outras / m.totalDespesasMes) : 0;
+
+                return (
+                  <div key={m.mesAno} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
+                    {/* Valor Total da Despesa no topo da barra */}
+                    {m.totalDespesasMes > 0 && (
+                      <span style={{ fontSize: '0.62rem', fontWeight: '700', color: '#f87171', marginBottom: '4px', whiteSpace: 'nowrap' }}>
+                        {formatCurrency(m.totalDespesasMes)}
+                      </span>
+                    )}
+
+                    {/* Coluna Empilhada */}
+                    <div 
+                      style={{ 
+                        width: '38px', 
+                        height: `${alturaTotal}px`, 
+                        borderRadius: '4px 4px 0 0', 
+                        overflow: 'hidden', 
+                        display: 'flex', 
+                        flexDirection: 'column-reverse',
+                        background: 'rgba(255,255,255,0.05)',
+                        border: '1px solid rgba(255,255,255,0.1)'
+                      }}
+                      title={`${m.nomeCompleto}:
+• Diárias Equipe: ${formatCurrency(m.custoAj)}
+• Impostos & Taxas: ${formatCurrency(m.impostos)}
+• Insumos & Produtos: ${formatCurrency(m.insumos)}
+• Máquinas / Investimentos: ${formatCurrency(m.invest)}
+• Outros Fixos: ${formatCurrency(m.outras)}
+TOTAL: ${formatCurrency(m.totalDespesasMes)}`}
+                    >
+                      {/* Segmento 1: Diárias Equipe (Vermelho) */}
+                      {pAj > 0 && (
+                        <div style={{ height: `${pAj * 100}%`, background: '#ef4444', width: '100%' }} />
+                      )}
+                      {/* Segmento 2: Impostos (Amarelo) */}
+                      {pImp > 0 && (
+                        <div style={{ height: `${pImp * 100}%`, background: '#f59e0b', width: '100%' }} />
+                      )}
+                      {/* Segmento 3: Insumos (Roxo) */}
+                      {pIns > 0 && (
+                        <div style={{ height: `${pIns * 100}%`, background: '#a855f7', width: '100%' }} />
+                      )}
+                      {/* Segmento 4: Investimentos/Máquinas (Azul) */}
+                      {pInv > 0 && (
+                        <div style={{ height: `${pInv * 100}%`, background: '#3b82f6', width: '100%' }} />
+                      )}
+                      {/* Segmento 5: Outros (Cinza) */}
+                      {pOut > 0 && (
+                        <div style={{ height: `${pOut * 100}%`, background: '#64748b', width: '100%' }} />
+                      )}
+                    </div>
+
+                    <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '6px', whiteSpace: 'nowrap' }}>
                       {m.nomeCurto}
                     </span>
                   </div>
@@ -1792,14 +2215,55 @@ export const FechamentoView = () => {
               })}
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '1.5rem', marginTop: '0.75rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                <span style={{ width: '10px', height: '10px', background: 'var(--primary-500)', borderRadius: '2px' }} />
-                <span>Receita Bruta</span>
+            {/* Legenda Explicativa com Valores e Percentuais */}
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'center', 
+              gap: '1.25rem', 
+              marginTop: '1.25rem', 
+              fontSize: '0.75rem', 
+              flexWrap: 'wrap',
+              borderTop: '1px solid var(--border-color)',
+              paddingTop: '0.85rem'
+            }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <span style={{ width: '12px', height: '12px', background: '#ef4444', borderRadius: '3px' }} />
+                <span>
+                  <strong>Diárias das Ajudantes:</strong> {formatCurrency(dadosComparativoPeriodo.totais.totalAnoCustoAj)} 
+                  <span style={{ color: 'var(--text-muted)', marginLeft: '3px' }}>
+                    ({dadosComparativoPeriodo.totais.totalGeralDespesas > 0 ? ((dadosComparativoPeriodo.totais.totalAnoCustoAj / dadosComparativoPeriodo.totais.totalGeralDespesas) * 100).toFixed(1) : 0}%)
+                  </span>
+                </span>
               </span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                <span style={{ width: '10px', height: '10px', background: '#3b82f6', borderRadius: '2px' }} />
-                <span>Lucro Líquido Real</span>
+
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <span style={{ width: '12px', height: '12px', background: '#f59e0b', borderRadius: '3px' }} />
+                <span>
+                  <strong>Impostos & Taxas:</strong> {formatCurrency(dadosComparativoPeriodo.totais.totalAnoImpostos)}
+                  <span style={{ color: 'var(--text-muted)', marginLeft: '3px' }}>
+                    ({dadosComparativoPeriodo.totais.totalGeralDespesas > 0 ? ((dadosComparativoPeriodo.totais.totalAnoImpostos / dadosComparativoPeriodo.totais.totalGeralDespesas) * 100).toFixed(1) : 0}%)
+                  </span>
+                </span>
+              </span>
+
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <span style={{ width: '12px', height: '12px', background: '#a855f7', borderRadius: '3px' }} />
+                <span>
+                  <strong>Insumos & Produtos:</strong> {formatCurrency(dadosComparativoPeriodo.totais.totalInsumos)}
+                  <span style={{ color: 'var(--text-muted)', marginLeft: '3px' }}>
+                    ({dadosComparativoPeriodo.totais.totalGeralDespesas > 0 ? ((dadosComparativoPeriodo.totais.totalInsumos / dadosComparativoPeriodo.totais.totalGeralDespesas) * 100).toFixed(1) : 0}%)
+                  </span>
+                </span>
+              </span>
+
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <span style={{ width: '12px', height: '12px', background: '#3b82f6', borderRadius: '3px' }} />
+                <span>
+                  <strong>Investimentos / Máquinas:</strong> {formatCurrency(dadosComparativoPeriodo.totais.totalInvest)}
+                  <span style={{ color: 'var(--text-muted)', marginLeft: '3px' }}>
+                    ({dadosComparativoPeriodo.totais.totalGeralDespesas > 0 ? ((dadosComparativoPeriodo.totais.totalInvest / dadosComparativoPeriodo.totais.totalGeralDespesas) * 100).toFixed(1) : 0}%)
+                  </span>
+                </span>
               </span>
             </div>
           </div>
