@@ -172,7 +172,7 @@ export const ModalViradaMes = ({ isOpen, onClose, onMesAgendado }) => {
               Programar Agenda para o Próximo Mês
             </h2>
             <p style={{ fontSize: '0.825rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
-              O sistema detecta os clientes frequentes e confirmados (semanais, quinzenais e PJ) e projeta todas as datas do novo mês automaticamente!
+              O sistema analisa a última faxina efetuada ou agendada no mês anterior e projeta com precisão a cadência correta (semanal, quinzenal de 14 em 14 dias e mensal) para o novo mês!
             </p>
           </div>
 
@@ -349,10 +349,104 @@ export const ModalViradaMes = ({ isOpen, onClose, onMesAgendado }) => {
                     </div>
                   </div>
 
-                  {/* Detalhes da Escala e Datas Calculadas */}
+                  {/* Linha de Destaque em Amarelo: Informação da Última Limpeza no Mês Anterior */}
+                  {item.ultimaFaxinaInfo ? (
+                    <div style={{
+                      background: 'rgba(245, 158, 11, 0.12)',
+                      border: '1.5px solid rgba(245, 158, 11, 0.4)',
+                      borderRadius: 'var(--radius-sm)',
+                      padding: '0.55rem 0.85rem',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      flexWrap: 'wrap',
+                      gap: '0.6rem',
+                      fontSize: '0.8rem'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        <span style={{ 
+                          display: 'inline-flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'center', 
+                          width: '22px', 
+                          height: '22px', 
+                          borderRadius: '50%', 
+                          background: '#f59e0b', 
+                          color: '#000', 
+                          fontWeight: 'bold', 
+                          fontSize: '0.75rem',
+                          flexShrink: 0
+                        }}>
+                          ⏱
+                        </span>
+                        <div>
+                          <span style={{ color: 'var(--accent-gold)', fontWeight: '700', textTransform: 'uppercase', fontSize: '0.675rem', letterSpacing: '0.5px', display: 'block' }}>
+                            Última Limpeza no Mês Anterior
+                          </span>
+                          <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>
+                            {item.ultimaFaxinaInfo.diaSemanaExtenso}, {item.ultimaFaxinaInfo.dataCurta} às {item.ultimaFaxinaInfo.horaFormatada}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.725rem' }}>Status:</span>
+                        {item.ultimaFaxinaInfo.isEfetuada ? (
+                          <span style={{ 
+                            background: 'rgba(16, 185, 129, 0.2)', 
+                            border: '1px solid rgba(16, 185, 129, 0.5)',
+                            color: 'var(--primary-400)', 
+                            padding: '0.2rem 0.6rem', 
+                            borderRadius: '4px', 
+                            fontSize: '0.725rem', 
+                            fontWeight: '700',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}>
+                            <CheckCircle2 size={12} /> Efetuada (Concluída)
+                          </span>
+                        ) : (
+                          <span style={{ 
+                            background: 'rgba(245, 158, 11, 0.2)', 
+                            border: '1px solid rgba(245, 158, 11, 0.5)',
+                            color: 'var(--accent-gold)', 
+                            padding: '0.2rem 0.6rem', 
+                            borderRadius: '4px', 
+                            fontSize: '0.725rem', 
+                            fontWeight: '700',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}>
+                            <Clock size={12} /> Agendada (Pendente)
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{
+                      background: 'rgba(245, 158, 11, 0.08)',
+                      border: '1px dashed rgba(245, 158, 11, 0.4)',
+                      borderRadius: 'var(--radius-sm)',
+                      padding: '0.5rem 0.85rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      fontSize: '0.785rem',
+                      color: 'var(--accent-gold)'
+                    }}>
+                      <AlertCircle size={15} style={{ flexShrink: 0 }} />
+                      <span>
+                        <strong>Cliente sem faxina anterior cadastrada:</strong> Programando datas padrão a partir do início de {MESES_NOMES[mesDestino]}.
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Detalhes da Escala e Datas Calculadas para o Próximo Mês */}
                   <div style={{ 
                     background: 'var(--bg-input)', 
-                    padding: '0.5rem 0.75rem', 
+                    padding: '0.55rem 0.85rem', 
                     borderRadius: 'var(--radius-sm)',
                     display: 'flex',
                     justifyContent: 'space-between',
@@ -362,26 +456,35 @@ export const ModalViradaMes = ({ isOpen, onClose, onMesAgendado }) => {
                     fontSize: '0.775rem'
                   }}>
                     <div>
-                      <span style={{ color: 'var(--text-muted)' }}>Padrão: </span>
+                      <span style={{ color: 'var(--text-muted)' }}>Projetado para {MESES_NOMES[mesDestino]}: </span>
                       <strong style={{ color: 'var(--text-primary)' }}>
                         Toda {item.diaSemanaNome} às {item.horaFormatada}
                       </strong>
-                      <span style={{ color: 'var(--text-muted)', marginLeft: '0.5rem' }}>
-                        • Equipe: {nomesAjudantes.length > 0 ? nomesAjudantes.join(' e ') : 'A definir'}
+                      <span style={{ color: 'var(--text-muted)', marginLeft: '0.4rem', fontSize: '0.725rem' }}>
+                        ({item.frequencia === 'quinzenal' 
+                          ? 'a cada 14 dias após a última limpeza' 
+                          : (item.frequencia === 'semanal' ? 'semanal' : 'mensal')})
                       </span>
+                      {nomesAjudantes.length > 0 && (
+                        <span style={{ color: 'var(--text-muted)', marginLeft: '0.5rem' }}>
+                          • Equipe: {nomesAjudantes.join(' e ')}
+                        </span>
+                      )}
                     </div>
 
-                    <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.725rem', color: 'var(--text-muted)', marginRight: '2px' }}>Datas:</span>
                       {item.datasCalculadas.map((dt, idx) => (
                         <span 
                           key={idx}
                           style={{
                             background: 'rgba(16, 185, 129, 0.12)',
                             color: 'var(--primary-400)',
-                            padding: '0.15rem 0.45rem',
-                            borderRadius: '3px',
-                            fontWeight: '600',
-                            fontSize: '0.725rem'
+                            padding: '0.15rem 0.5rem',
+                            borderRadius: '4px',
+                            fontWeight: '700',
+                            fontSize: '0.725rem',
+                            border: '1px solid rgba(16, 185, 129, 0.3)'
                           }}
                         >
                           {dt.diaFormatado}

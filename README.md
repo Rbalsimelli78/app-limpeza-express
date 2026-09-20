@@ -20,11 +20,13 @@ Sistema completo de Gestão Operacional, Agendamentos, Equipe e Fluxo de Caixa d
 
 ---
 
-## 📖 Documentação Técnica Completa
+## 📖 Documentação Técnica & Backlog
 
-Para detalhes aprofundados sobre arquitetura, modelagem de banco de dados, dicionário de dados, boas práticas e rotinas de manutenção, consulte o arquivo oficial:
-
+Para detalhes aprofundados sobre arquitetura, modelagem de banco de dados, dicionário de dados e rotinas de manutenção:
 👉 **[DOCUMENTACAO.md](./DOCUMENTACAO.md)**
+
+Para acompanhar o planejamento de melhorias, otimizações e correções prioritárias:
+👉 **[BACKLOG.md](./BACKLOG.md)**
 
 ---
 

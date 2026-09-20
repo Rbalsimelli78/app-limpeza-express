@@ -303,5 +303,15 @@ Quando a gestora estiver pronta para utilizar o sistema exclusivamente com dados
 
 ---
 
+## 9. 📋 BACKLOG DE EVOLUÇÃO & ROADMAP
+
+As melhorias, correções de bugs, otimizações de performance e tarefas de engenharia estão mapeadas e priorizadas no arquivo:
+
+👉 **[BACKLOG.md](./BACKLOG.md)**
+
+*Consulte o backlog para acompanhar os critérios de aceite, estimativas de esforço e status de execução de cada item.*
+
+---
+
 *Documentação elaborada e validada para arquivo permanente da Limpeza Express SP.*  
 *Versão da Plataforma: **1.2.0 (Cloud Firestore Real-Time Production Edition)**.*

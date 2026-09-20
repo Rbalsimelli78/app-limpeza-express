@@ -11,8 +11,6 @@ export const ModalPreviewEscalaSemanal = ({
   clientes,
   showToast
 }) => {
-  if (!isOpen || !ajudante) return null;
-
   const [incluirPreco, setIncluirPreco] = useState(true);
   const [incluirEndereco, setIncluirEndereco] = useState(true);
   const [copiado, setCopiado] = useState(false);
@@ -21,7 +19,7 @@ export const ModalPreviewEscalaSemanal = ({
   // Prepara os dados das faxinas da semana para o texto
   const payloadFaxinas = (faxinas || []).map(ag => {
     const cli = (clientes || []).find(c => c.id === ag.clienteId);
-    const ae = (ag.ajudantesEscaladas || []).find(e => e.ajudanteId === ajudante.id);
+    const ae = (ag.ajudantesEscaladas || []).find(e => e.ajudanteId === ajudante?.id);
     return {
       dataHoraInicio: ag.dataHoraInicio,
       clienteNome: cli?.nome || 'Cliente',
@@ -30,7 +28,7 @@ export const ModalPreviewEscalaSemanal = ({
       apartamento: cli?.apartamento || '',
       endereco: cli?.endereco || '',
       bairro: cli?.bairro || '',
-      valorDiaria: ae?.valorAPagar || ajudante.valorDiariaBase || 100
+      valorDiaria: ae?.valorAPagar || ajudante?.valorDiariaBase || 100
     };
   });
 
@@ -38,6 +36,7 @@ export const ModalPreviewEscalaSemanal = ({
 
   // Recalcula o texto quando as opções mudam
   useEffect(() => {
+    if (!isOpen || !ajudante) return;
     const textoGerado = buildEscalaSemanalAjudanteText({
       ajudanteNome: ajudante.nome,
       faxinas: payloadFaxinas,
@@ -46,7 +45,7 @@ export const ModalPreviewEscalaSemanal = ({
       incluirEndereco
     });
     setTextoPersonalizado(textoGerado);
-  }, [incluirPreco, incluirEndereco, ajudante]);
+  }, [incluirPreco, incluirEndereco, ajudante, isOpen]);
 
   const handleCopiar = () => {
     navigator.clipboard.writeText(textoPersonalizado);
@@ -56,9 +55,12 @@ export const ModalPreviewEscalaSemanal = ({
   };
 
   const handleEnviarWhatsApp = () => {
+    if (!ajudante) return;
     const url = getWhatsAppUrl(ajudante.telefone, textoPersonalizado);
     window.open(url, '_blank');
   };
+
+  if (!isOpen || !ajudante) return null;
 
   return (
     <div className="modal-backdrop" onClick={onClose}>

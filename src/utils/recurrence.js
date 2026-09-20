@@ -164,15 +164,47 @@ export const projetarViradaDeMes = ({
 }) => {
   const clientesAtivos = clientes.filter(c => c.status !== 'inativo');
   const clientesProjetados = [];
+  const inicioMesDestino = new Date(anoDestino, mesDestino, 1, 0, 0, 0);
 
   clientesAtivos.forEach(cliente => {
+    // Busca todas as faxinas válidas do cliente ordenadas da mais recente para a mais antiga
     const faxinasCliente = agendamentos
       .filter(a => a.clienteId === cliente.id && a.statusServico !== 'cancelado')
       .sort((a, b) => new Date(b.dataHoraInicio) - new Date(a.dataHoraInicio));
 
-    const ultimaFaxina = faxinasCliente[0];
+    // Identifica a última faxina efetuada ou agendada anterior ao mês de destino
+    const faxinasAnteriores = faxinasCliente.filter(a => new Date(a.dataHoraInicio) < inicioMesDestino);
+    const ultimaFaxinaReferencia = faxinasAnteriores[0] || faxinasCliente[0] || null;
 
-    const planoId = cliente.planoPadraoId || ultimaFaxina?.planoId || 'plano-quinzenal';
+    // Monta o objeto com informações detalhadas da última faxina para exibição em destaque
+    let ultimaFaxinaInfo = null;
+    if (ultimaFaxinaReferencia?.dataHoraInicio) {
+      const dUlt = new Date(ultimaFaxinaReferencia.dataHoraInicio);
+      const isEfetuada = ultimaFaxinaReferencia.statusServico === 'concluido';
+      const isAgendada = ultimaFaxinaReferencia.statusServico === 'confirmado' || ultimaFaxinaReferencia.statusServico === 'pendente';
+      const statusTexto = isEfetuada 
+        ? 'Efetuada (Concluída)' 
+        : (isAgendada ? 'Agendada (Pendente de realização)' : 'Agendada');
+
+      ultimaFaxinaInfo = {
+        id: ultimaFaxinaReferencia.id,
+        dataHoraInicio: ultimaFaxinaReferencia.dataHoraInicio,
+        dataHoraFim: ultimaFaxinaReferencia.dataHoraFim,
+        dataObj: dUlt,
+        diaSemanaExtenso: DIAS_SEMANA_NOMES[dUlt.getDay()],
+        diaFormatado: formatDateWithWeekday(dUlt),
+        dataCurta: dUlt.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+        horaFormatada: `${String(dUlt.getHours()).padStart(2, '0')}:${String(dUlt.getMinutes()).padStart(2, '0')}`,
+        statusServico: ultimaFaxinaReferencia.statusServico,
+        isEfetuada,
+        statusTexto,
+        statusPagamento: ultimaFaxinaReferencia.statusClientePagamento || 'pendente',
+        ajudantesEscaladas: ultimaFaxinaReferencia.ajudantesEscaladas || [],
+        valorCliente: ultimaFaxinaReferencia.valorCliente
+      };
+    }
+
+    const planoId = cliente.planoPadraoId || ultimaFaxinaReferencia?.planoId || 'plano-quinzenal';
     const planoObj = planos.find(p => p.id === planoId);
 
     let frequencia = 'semanal';
@@ -195,42 +227,128 @@ export const projetarViradaDeMes = ({
     let horaInicio = 9;
     let minutoInicio = 0;
     let duracaoHoras = 4;
-    let ajudantesEscaladas = ultimaFaxina?.ajudantesEscaladas || [];
-    let dormitorios = cliente.dormitorios || ultimaFaxina?.dormitorios || 2;
-    let valorCobrado = cliente.valorFechado || ultimaFaxina?.valorCliente || planoObj?.valorBase || 190;
-    let formaPagamento = ultimaFaxina?.formaPagamentoCliente || 'PIX';
-    let observacoes = ultimaFaxina?.observacoes || cliente.observacoes || '';
+    let ajudantesEscaladas = ultimaFaxinaReferencia?.ajudantesEscaladas || [];
+    let dormitorios = cliente.dormitorios || ultimaFaxinaReferencia?.dormitorios || 2;
+    let valorCobrado = cliente.valorFechado || ultimaFaxinaReferencia?.valorCliente || planoObj?.valorBase || 190;
+    let formaPagamento = ultimaFaxinaReferencia?.formaPagamentoCliente || 'PIX';
+    let observacoes = ultimaFaxinaReferencia?.observacoes || cliente.observacoes || '';
 
-    if (ultimaFaxina?.dataHoraInicio) {
-      const dUltima = new Date(ultimaFaxina.dataHoraInicio);
+    if (ultimaFaxinaReferencia?.dataHoraInicio) {
+      const dUltima = new Date(ultimaFaxinaReferencia.dataHoraInicio);
       diaSemanaAlvo = dUltima.getDay();
       horaInicio = dUltima.getHours();
       minutoInicio = dUltima.getMinutes();
 
-      if (ultimaFaxina.dataHoraFim) {
-        const dFim = new Date(ultimaFaxina.dataHoraFim);
+      if (ultimaFaxinaReferencia.dataHoraFim) {
+        const dFim = new Date(ultimaFaxinaReferencia.dataHoraFim);
         duracaoHoras = Math.max(2, Math.round((dFim.getTime() - dUltima.getTime()) / (1000 * 60 * 60)));
       }
     }
+    const duracaoMs = duracaoHoras * 60 * 60 * 1000;
 
-    const todasDatasNoMes = getDatasDoMesPorDiaSemana(
-      anoDestino,
-      mesDestino,
-      diaSemanaAlvo,
-      horaInicio,
-      minutoInicio,
-      duracaoHoras
-    );
+    let datasCalculadas = [];
 
-    let datasSelecionadas = [];
-    if (frequencia === 'semanal') {
-      datasSelecionadas = todasDatasNoMes;
-    } else if (frequencia === 'quinzenal') {
-      datasSelecionadas = todasDatasNoMes.filter((_, idx) => idx % 2 === 0);
-    } else if (frequencia === 'mensal') {
-      datasSelecionadas = todasDatasNoMes.slice(0, 1);
+    // Se temos a última faxina de referência, calculamos com base no ritmo exato dela:
+    if (ultimaFaxinaReferencia?.dataHoraInicio) {
+      const dUlt = new Date(ultimaFaxinaReferencia.dataHoraInicio);
+
+      if (frequencia === 'semanal') {
+        // Passo semanal: +7 dias a partir da data da última faxina
+        let cursor = new Date(dUlt);
+        cursor.setHours(horaInicio, minutoInicio, 0, 0);
+
+        // Avança enquanto for anterior ao mês de destino
+        while (cursor.getTime() < inicioMesDestino.getTime()) {
+          cursor.setDate(cursor.getDate() + 7);
+        }
+
+        // Coleta todas as semanas dentro do mês de destino
+        while (cursor.getFullYear() === anoDestino && cursor.getMonth() === mesDestino) {
+          const inicio = new Date(cursor);
+          const fim = new Date(inicio.getTime() + duracaoMs);
+          datasCalculadas.push({
+            dataHoraInicio: toDatetimeLocalString(inicio),
+            dataHoraFim: toDatetimeLocalString(fim),
+            dataObj: new Date(inicio),
+            diaSemana: getDiaSemanaExtenso(inicio),
+            diaFormatado: formatDateWithWeekday(inicio),
+            horaFormatada: `${String(inicio.getHours()).padStart(2, '0')}:${String(inicio.getMinutes()).padStart(2, '0')}`
+          });
+          cursor.setDate(cursor.getDate() + 7);
+        }
+      } else if (frequencia === 'quinzenal') {
+        // Passo quinzenal: exatamente +14 dias a partir da última faxina (mantém a cadência sem quebras no início do mês)
+        let cursor = new Date(dUlt);
+        cursor.setHours(horaInicio, minutoInicio, 0, 0);
+
+        // Avança de 14 em 14 dias até entrar no mês de destino
+        while (cursor.getTime() < inicioMesDestino.getTime()) {
+          cursor.setDate(cursor.getDate() + 14);
+        }
+
+        // Coleta as datas da quinzena dentro do mês de destino
+        while (cursor.getFullYear() === anoDestino && cursor.getMonth() === mesDestino) {
+          const inicio = new Date(cursor);
+          const fim = new Date(inicio.getTime() + duracaoMs);
+          datasCalculadas.push({
+            dataHoraInicio: toDatetimeLocalString(inicio),
+            dataHoraFim: toDatetimeLocalString(fim),
+            dataObj: new Date(inicio),
+            diaSemana: getDiaSemanaExtenso(inicio),
+            diaFormatado: formatDateWithWeekday(inicio),
+            horaFormatada: `${String(inicio.getHours()).padStart(2, '0')}:${String(inicio.getMinutes()).padStart(2, '0')}`
+          });
+          cursor.setDate(cursor.getDate() + 14);
+        }
+      } else if (frequencia === 'mensal') {
+        // Passo mensal: busca a data do mesmo dia da semana no mês destino que dista aproximadamente 1 mês da última
+        const todasDatasDoDia = getDatasDoMesPorDiaSemana(
+          anoDestino,
+          mesDestino,
+          diaSemanaAlvo,
+          horaInicio,
+          minutoInicio,
+          duracaoHoras
+        );
+
+        const alvoAproximado = new Date(dUlt);
+        alvoAproximado.setMonth(alvoAproximado.getMonth() + 1);
+
+        let melhorData = todasDatasDoDia[0];
+        let menorDiff = Infinity;
+        todasDatasDoDia.forEach(dt => {
+          const diff = Math.abs(dt.dataObj.getTime() - alvoAproximado.getTime());
+          if (diff < menorDiff) {
+            menorDiff = diff;
+            melhorData = dt;
+          }
+        });
+
+        if (melhorData) {
+          datasCalculadas = [melhorData];
+        }
+      }
+    } else {
+      // Cliente novo (sem faxina anterior registrada): fallback no calendário do mês
+      const todasDatasNoMes = getDatasDoMesPorDiaSemana(
+        anoDestino,
+        mesDestino,
+        diaSemanaAlvo,
+        horaInicio,
+        minutoInicio,
+        duracaoHoras
+      );
+
+      if (frequencia === 'semanal') {
+        datasCalculadas = todasDatasNoMes;
+      } else if (frequencia === 'quinzenal') {
+        datasCalculadas = todasDatasNoMes.filter((_, idx) => idx % 2 === 0);
+      } else if (frequencia === 'mensal') {
+        datasCalculadas = todasDatasNoMes.slice(0, 1);
+      }
     }
 
+    // Exclui datas que já estejam agendadas no mês para este cliente
     const agendamentosJaExistentesNoMes = agendamentos.filter(a => {
       if (a.clienteId !== cliente.id) return false;
       if (!a.dataHoraInicio) return false;
@@ -238,7 +356,7 @@ export const projetarViradaDeMes = ({
       return d.getFullYear() === anoDestino && d.getMonth() === mesDestino;
     });
 
-    const datasNaoAgendadas = datasSelecionadas.filter(novaData => {
+    const datasNaoAgendadas = datasCalculadas.filter(novaData => {
       const diaNova = novaData.dataHoraInicio.slice(0, 10);
       return !agendamentosJaExistentesNoMes.some(existente => existente.dataHoraInicio.slice(0, 10) === diaNova);
     });
@@ -257,6 +375,7 @@ export const projetarViradaDeMes = ({
         formaPagamento,
         ajudantesEscaladas,
         observacoes,
+        ultimaFaxinaInfo,
         datasCalculadas: datasNaoAgendadas,
         totalFaxinas: datasNaoAgendadas.length,
         totalPrevisto: datasNaoAgendadas.length * Number(valorCobrado),
