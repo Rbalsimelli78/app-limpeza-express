@@ -1721,4 +1721,325 @@ export const imprimirComparativoPeriodo = ({
   executarImpressaoIframe(html);
 };
 
+// Gerar e Imprimir Recibo Oficial de Pagamento de Diárias para Ajudante / Diarista em formato A4 Profissional
+export const imprimirReciboPagamentoAjudante = ({
+  ajudante,
+  itens = [],
+  total = 0,
+  periodoDesc = 'Período Selecionado'
+}) => {
+  const dataHojeStr = new Date().toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+
+  const html = `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Recibo de Pagamento - ${ajudante?.nome || 'Colaboradora'}</title>
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 12mm 15mm;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      color: #1e293b;
+      background: #ffffff;
+      padding: 12px;
+      font-size: 11px;
+      line-height: 1.4;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 2px solid #059669;
+      padding-bottom: 12px;
+      margin-bottom: 14px;
+    }
+    .brand-title {
+      font-size: 20px;
+      font-weight: 800;
+      color: #065f46;
+      letter-spacing: -0.3px;
+    }
+    .brand-subtitle {
+      font-size: 10px;
+      color: #059669;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 2px;
+    }
+    .doc-info {
+      text-align: right;
+    }
+    .doc-title {
+      font-size: 15px;
+      font-weight: 800;
+      color: #0f172a;
+      text-transform: uppercase;
+    }
+    .doc-date {
+      font-size: 10px;
+      color: #64748b;
+      margin-top: 2px;
+    }
+    .info-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin-bottom: 14px;
+      display: flex;
+      justify-content: space-between;
+      gap: 15px;
+    }
+    .info-col {
+      flex: 1;
+    }
+    .info-label {
+      font-size: 9.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: #64748b;
+      margin-bottom: 2px;
+    }
+    .info-val {
+      font-size: 13px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .total-box {
+      background: #ecfdf5;
+      border: 2px solid #10b981;
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .total-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #065f46;
+      text-transform: uppercase;
+    }
+    .total-sub {
+      font-size: 10px;
+      color: #047857;
+      margin-top: 2px;
+    }
+    .total-amount {
+      font-size: 22px;
+      font-weight: 900;
+      color: #065f46;
+    }
+    .table-container {
+      margin-bottom: 18px;
+    }
+    .table-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: #334155;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 10.5px;
+    }
+    th {
+      background: #0f172a;
+      color: #ffffff;
+      font-weight: 700;
+      text-align: left;
+      padding: 7px 8px;
+      font-size: 9.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    td {
+      padding: 7px 8px;
+      border-bottom: 1px solid #e2e8f0;
+      color: #334155;
+    }
+    tr:nth-child(even) td {
+      background: #f8fafc;
+    }
+    .badge-status {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      background: #dcfce7;
+      color: #166534;
+      border: 1px solid #86efac;
+    }
+    .row-total td {
+      font-weight: 800;
+      font-size: 11.5px;
+      background: #f1f5f9 !important;
+      border-top: 2px solid #cbd5e1;
+      border-bottom: 2px solid #0f172a;
+    }
+    .signature-section {
+      margin-top: 30px;
+      display: flex;
+      justify-content: space-between;
+      gap: 30px;
+      page-break-inside: avoid;
+    }
+    .signature-box {
+      flex: 1;
+      border-top: 1px solid #94a3b8;
+      padding-top: 6px;
+      text-align: center;
+      font-size: 10px;
+      color: #475569;
+    }
+    .footer {
+      margin-top: 20px;
+      padding-top: 8px;
+      border-top: 1px solid #e2e8f0;
+      font-size: 9px;
+      color: #94a3b8;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      page-break-inside: avoid;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <h1 class="brand-title">LIMPEZA EXPRESS SP</h1>
+      <p class="brand-subtitle">Gestão Operacional & Pagamento de Diárias</p>
+    </div>
+    <div class="doc-info">
+      <h2 class="doc-title">Recibo de Diárias</h2>
+      <p class="doc-date">Emissão: ${dataHojeStr}</p>
+    </div>
+  </div>
+
+  <div class="info-card">
+    <div class="info-col">
+      <div class="info-label">Colaboradora / Diarista</div>
+      <div class="info-val">${ajudante?.nome || 'Colaboradora'}</div>
+      <div style="margin-top: 4px; font-size: 10.5px; color: #64748b;">
+        Telefone: <strong>${ajudante?.telefone || 'Não informado'}</strong>
+      </div>
+    </div>
+    <div class="info-col">
+      <div class="info-label">Dados para Transferência PIX</div>
+      <div style="font-size: 12px; font-weight: 700; color: #0284c7;">
+        ${ajudante?.chavePix || 'Não cadastrada'}
+      </div>
+      <div style="font-size: 10px; color: #64748b; margin-top: 2px;">
+        Tipo: ${ajudante?.tipoPix || 'Chave PIX'}
+      </div>
+    </div>
+    <div class="info-col" style="text-align: right;">
+      <div class="info-label">Fechamento / Período</div>
+      <div style="font-size: 11.5px; font-weight: 700; color: #059669;">
+        ${periodoDesc}
+      </div>
+      <div style="font-size: 10px; color: #64748b; margin-top: 2px;">
+        ${itens.length} trabalho(s) discriminado(s)
+      </div>
+    </div>
+  </div>
+
+  <div class="total-box">
+    <div>
+      <div class="total-title">Valor Total Líquido a Pagar</div>
+      <div class="total-sub">Total correspondente a ${itens.length} diária(s) realizada(s)</div>
+    </div>
+    <div class="total-amount">${formatCurrency(total)}</div>
+  </div>
+
+  <div class="table-container">
+    <div class="table-title">
+      <span>Discriminação dos Serviços Prestados</span>
+      <span>Ordem Cronológica (01 ao 31)</span>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 5%;">#</th>
+          <th style="width: 14%;">Data</th>
+          <th style="width: 12%;">Horário</th>
+          <th style="width: 25%;">Cliente Atendido</th>
+          <th style="width: 24%;">Local / Condomínio</th>
+          <th style="width: 10%; text-align: center;">Serviço</th>
+          <th style="width: 10%; text-align: right;">Valor</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${itens.map((d, index) => {
+          const dt = new Date(d.dataHora);
+          const dataFormatada = dt.toLocaleDateString('pt-BR');
+          const horaFormatada = dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+          const stServico = d.statusServico === 'concluido' ? 'CONCLUÍDA' : d.statusServico === 'cancelado' ? 'CANCELADA' : 'AGENDADA';
+
+          return `
+          <tr>
+            <td style="color: #94a3b8; font-weight: 700;">${index + 1}</td>
+            <td><strong>${dataFormatada}</strong></td>
+            <td>${horaFormatada}</td>
+            <td style="font-weight: 600; color: #0f172a;">${d.clienteNome || 'Cliente'}</td>
+            <td>${d.clienteLocal || 'São Paulo - SP'}</td>
+            <td style="text-align: center;">
+              <span class="badge-status">${stServico}</span>
+            </td>
+            <td style="text-align: right; font-weight: 700; color: #065f46;">${formatCurrency(d.valor)}</td>
+          </tr>
+          `;
+        }).join('')}
+        <tr class="row-total">
+          <td colspan="6" style="text-align: right; text-transform: uppercase;">TOTAL GERAL:</td>
+          <td style="text-align: right; color: #065f46; font-size: 13px;">${formatCurrency(total)}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="signature-section">
+    <div class="signature-box">
+      <strong>Limpeza Express SP</strong><br>
+      Gestão Financeira & Operacional
+    </div>
+    <div class="signature-box">
+      <strong>${ajudante?.nome || 'Colaboradora'}</strong><br>
+      Recibo de Quitação de Diárias
+    </div>
+  </div>
+
+  <div class="footer">
+    <span>Limpeza Express SP • Recibo emitido para simples conferência e comprovação de pagamento de diárias</span>
+    <span>Gerado em ${dataHojeStr}</span>
+  </div>
+</body>
+</html>
+  `;
+
+  executarImpressaoIframe(html);
+};
+
 

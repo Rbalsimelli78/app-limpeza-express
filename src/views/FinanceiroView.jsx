@@ -99,7 +99,7 @@ export const FinanceiroView = () => {
       }
 
       return true;
-    }).sort((a, b) => new Date(b.data) - new Date(a.data));
+    }).sort((a, b) => new Date(a.data) - new Date(b.data));
   }, [todosLancamentos, filtroStatus, filtroClienteId, buscaTexto]);
 
   // Cliente selecionado atualmente para o filtro

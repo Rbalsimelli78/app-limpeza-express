@@ -302,7 +302,7 @@ export const AppProvider = ({ children }) => {
 
           if (isEmpty || !docs || docs.length === 0) {
             // Se a nuvem ainda não tiver usuários cadastrados, inicializa com o usuário da Cleusa
-            const initialUser = usuarios[0] || USUARIO_CLEUSA_PADRAO;
+            const initialUser = getUsuariosIniciais()[0] || USUARIO_CLEUSA_PADRAO;
             await salvarUsuarioNuvem(initialUser);
             setUsuarios([initialUser]);
           } else {
@@ -356,7 +356,7 @@ export const AppProvider = ({ children }) => {
 
     } catch (e) {
       console.warn('[Cloud] Erro ao iniciar sincronização:', e);
-      setCloudStatus('offline');
+      setTimeout(() => setCloudStatus('offline'), 0);
     }
 
     return () => {
@@ -587,6 +587,43 @@ export const AppProvider = ({ children }) => {
     }));
     if (atualizado) salvarAgendamentoNuvem(atualizado);
     showToast(statusPagamento === 'pago' ? 'Pagamento da diária confirmado como Pago!' : 'Pagamento estornado com sucesso para "A Pagar"!');
+  };
+
+  const setBatchStatusPagamentoAjudante = (itens, statusPagamento) => {
+    if (!Array.isArray(itens) || itens.length === 0) return;
+    
+    const itemMap = new Map();
+    itens.forEach(it => {
+      if (!itemMap.has(it.agendamentoId)) {
+        itemMap.set(it.agendamentoId, new Set());
+      }
+      itemMap.get(it.agendamentoId).add(it.ajudanteId);
+    });
+
+    const atualizados = [];
+    setAgendamentos(prev => prev.map(ag => {
+      if (!itemMap.has(ag.id)) return ag;
+      const ajudantesParaAtualizar = itemMap.get(ag.id);
+      
+      const novasEscaladas = (ag.ajudantesEscaladas || []).map(ae => {
+        if (ajudantesParaAtualizar.has(ae.ajudanteId)) {
+          return { ...ae, statusPagamento };
+        }
+        return ae;
+      });
+
+      const pagamentosAjudantes = { ...(ag.pagamentosAjudantes || {}) };
+      ajudantesParaAtualizar.forEach(ajId => {
+        pagamentosAjudantes[ajId] = statusPagamento;
+      });
+
+      const atualizado = { ...ag, ajudantesEscaladas: novasEscaladas, pagamentosAjudantes };
+      atualizados.push(atualizado);
+      return atualizado;
+    }));
+
+    atualizados.forEach(ag => salvarAgendamentoNuvem(ag));
+    showToast(`${itens.length} diária(s) ${statusPagamento === 'pago' ? 'marcada(s) como paga(s)' : 'estornada(s)'} com sucesso!`);
   };
 
   // Cálculos Financeiros Dinâmicos
@@ -1057,6 +1094,7 @@ export const AppProvider = ({ children }) => {
       setStatusServico,
       setStatusPagamentoCliente,
       setStatusPagamentoAjudante,
+      setBatchStatusPagamentoAjudante,
       getFinanceiroGeral,
       // Fechamento Mês / Despesas / Trava
       despesas,

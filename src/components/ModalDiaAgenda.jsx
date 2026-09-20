@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   X, 
   Calendar, 
@@ -50,6 +50,16 @@ export const ModalDiaAgenda = ({
   const [pixCopiado, setPixCopiado] = useState(null);
   const [expandedAgendamentoId, setExpandedAgendamentoId] = useState(null);
 
+  // Ordenar agendamentos do dia estritamente pelo horário de início crescente
+  const agendamentosOrdenados = useMemo(() => {
+    if (!Array.isArray(agendamentosDoDia)) return [];
+    return [...agendamentosDoDia].sort((a, b) => {
+      const horaA = a.dataHoraInicio || '';
+      const horaB = b.dataHoraInicio || '';
+      return horaA.localeCompare(horaB);
+    });
+  }, [agendamentosDoDia]);
+
   if (!isOpen || !dataStr) return null;
 
   // Formatar data do título
@@ -66,8 +76,8 @@ export const ModalDiaAgenda = ({
   const dataExtensoCapitalizada = dataExtenso.charAt(0).toUpperCase() + dataExtenso.slice(1);
 
   // Totais do Dia (Faturado, Recebido e Pendente)
-  const totalFaturadoDia = agendamentosDoDia.reduce((acc, ag) => acc + (Number(ag.valorCliente) || 0), 0);
-  const totalRecebidoDia = agendamentosDoDia.reduce((acc, ag) => ag.statusClientePagamento === 'pago' ? acc + (Number(ag.valorCliente) || 0) : acc, 0);
+  const totalFaturadoDia = agendamentosOrdenados.reduce((acc, ag) => acc + (Number(ag.valorCliente) || 0), 0);
+  const totalRecebidoDia = agendamentosOrdenados.reduce((acc, ag) => ag.statusClientePagamento === 'pago' ? acc + (Number(ag.valorCliente) || 0) : acc, 0);
   const totalPendenteDia = totalFaturadoDia - totalRecebidoDia;
 
   const copiarPix = (chave, id) => {
@@ -196,7 +206,8 @@ export const ModalDiaAgenda = ({
               </div>
             )}
 
-            {agendamentosDoDia.map((ag) => {
+            {agendamentosOrdenados.map((ag, index) => {
+              const ordemNumero = `${index + 1}º`;
               const cliente = clientes.find(c => c.id === ag.clienteId);
               const plano = planos.find(p => p.id === ag.planoId);
               const isPago = ag.statusClientePagamento === 'pago';
@@ -222,6 +233,54 @@ export const ModalDiaAgenda = ({
                     borderLeft: conflito ? (conflito.tipo === 'ajudante' ? '4px solid #ef4444' : '4px solid #f59e0b') : (ag.statusServico === 'concluido' ? '4px solid #10b981' : '4px solid #f59e0b') 
                   }}
                 >
+                  {/* Topo do Card com Numeração Ordinal Destacada e Horário */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: '0.5rem',
+                    background: 'linear-gradient(90deg, rgba(16, 185, 129, 0.14), rgba(6, 182, 212, 0.1))',
+                    border: '1px solid rgba(16, 185, 129, 0.3)',
+                    borderRadius: 'var(--radius-sm)',
+                    padding: '0.45rem 0.75rem',
+                    marginBottom: '0.75rem'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <span style={{
+                        background: 'linear-gradient(135deg, var(--primary-600), var(--primary-700))',
+                        color: '#ffffff',
+                        fontSize: '0.85rem',
+                        fontWeight: '900',
+                        padding: '2px 8px',
+                        borderRadius: '6px',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.25)',
+                        letterSpacing: '0.02em'
+                      }}>
+                        {ordemNumero}
+                      </span>
+                      <span style={{ fontSize: '1.05rem', fontWeight: '800', color: 'var(--text-primary)' }}>
+                        {cliente?.nome || 'Cliente'}
+                      </span>
+                    </div>
+
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      background: 'rgba(6, 182, 212, 0.15)',
+                      border: '1px solid rgba(6, 182, 212, 0.35)',
+                      borderRadius: '4px',
+                      padding: '2px 8px',
+                      color: 'var(--accent-cyan)',
+                      fontSize: '0.825rem',
+                      fontWeight: '700'
+                    }}>
+                      <Clock size={13} />
+                      <span>{formatTime(ag.dataHoraInicio)} às {formatTime(ag.dataHoraFim)}</span>
+                    </div>
+                  </div>
+
                   {/* Cabeçalho do Card da Limpeza */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
                     <div>

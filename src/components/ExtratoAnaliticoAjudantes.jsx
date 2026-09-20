@@ -79,7 +79,8 @@ export const ExtratoAnaliticoAjudantes = () => {
             enderecoCompleto: cli ? `${cli.condominio ? cli.condominio + (cli.torre ? ` (Torre ${cli.torre})` : '') + ' • ' : ''}${cli.endereco || ''} ${cli.apartamento ? `Apto ${cli.apartamento}` : ''} - ${cli.bairro || ''}` : 'São Paulo - SP',
             dataHora: ag.dataHoraInicio,
             valor: valorDiaria,
-            statusPagamento: ae.statusPagamento || 'pendente'
+            statusPagamento: ae.statusPagamento || 'pendente',
+            statusServico: ag.statusServico || ag.status || 'agendado'
           });
         });
       } 
@@ -107,14 +108,15 @@ export const ExtratoAnaliticoAjudantes = () => {
             enderecoCompleto: cli ? `${cli.condominio ? cli.condominio + (cli.torre ? ` (Torre ${cli.torre})` : '') + ' • ' : ''}${cli.endereco || ''} - ${cli.bairro || ''}` : 'São Paulo - SP',
             dataHora: ag.dataHoraInicio,
             valor: valorDiaria,
-            statusPagamento: statusPag
+            statusPagamento: statusPag,
+            statusServico: ag.statusServico || ag.status || 'agendado'
           });
         });
       }
     });
 
-    // Ordenação da mais recente para a mais antiga
-    return lista.sort((a, b) => new Date(b.dataHora) - new Date(a.dataHora));
+    // Ordenação do dia 01 ao dia 31 (ordem cronológica crescente)
+    return lista.sort((a, b) => new Date(a.dataHora) - new Date(b.dataHora));
   }, [agendamentos, ajudantes, clientes]);
 
   // Filtragem conforme período, colaboradora, status e busca
@@ -522,14 +524,15 @@ export const ExtratoAnaliticoAjudantes = () => {
                 <th style={{ padding: '0.75rem 0.875rem' }}>Cliente / Condomínio</th>
                 <th style={{ padding: '0.75rem 0.875rem' }}>Endereço / Local</th>
                 <th style={{ padding: '0.75rem 0.875rem', textAlign: 'right' }}>Valor Diária</th>
-                <th style={{ padding: '0.75rem 0.875rem', textAlign: 'center' }}>Situação</th>
+                <th style={{ padding: '0.75rem 0.875rem', textAlign: 'center' }}>Serviço</th>
+                <th style={{ padding: '0.75rem 0.875rem', textAlign: 'center' }}>Pagamento</th>
                 <th style={{ padding: '0.75rem 0.875rem', textAlign: 'center' }}>Ação (Pagar / Estornar)</th>
               </tr>
             </thead>
             <tbody>
               {diariasFiltradas.length === 0 ? (
                 <tr>
-                  <td colSpan="7" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  <td colSpan="8" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                     Nenhuma diária encontrada para os filtros selecionados.
                   </td>
                 </tr>
@@ -611,22 +614,29 @@ export const ExtratoAnaliticoAjudantes = () => {
                         {formatCurrency(d.valor)}
                       </td>
 
-                      {/* 6. Status */}
+                      {/* 6. Status do Serviço */}
+                      <td style={{ padding: '0.65rem 0.875rem', textAlign: 'center' }}>
+                        <span className={`badge ${d.statusServico === 'concluido' ? 'badge-success' : d.statusServico === 'cancelado' ? 'badge-danger' : 'badge-warning'}`} style={{ fontSize: '0.7rem' }}>
+                          {d.statusServico === 'concluido' ? 'Concluída' : d.statusServico}
+                        </span>
+                      </td>
+
+                      {/* 7. Status do Pagamento */}
                       <td style={{ padding: '0.65rem 0.875rem', textAlign: 'center' }}>
                         {isPago ? (
-                          <span className="badge badge-success" style={{ fontSize: '0.72rem', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                          <span className="badge badge-success" style={{ fontSize: '0.72rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                             <CheckCircle2 size={12} />
-                            <span>Pago</span>
+                            <span>PAGO</span>
                           </span>
                         ) : (
-                          <span className="badge badge-warning" style={{ fontSize: '0.72rem', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                          <span className="badge badge-warning" style={{ fontSize: '0.72rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                             <Clock size={12} />
-                            <span>A Pagar</span>
+                            <span>A PAGAR</span>
                           </span>
                         )}
                       </td>
 
-                      {/* 7. Ação: Pagar / Estornar */}
+                      {/* 8. Ação: Pagar / Estornar */}
                       <td style={{ padding: '0.65rem 0.875rem', textAlign: 'center' }}>
                         {isPago ? (
                           <button

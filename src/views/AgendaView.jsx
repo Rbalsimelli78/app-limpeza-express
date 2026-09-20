@@ -84,9 +84,11 @@ export const AgendaView = ({ onNovoAgendamento, onEditarAgendamento }) => {
     setModalDiaOpen(true);
   };
 
-  // Agendamentos específicos do dia selecionado
+  // Agendamentos específicos do dia selecionado (ordenados estritamente por horário de início)
   const agendamentosDoDiaSelecionado = diaSelecionado
-    ? agendamentos.filter(ag => ag.dataHoraInicio && ag.dataHoraInicio.slice(0, 10) === diaSelecionado)
+    ? agendamentos
+        .filter(ag => ag.dataHoraInicio && ag.dataHoraInicio.slice(0, 10) === diaSelecionado)
+        .sort((a, b) => (a.dataHoraInicio || '').localeCompare(b.dataHoraInicio || ''))
     : [];
 
   return (

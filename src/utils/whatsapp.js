@@ -286,3 +286,46 @@ export const buildEscalaSemanalAjudanteText = ({
   return `Oi *${ajudanteNome}*! Segue sua escala de trabalhos da *Limpeza Express SP* para os próximos dias: 🧹✨\n\n${lista}\n\n${rodape}\n\nContamos com sua dedicação e capricho de sempre! Que Deus abençoe sua jornada e seu trabalho! ✝️🙏`;
 };
 
+/**
+ * Gera texto de recibo detalhado de pagamento para enviar à ajudante/diarista no WhatsApp
+ */
+export const buildReciboPagamentoAjudanteText = ({
+  ajudanteNome,
+  chavePix,
+  tipoPix,
+  periodoDesc,
+  itens = [],
+  total = 0
+}) => {
+  const agora = new Date();
+  const emissao = agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+  const listaItens = itens.map((d, idx) => {
+    const dt = new Date(d.dataHora);
+    const dataStr = dt.toLocaleDateString('pt-BR');
+    const horaStr = dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const valorStr = Number(d.valor || 0).toFixed(2).replace('.', ',');
+    const stServico = d.statusServico === 'concluido' ? '✅ Concluída' : d.statusServico === 'cancelado' ? '❌ Cancelada' : '🕒 Agendada';
+
+    return `${idx + 1}. *${dataStr}* às *${horaStr}* - *${d.clienteNome}*\n   📍 ${d.clienteLocal || 'São Paulo - SP'}\n   🧹 Serviço: ${stServico}\n   💵 Diária: *R$ ${valorStr}*`;
+  }).join('\n\n');
+
+  return `✨ *RECIBO DE PAGAMENTO DE DIÁRIAS* ✨
+🧹 *Limpeza Express SP*
+📅 *Emissão:* ${emissao}
+🗓️ *Fechamento:* ${periodoDesc || 'Período Selecionado'}
+
+👤 *Colaboradora:* *${ajudanteNome}*
+🔑 *Chave PIX:* ${chavePix || 'Não informada'} (${tipoPix || 'Chave'})
+
+📋 *Composição das Limpezas a Pagar:*
+${listaItens || '• Nenhuma limpeza informada.'}
+
+━━━━━━━━━━━━━━━━━━━━━
+💰 *VALOR TOTAL: R$ ${Number(total).toFixed(2).replace('.', ',')}*
+📊 *Quantidade de Diárias:* ${itens.length} serviço(s)
+━━━━━━━━━━━━━━━━━━━━━
+
+Comprovante de pagamento de diárias emitido pela *Limpeza Express SP*. Agradecemos imensamente pela sua dedicação, capricho e parceria! Que Deus abençoe sempre! ✨🙏`;
+};
+

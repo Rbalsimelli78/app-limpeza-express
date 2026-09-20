@@ -114,8 +114,8 @@ export const ModalExtratoCliente = ({ isOpen, onClose, cliente }) => {
       }
     }
 
-    // Ordenar por data (mais recentes primeiro para a tabela)
-    filtered.sort((a, b) => new Date(b.dataHoraInicio) - new Date(a.dataHoraInicio));
+    // Ordenar por data (do dia 01 ao dia 31 - ordem cronológica crescente)
+    filtered.sort((a, b) => new Date(a.dataHoraInicio) - new Date(b.dataHoraInicio));
 
     return { agendamentosFiltrados: filtered, periodoDesc: desc };
   }, [cliente, agendamentos, periodoTipo, dataInicio, dataFim]);

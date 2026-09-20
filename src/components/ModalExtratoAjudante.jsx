@@ -2,8 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { LineChart } from './LineChart';
 import { exportExtratoAjudanteXlsx, exportExtratoAjudanteCsv } from '../utils/exportExcel';
-import { imprimirExtratoAjudante } from '../utils/printStatement';
-import { buildExtratoAjudanteText, getWhatsAppUrl } from '../utils/whatsapp';
+import { imprimirExtratoAjudante, imprimirReciboPagamentoAjudante } from '../utils/printStatement';
+import { buildExtratoAjudanteText, buildReciboPagamentoAjudanteText, getWhatsAppUrl } from '../utils/whatsapp';
 import { 
   X, 
   Calendar, 
@@ -17,7 +17,6 @@ import {
   Copy,
   Check,
   CreditCard,
-  UserCheck,
   Search,
   RotateCcw,
   ChevronDown,
@@ -25,7 +24,7 @@ import {
 } from 'lucide-react';
 
 export const ModalExtratoAjudante = ({ isOpen, onClose, ajudante }) => {
-  const { agendamentos, clientes, setStatusPagamentoAjudante, showToast } = useApp();
+  const { agendamentos, clientes, setStatusPagamentoAjudante, setBatchStatusPagamentoAjudante, showToast } = useApp();
 
   // Filtros de Período e Busca
   const [periodoTipo, setPeriodoTipo] = useState('todos');
@@ -35,8 +34,18 @@ export const ModalExtratoAjudante = ({ isOpen, onClose, ajudante }) => {
   // Dropdown de Opções de Impressão (com ou sem gráfico)
   const [menuImprimirAberto, setMenuImprimirAberto] = useState(false);
   const [pixCopiado, setPixCopiado] = useState(false);
-  const [statusFiltro, setStatusFiltro] = useState('todos'); // 'todos' | 'pendente' | 'pago'
+  const [statusFiltro, setStatusFiltro] = useState('todos'); // 'todos' | 'pendente' | 'pago' | 'concluidas'
   const [buscaTabela, setBuscaTabela] = useState('');
+
+  // Seleção de Diárias para Fechamento & Pagamento
+  const [selecionadosIds, setSelecionadosIds] = useState(new Set());
+  const [dataCorteFechamento, setDataCorteFechamento] = useState(() => {
+    const d = new Date();
+    return d.toISOString().slice(0, 10);
+  });
+  const [modalReciboAberto, setModalReciboAberto] = useState(false);
+  const [reciboCopiado, setReciboCopiado] = useState(false);
+  const [valorPixCopiado, setValorPixCopiado] = useState(false);
 
   // Modo de Exibição: 'extrato' (foco nas diárias) | 'grafico' (foco no gráfico) | 'ambos' (ambos visíveis)
   const [modoVisualizacao, setModoVisualizacao] = useState('extrato');
@@ -86,13 +95,16 @@ export const ModalExtratoAjudante = ({ isOpen, onClose, ajudante }) => {
           clienteNome: cli?.nome || 'Cliente',
           clienteLocal: cli ? `${cli.condominio ? cli.condominio + (cli.torre ? ` (Torre ${cli.torre})` : '') + ' • ' : ''}${cli.bairro || cli.endereco || 'São Paulo - SP'}` : 'São Paulo - SP',
           dataHora: ag.dataHoraInicio,
+          dataHoraFim: ag.dataHoraFim || '',
           valor: valorPago,
-          statusPagamento: statusPag
+          statusPagamento: statusPag,
+          statusServico: ag.statusServico || ag.status || 'agendado'
         });
       }
     });
 
-    return list.sort((a, b) => new Date(b.dataHora) - new Date(a.dataHora));
+    // Ordenação do dia 01 ao dia 31 (ordem cronológica crescente)
+    return list.sort((a, b) => new Date(a.dataHora) - new Date(b.dataHora));
   }, [ajudante, agendamentos, clientes]);
 
   // Filtragem por Período
@@ -156,7 +168,8 @@ export const ModalExtratoAjudante = ({ isOpen, onClose, ajudante }) => {
       }
     }
 
-    filtered.sort((a, b) => new Date(b.dataHora) - new Date(a.dataHora));
+    // Ordenação do dia 01 ao dia 31 (ordem cronológica crescente)
+    filtered.sort((a, b) => new Date(a.dataHora) - new Date(b.dataHora));
     return { diariasFiltradas: filtered, periodoDesc: desc };
   }, [todasAsDiarias, periodoTipo, dataInicio, dataFim, ajudante]);
 
@@ -184,6 +197,7 @@ export const ModalExtratoAjudante = ({ isOpen, onClose, ajudante }) => {
     return diariasFiltradas.filter(d => {
       if (statusFiltro === 'pendente' && d.statusPagamento === 'pago') return false;
       if (statusFiltro === 'pago' && d.statusPagamento !== 'pago') return false;
+      if (statusFiltro === 'concluidas' && d.statusServico !== 'concluido') return false;
       if (buscaTabela.trim()) {
         const t = buscaTabela.toLowerCase();
         const m = d.clienteNome?.toLowerCase().includes(t) || d.clienteLocal?.toLowerCase().includes(t);
@@ -192,6 +206,109 @@ export const ModalExtratoAjudante = ({ isOpen, onClose, ajudante }) => {
       return true;
     });
   }, [diariasFiltradas, statusFiltro, buscaTabela]);
+
+  // Gestão de Seleção de Diárias
+  const toggleSelecionado = (agId) => {
+    setSelecionadosIds(prev => {
+      const next = new Set(prev);
+      if (next.has(agId)) {
+        next.delete(agId);
+      } else {
+        next.add(agId);
+      }
+      return next;
+    });
+  };
+
+  const selecionarConcluidasAteData = () => {
+    const novos = new Set(selecionadosIds);
+    let count = 0;
+    diariasFiltradas.forEach(d => {
+      const dataStr = (d.dataHora || '').slice(0, 10);
+      const isConcluida = d.statusServico === 'concluido';
+      const isPendente = d.statusPagamento !== 'pago';
+      const ateData = !dataCorteFechamento || dataStr <= dataCorteFechamento;
+      if (isConcluida && isPendente && ateData) {
+        novos.add(d.agendamentoId);
+        count++;
+      }
+    });
+    setSelecionadosIds(novos);
+    showToast(`${count} diária(s) concluída(s) a pagar selecionada(s)!`);
+  };
+
+  const selecionarTodasAPagar = () => {
+    const novos = new Set();
+    diariasFiltradas.forEach(d => {
+      if (d.statusPagamento !== 'pago') {
+        novos.add(d.agendamentoId);
+      }
+    });
+    setSelecionadosIds(novos);
+    showToast(`${novos.size} diária(s) a pagar selecionada(s)!`);
+  };
+
+  const limparSelecao = () => {
+    setSelecionadosIds(new Set());
+  };
+
+  const itensSelecionados = useMemo(() => {
+    return todasAsDiarias.filter(d => selecionadosIds.has(d.agendamentoId));
+  }, [todasAsDiarias, selecionadosIds]);
+
+  const totalSelecionado = useMemo(() => {
+    return itensSelecionados.reduce((acc, curr) => acc + (Number(curr.valor) || 0), 0);
+  }, [itensSelecionados]);
+
+  // Itens para compor o recibo oficial
+  const itensParaRecibo = useMemo(() => {
+    if (itensSelecionados.length > 0) {
+      return itensSelecionados;
+    }
+    // Se nada selecionado explicitamente, pega as diárias do período filtrado
+    return diariasFiltradas;
+  }, [itensSelecionados, diariasFiltradas]);
+
+  const totalRecibo = useMemo(() => {
+    return itensParaRecibo.reduce((acc, curr) => acc + (Number(curr.valor) || 0), 0);
+  }, [itensParaRecibo]);
+
+  const todosExibidosSelecionados = diariasExibidas.length > 0 && diariasExibidas.every(d => selecionadosIds.has(d.agendamentoId));
+
+  const toggleSelectAllVisible = () => {
+    setSelecionadosIds(prev => {
+      const next = new Set(prev);
+      if (todosExibidosSelecionados) {
+        diariasExibidas.forEach(d => next.delete(d.agendamentoId));
+      } else {
+        diariasExibidas.forEach(d => next.add(d.agendamentoId));
+      }
+      return next;
+    });
+  };
+
+  const handlePagarSelecionadas = () => {
+    if (itensSelecionados.length === 0) return;
+    const pendentes = itensSelecionados.filter(it => it.statusPagamento !== 'pago');
+    if (pendentes.length === 0) {
+      showToast('Todas as diárias selecionadas já constam como pagas!');
+      return;
+    }
+
+    const valorTot = pendentes.reduce((a, b) => a + Number(b.valor || 0), 0);
+    if (window.confirm(`Confirma o pagamento de ${pendentes.length} diária(s) para ${ajudante.nome} no valor total de ${formatCurrency(valorTot)}?`)) {
+      const itensParaPagar = pendentes.map(p => ({
+        agendamentoId: p.agendamentoId,
+        ajudanteId: ajudante.id
+      }));
+      if (setBatchStatusPagamentoAjudante) {
+        setBatchStatusPagamentoAjudante(itensParaPagar, 'pago');
+      } else {
+        itensParaPagar.forEach(it => setStatusPagamentoAjudante(it.agendamentoId, it.ajudanteId, 'pago'));
+      }
+      setSelecionadosIds(new Set());
+    }
+  };
 
   // Dados para o Gráfico de Linhas (ordenados crescente)
   const dadosGrafico = useMemo(() => {
@@ -542,6 +659,22 @@ export const ModalExtratoAjudante = ({ isOpen, onClose, ajudante }) => {
 
                 <button 
                   type="button" 
+                  onClick={() => {
+                    if (selecionadosIds.size === 0) {
+                      selecionarTodasAPagar();
+                    }
+                    setModalReciboAberto(true);
+                  }}
+                  className="btn btn-secondary btn-sm"
+                  title="Gerar recibo detalhado de fechamento com chave PIX e relação de limpezas"
+                  style={{ gap: '0.35rem', borderColor: 'var(--accent-cyan)', color: 'var(--accent-cyan)' }}
+                >
+                  <FileText size={15} />
+                  <span>Recibo de Pagamento</span>
+                </button>
+
+                <button 
+                  type="button" 
                   onClick={handleEncaminharWhatsApp}
                   className="btn btn-whatsapp btn-sm"
                   title="Enviar extrato para a colaboradora pelo WhatsApp"
@@ -675,6 +808,70 @@ export const ModalExtratoAjudante = ({ isOpen, onClose, ajudante }) => {
               </div>
             </div>
 
+            {/* Barra de Fechamento e Seleção de Diárias */}
+            <div style={{
+              background: 'rgba(16, 185, 129, 0.08)',
+              border: '1px solid rgba(16, 185, 129, 0.3)',
+              borderRadius: 'var(--radius-md)',
+              padding: '0.75rem 1rem',
+              marginBottom: '0.85rem',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '0.75rem'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <Calendar size={15} color="var(--primary-400)" />
+                  <span style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--text-primary)' }}>
+                    Pagar limpezas até:
+                  </span>
+                </div>
+
+                <input 
+                  type="date"
+                  value={dataCorteFechamento}
+                  onChange={e => setDataCorteFechamento(e.target.value)}
+                  className="form-input"
+                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem', height: '30px', width: '145px' }}
+                />
+
+                <button
+                  type="button"
+                  onClick={selecionarConcluidasAteData}
+                  className="btn btn-primary btn-sm"
+                  style={{ fontSize: '0.75rem', padding: '0.3rem 0.65rem', height: '30px' }}
+                  title="Selecionar apenas diárias concluídas e não pagas até a data informada"
+                >
+                  <Check size={14} />
+                  <span>Selecionar Concluídas até {dataCorteFechamento ? formatDate(dataCorteFechamento) : 'Hoje'}</span>
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={selecionarTodasAPagar}
+                  className="btn btn-secondary btn-sm"
+                  style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem', height: '30px' }}
+                >
+                  <span>Selecionar Todas a Pagar</span>
+                </button>
+
+                {selecionadosIds.size > 0 && (
+                  <button
+                    type="button"
+                    onClick={limparSelecao}
+                    className="btn btn-secondary btn-sm"
+                    style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem', height: '30px', color: '#f87171' }}
+                  >
+                    <span>✕ Desmarcar ({selecionadosIds.size})</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
             {/* Barra de Filtro de Status e Busca na Tabela */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.6rem', marginBottom: '0.75rem' }}>
               <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -686,6 +883,14 @@ export const ModalExtratoAjudante = ({ isOpen, onClose, ajudante }) => {
                   style={{ cursor: 'pointer', border: 'none', padding: '0.25rem 0.55rem', fontSize: '0.725rem' }}
                 >
                   Todas ({diariasFiltradas.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStatusFiltro('concluidas')}
+                  className={`badge ${statusFiltro === 'concluidas' ? 'badge-success' : 'badge-neutral'}`}
+                  style={{ cursor: 'pointer', border: 'none', padding: '0.25rem 0.55rem', fontSize: '0.725rem' }}
+                >
+                  ✓ Concluídas ({diariasFiltradas.filter(d => d.statusServico === 'concluido').length})
                 </button>
                 <button
                   type="button"
@@ -729,33 +934,57 @@ export const ModalExtratoAjudante = ({ isOpen, onClose, ajudante }) => {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.825rem', textAlign: 'left' }}>
                 <thead>
                   <tr style={{ background: 'var(--bg-input)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
+                    <th style={{ padding: '0.625rem 0.6rem', width: '38px', textAlign: 'center' }}>
+                      <input 
+                        type="checkbox"
+                        checked={todosExibidosSelecionados}
+                        onChange={toggleSelectAllVisible}
+                        title="Selecionar / Desmarcar todas as diárias visíveis"
+                        style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                      />
+                    </th>
                     <th style={{ padding: '0.625rem 0.875rem' }}>Data</th>
                     <th style={{ padding: '0.625rem 0.875rem' }}>Cliente Atendido</th>
                     <th style={{ padding: '0.625rem 0.875rem' }}>Local / Endereço</th>
                     <th style={{ padding: '0.625rem 0.875rem' }}>Valor da Diária</th>
-                    <th style={{ padding: '0.625rem 0.875rem' }}>Status</th>
+                    <th style={{ padding: '0.625rem 0.875rem' }}>Status Serviço</th>
+                    <th style={{ padding: '0.625rem 0.875rem' }}>Status Pagamento</th>
                     <th style={{ padding: '0.625rem 0.875rem', textAlign: 'right' }}>Ação</th>
                   </tr>
                 </thead>
                 <tbody>
                   {diariasExibidas.length === 0 ? (
                     <tr>
-                      <td colSpan="6" style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                      <td colSpan="8" style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                         Nenhuma diária encontrada para o período selecionado.
                       </td>
                     </tr>
                   ) : (
                     diariasExibidas.map((d, index) => {
                       const isPago = d.statusPagamento === 'pago';
+                      const isSelected = selecionadosIds.has(d.agendamentoId);
 
                       return (
                         <tr 
                           key={index} 
                           style={{ 
                             borderBottom: '1px solid var(--border-color)',
-                            background: isPago ? 'transparent' : 'rgba(245, 158, 11, 0.03)'
+                            background: isSelected 
+                              ? 'rgba(16, 185, 129, 0.12)' 
+                              : isPago 
+                                ? 'transparent' 
+                                : 'rgba(245, 158, 11, 0.03)'
                           }}
                         >
+                          <td style={{ padding: '0.625rem 0.6rem', textAlign: 'center' }}>
+                            <input 
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => toggleSelecionado(d.agendamentoId)}
+                              style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                            />
+                          </td>
+
                           <td style={{ padding: '0.625rem 0.875rem', fontWeight: '500' }}>
                             {formatDate(d.dataHora)}
                             <span style={{ fontSize: '0.725rem', color: 'var(--text-muted)', display: 'block' }}>
@@ -775,6 +1004,27 @@ export const ModalExtratoAjudante = ({ isOpen, onClose, ajudante }) => {
                             {formatCurrency(d.valor)}
                           </td>
 
+                          {/* Status do Serviço */}
+                          <td style={{ padding: '0.625rem 0.875rem' }}>
+                            {d.statusServico === 'concluido' ? (
+                              <span className="badge badge-success" style={{ fontSize: '0.7rem', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                                <CheckCircle2 size={12} />
+                                <span>Concluída</span>
+                              </span>
+                            ) : d.statusServico === 'cancelado' ? (
+                              <span className="badge badge-danger" style={{ fontSize: '0.7rem', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                                <X size={12} />
+                                <span>Cancelada</span>
+                              </span>
+                            ) : (
+                              <span className="badge badge-warning" style={{ fontSize: '0.7rem', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                                <Clock size={12} />
+                                <span>Agendada</span>
+                              </span>
+                            )}
+                          </td>
+
+                          {/* Status do Pagamento */}
                           <td style={{ padding: '0.625rem 0.875rem' }}>
                             {isPago ? (
                               <span className="badge badge-success" style={{ fontSize: '0.7rem' }}>
@@ -830,15 +1080,376 @@ export const ModalExtratoAjudante = ({ isOpen, onClose, ajudante }) => {
                 </tbody>
               </table>
             </div>
+
+            {/* Barra de Ação Flutuante / Resumo da Seleção de Diárias */}
+            {selecionadosIds.size > 0 && (
+              <div style={{
+                position: 'sticky',
+                bottom: '0',
+                left: '0',
+                right: '0',
+                background: 'var(--bg-secondary)',
+                border: '2px solid var(--primary-500)',
+                borderRadius: 'var(--radius-md)',
+                padding: '0.75rem 1rem',
+                boxShadow: '0 -4px 20px rgba(0, 0, 0, 0.45)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '0.75rem',
+                zIndex: 20,
+                marginTop: '0.75rem',
+                marginBottom: '0.75rem'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span style={{
+                      width: '28px',
+                      height: '28px',
+                      borderRadius: '50%',
+                      background: 'var(--primary-500)',
+                      color: '#fff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontWeight: '800',
+                      fontSize: '0.85rem'
+                    }}>
+                      {itensSelecionados.length}
+                    </span>
+                    <strong style={{ fontSize: '0.925rem', color: 'var(--text-primary)' }}>
+                      {itensSelecionados.length === 1 ? '1 diária selecionada' : `${itensSelecionados.length} diárias selecionadas`}
+                    </strong>
+                  </div>
+
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                    Total a pagar: <strong style={{ fontSize: '1.15rem', color: 'var(--accent-gold)' }}>{formatCurrency(totalSelecionado)}</strong>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                  <button
+                    type="button"
+                    onClick={() => setModalReciboAberto(true)}
+                    className="btn btn-secondary btn-sm"
+                    style={{ fontSize: '0.8rem', gap: '0.35rem', borderColor: 'var(--accent-cyan)', color: 'var(--accent-cyan)' }}
+                  >
+                    <FileText size={15} />
+                    <span>🧾 Gerar Recibo de Pagamento</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handlePagarSelecionadas}
+                    className="btn btn-primary btn-sm"
+                    style={{ fontSize: '0.8rem', gap: '0.35rem' }}
+                  >
+                    <CreditCard size={15} />
+                    <span>Pagar Selecionadas ({formatCurrency(totalSelecionado)})</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </>
         )}
 
         {/* Rodapé de Fechamento */}
-        <div style={{ marginTop: '1.25rem', display: 'flex', justifyContent: 'flex-end' }}>
+        <div style={{ marginTop: '1.25rem', display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
           <button type="button" onClick={onClose} className="btn btn-secondary">
             Fechar Extrato
           </button>
         </div>
+
+        {/* MODAL OFICIAL: RECIBO DE PAGAMENTO DE DIÁRIAS */}
+        {modalReciboAberto && (
+          <div 
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0, 0, 0, 0.75)',
+              backdropFilter: 'blur(5px)',
+              zIndex: 1100,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '1rem'
+            }}
+            onClick={() => setModalReciboAberto(false)}
+          >
+            <div 
+              style={{
+                background: 'var(--bg-secondary)',
+                border: '1px solid var(--border-color)',
+                borderRadius: 'var(--radius-lg)',
+                boxShadow: 'var(--shadow-xl)',
+                width: '100%',
+                maxWidth: '720px',
+                maxHeight: '90vh',
+                overflowY: 'auto',
+                padding: '1.5rem',
+                position: 'relative'
+              }}
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Topo do Recibo */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid var(--primary-500)', paddingBottom: '0.75rem', marginBottom: '1rem' }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.2rem' }}>
+                    <span className="badge badge-success" style={{ fontSize: '0.725rem' }}>Recibo de Pagamento</span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Limpeza Express SP</span>
+                  </div>
+                  <h3 style={{ fontSize: '1.25rem', color: 'var(--text-primary)', fontWeight: '800' }}>
+                    Recibo de Diárias - {ajudante.nome}
+                  </h3>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                    Fechamento: <strong>{periodoDesc}</strong> • Emissão: {new Date().toLocaleDateString('pt-BR')}
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setModalReciboAberto(false)}
+                  className="btn btn-secondary btn-icon btn-sm"
+                  title="Fechar Recibo"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* Informações da Colaboradora e Chave PIX */}
+              <div style={{
+                background: 'var(--bg-input)',
+                border: '1px solid var(--border-color)',
+                borderRadius: 'var(--radius-md)',
+                padding: '0.85rem 1rem',
+                marginBottom: '1rem',
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                gap: '0.75rem'
+              }}>
+                <div>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', fontWeight: '700' }}>
+                    Colaboradora / Diarista
+                  </span>
+                  <strong style={{ fontSize: '0.95rem', color: 'var(--text-primary)' }}>
+                    {ajudante.nome}
+                  </strong>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                    {ajudante.telefone || 'Sem telefone cadastrado'}
+                  </div>
+                </div>
+
+                <div>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', fontWeight: '700' }}>
+                    Chave PIX para Transferência ({ajudante.tipoPix || 'Chave'})
+                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '2px' }}>
+                    <strong style={{ fontSize: '0.95rem', color: 'var(--accent-cyan)' }}>
+                      {ajudante.chavePix || 'Não cadastrada'}
+                    </strong>
+                    {ajudante.chavePix && (
+                      <button
+                        type="button"
+                        onClick={() => copiarPix(ajudante.chavePix)}
+                        className="btn btn-secondary btn-sm"
+                        style={{ padding: '0.2rem 0.4rem', fontSize: '0.7rem' }}
+                        title="Copiar Chave PIX"
+                      >
+                        {pixCopiado ? <Check size={12} color="#10b981" /> : <Copy size={12} />}
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', fontWeight: '700' }}>
+                    Valor Total Líquido
+                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '2px' }}>
+                    <strong style={{ fontSize: '1.15rem', color: 'var(--primary-400)' }}>
+                      {formatCurrency(totalRecibo)}
+                    </strong>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(Number(totalRecibo).toFixed(2));
+                        setValorPixCopiado(true);
+                        showToast('Valor em R$ copiado para a área de transferência!');
+                        setTimeout(() => setValorPixCopiado(false), 2000);
+                      }}
+                      className="btn btn-secondary btn-sm"
+                      style={{ padding: '0.2rem 0.4rem', fontSize: '0.7rem' }}
+                      title="Copiar valor exato do PIX"
+                    >
+                      {valorPixCopiado ? <Check size={12} color="#10b981" /> : <Copy size={12} />}
+                      <span>{valorPixCopiado ? 'Copiado!' : 'Copiar R$'}</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tabela de Composição das Diárias */}
+              <div style={{ marginBottom: '1.25rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                  <h4 style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-primary)' }}>
+                    Composição das Diárias ({itensParaRecibo.length} serviço{itensParaRecibo.length === 1 ? '' : 's'}):
+                  </h4>
+                  <span style={{ fontSize: '0.725rem', color: 'var(--text-muted)' }}>
+                    Ordem Cronológica (01 ao 31)
+                  </span>
+                </div>
+
+                <div style={{ overflowX: 'auto', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+                    <thead>
+                      <tr style={{ background: 'var(--bg-input)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
+                        <th style={{ padding: '0.5rem 0.6rem', width: '30px' }}>#</th>
+                        <th style={{ padding: '0.5rem 0.6rem' }}>Data & Horário</th>
+                        <th style={{ padding: '0.5rem 0.6rem' }}>Cliente</th>
+                        <th style={{ padding: '0.5rem 0.6rem' }}>Local / Condomínio</th>
+                        <th style={{ padding: '0.5rem 0.6rem', textAlign: 'center' }}>Serviço</th>
+                        <th style={{ padding: '0.5rem 0.6rem', textAlign: 'right' }}>Valor</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {itensParaRecibo.map((it, idx) => (
+                        <tr key={idx} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                          <td style={{ padding: '0.5rem 0.6rem', color: 'var(--text-muted)' }}>{idx + 1}</td>
+                          <td style={{ padding: '0.5rem 0.6rem', fontWeight: '600' }}>
+                            {formatDate(it.dataHora)} {new Date(it.dataHora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                          </td>
+                          <td style={{ padding: '0.5rem 0.6rem', color: 'var(--text-primary)', fontWeight: '600' }}>
+                            {it.clienteNome}
+                          </td>
+                          <td style={{ padding: '0.5rem 0.6rem', color: 'var(--text-secondary)' }}>
+                            {it.clienteLocal}
+                          </td>
+                          <td style={{ padding: '0.5rem 0.6rem', textAlign: 'center' }}>
+                            <span className="badge badge-success" style={{ fontSize: '0.68rem' }}>
+                              {it.statusServico === 'concluido' ? 'Concluída' : it.statusServico}
+                            </span>
+                          </td>
+                          <td style={{ padding: '0.5rem 0.6rem', textAlign: 'right', fontWeight: '700', color: 'var(--primary-400)' }}>
+                            {formatCurrency(it.valor)}
+                          </td>
+                        </tr>
+                      ))}
+                      <tr style={{ background: 'rgba(16, 185, 129, 0.08)', fontWeight: '800' }}>
+                        <td colSpan="5" style={{ padding: '0.6rem', textAlign: 'right', color: 'var(--text-primary)' }}>
+                          VALOR TOTAL A PAGAR:
+                        </td>
+                        <td style={{ padding: '0.6rem', textAlign: 'right', color: 'var(--primary-400)', fontSize: '0.95rem' }}>
+                          {formatCurrency(totalRecibo)}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Ações do Recibo */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.6rem', borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
+                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const texto = buildReciboPagamentoAjudanteText({
+                        ajudanteNome: ajudante.nome,
+                        chavePix: ajudante.chavePix,
+                        tipoPix: ajudante.tipoPix,
+                        periodoDesc,
+                        itens: itensParaRecibo,
+                        total: totalRecibo
+                      });
+                      const url = getWhatsAppUrl(ajudante.telefone, texto);
+                      window.open(url, '_blank');
+                    }}
+                    className="btn btn-whatsapp btn-sm"
+                    style={{ gap: '0.35rem', fontSize: '0.8rem' }}
+                  >
+                    <MessageCircle size={15} />
+                    <span>Enviar Recibo WhatsApp</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const texto = buildReciboPagamentoAjudanteText({
+                        ajudanteNome: ajudante.nome,
+                        chavePix: ajudante.chavePix,
+                        tipoPix: ajudante.tipoPix,
+                        periodoDesc,
+                        itens: itensParaRecibo,
+                        total: totalRecibo
+                      });
+                      navigator.clipboard.writeText(texto);
+                      setReciboCopiado(true);
+                      showToast('Texto do recibo copiado com sucesso!');
+                      setTimeout(() => setReciboCopiado(false), 2500);
+                    }}
+                    className="btn btn-secondary btn-sm"
+                    style={{ gap: '0.35rem', fontSize: '0.8rem' }}
+                  >
+                    {reciboCopiado ? <Check size={14} color="#10b981" /> : <Copy size={14} />}
+                    <span>{reciboCopiado ? 'Copiado!' : 'Copiar Texto'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      imprimirReciboPagamentoAjudante({
+                        ajudante,
+                        itens: itensParaRecibo,
+                        total: totalRecibo,
+                        periodoDesc
+                      });
+                    }}
+                    className="btn btn-secondary btn-sm"
+                    style={{ gap: '0.35rem', fontSize: '0.8rem' }}
+                  >
+                    <Printer size={15} />
+                    <span>Imprimir Recibo (PDF A4)</span>
+                  </button>
+                </div>
+
+                <div style={{ display: 'flex', gap: '0.4rem' }}>
+                  {itensParaRecibo.some(i => i.statusPagamento !== 'pago') && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const pendentes = itensParaRecibo.filter(i => i.statusPagamento !== 'pago');
+                        if (window.confirm(`Confirma a quitação de ${pendentes.length} diária(s) para ${ajudante.nome} no valor total de ${formatCurrency(pendentes.reduce((a, b) => a + Number(b.valor || 0), 0))}?`)) {
+                          const lista = pendentes.map(p => ({ agendamentoId: p.agendamentoId, ajudanteId: ajudante.id }));
+                          if (setBatchStatusPagamentoAjudante) {
+                            setBatchStatusPagamentoAjudante(lista, 'pago');
+                          } else {
+                            lista.forEach(it => setStatusPagamentoAjudante(it.agendamentoId, it.ajudanteId, 'pago'));
+                          }
+                          setModalReciboAberto(false);
+                          setSelecionadosIds(new Set());
+                        }
+                      }}
+                      className="btn btn-primary btn-sm"
+                      style={{ gap: '0.35rem', fontSize: '0.8rem' }}
+                    >
+                      <CheckCircle2 size={15} />
+                      <span>Confirmar Pagamento e Baixar</span>
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => setModalReciboAberto(false)}
+                    className="btn btn-secondary btn-sm"
+                  >
+                    Fechar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -93,13 +93,14 @@ export const AjudantesView = ({ onNovaAjudante, onEditarAjudante }) => {
           bairro: cliente?.bairro || '',
           dataHora: ag.dataHoraInicio,
           valor: valor,
-          statusPagamento: escala.statusPagamento
+          statusPagamento: escala.statusPagamento,
+          statusServico: ag.statusServico || ag.status || 'agendado'
         });
       }
     });
 
-    // Ordena do trabalho mais recente para o mais antigo
-    historico.sort((a, b) => new Date(b.dataHora) - new Date(a.dataHora));
+    // Ordenação do dia 01 ao dia 31 (ordem cronológica crescente)
+    historico.sort((a, b) => new Date(a.dataHora) - new Date(b.dataHora));
 
     return { totalPendente, totalPago, totalServicos, historico };
   };
@@ -372,6 +373,9 @@ export const AjudantesView = ({ onNovaAjudante, onEditarAjudante }) => {
                             <span style={{ color: 'var(--text-primary)', fontWeight: '500' }}>{h.clienteNome}</span>
                             <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginLeft: '0.375rem' }}>
                               ({formatDate(h.dataHora)})
+                            </span>
+                            <span className={`badge ${h.statusServico === 'concluido' ? 'badge-success' : 'badge-warning'}`} style={{ fontSize: '0.62rem', marginLeft: '0.4rem', padding: '1px 5px' }}>
+                              {h.statusServico === 'concluido' ? 'Concluída' : h.statusServico}
                             </span>
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
