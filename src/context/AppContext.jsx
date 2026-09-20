@@ -5,7 +5,8 @@ import {
   AGENDAMENTOS_INICIAIS, 
   PLANOS_CATALOGO, 
   REGRAS_ADICIONAIS, 
-  CHECKLIST_PADRAO 
+  CHECKLIST_PADRAO,
+  DESPESAS_INICIAIS
 } from '../data/initialData';
 import {
   listenClientes,
@@ -24,7 +25,12 @@ import {
   salvarPlanoNuvem,
   excluirPlanoNuvem,
   subirBaseParaNuvem,
-  limparColecaoNuvem
+  limparColecaoNuvem,
+  listenDespesas,
+  salvarDespesaNuvem,
+  excluirDespesaNuvem,
+  listenMesesFechados,
+  salvarMesFechadoNuvem
 } from '../services/cloudSync';
 
 export const AppContext = createContext();
@@ -176,6 +182,24 @@ export const AppProvider = ({ children }) => {
     }
   });
 
+  const [despesas, setDespesas] = useState(() => {
+    try {
+      const saved = localStorage.getItem(`${STORAGE_KEY}_despesas`);
+      return saved ? JSON.parse(saved) : DESPESAS_INICIAIS;
+    } catch (e) {
+      return DESPESAS_INICIAIS;
+    }
+  });
+
+  const [mesesFechados, setMesesFechados] = useState(() => {
+    try {
+      const saved = localStorage.getItem(`${STORAGE_KEY}_meses_fechados`);
+      return saved ? JSON.parse(saved) : {};
+    } catch (e) {
+      return {};
+    }
+  });
+
   // Persistência automática no localStorage (cache offline)
   useEffect(() => {
     localStorage.setItem(`${STORAGE_KEY}_planos`, JSON.stringify(planos));
@@ -191,6 +215,14 @@ export const AppProvider = ({ children }) => {
   useEffect(() => {
     localStorage.setItem(`${STORAGE_KEY}_agendamentos`, JSON.stringify(agendamentos));
   }, [agendamentos]);
+
+  useEffect(() => {
+    localStorage.setItem(`${STORAGE_KEY}_despesas`, JSON.stringify(despesas));
+  }, [despesas]);
+
+  useEffect(() => {
+    localStorage.setItem(`${STORAGE_KEY}_meses_fechados`, JSON.stringify(mesesFechados));
+  }, [mesesFechados]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -296,6 +328,32 @@ export const AppProvider = ({ children }) => {
       );
       unsubs.push(unsubUsuarios);
 
+      // 6. Escuta Despesas / Fechamento em Tempo Real
+      const unsubDespesas = listenDespesas(
+        (docs) => {
+          setCloudStatus('sincronizado');
+          setCloudLastSync(new Date());
+          if (docs && docs.length > 0) {
+            setDespesas(docs);
+          }
+        },
+        (err) => {
+          console.warn('[Cloud] Erro ao escutar despesas na nuvem:', err?.message);
+        }
+      );
+      unsubs.push(unsubDespesas);
+
+      // 7. Escuta Status de Meses Fechados
+      const unsubMeses = listenMesesFechados(
+        (map) => {
+          if (map) setMesesFechados(map);
+        },
+        (err) => {
+          console.warn('[Cloud] Erro ao escutar meses fechados na nuvem:', err?.message);
+        }
+      );
+      unsubs.push(unsubMeses);
+
     } catch (e) {
       console.warn('[Cloud] Erro ao iniciar sincronização:', e);
       setCloudStatus('offline');
@@ -311,14 +369,14 @@ export const AppProvider = ({ children }) => {
   // Forçar Sincronização Completa com a Nuvem
   const forcarSincronizacaoNuvem = async () => {
     showToast('Sincronizando dados com a nuvem...', 'info');
-    const ok = await subirBaseParaNuvem({ clientes, ajudantes, agendamentos, planos });
+    const ok = await subirBaseParaNuvem({ clientes, ajudantes, agendamentos, planos, despesas });
     if (ok) {
       setCloudStatus('sincronizado');
       setCloudLastSync(new Date());
       showToast('☁️ Nuvem 100% atualizada em tempo real!', 'success');
     } else {
       setCloudStatus('offline');
-      showToast('Não foi possível conectar ao Firebase. Verifique sua conexão.', 'danger');
+      showToast('⚠️ Modo Offline: alterações salvas no navegador.', 'warning');
     }
   };
 
@@ -569,14 +627,114 @@ export const AppProvider = ({ children }) => {
     };
   };
 
+  // =========================================================================
+  // MÓDULO FECHAMENTO MÊS (DESPESAS, INSUMOS, INVESTIMENTOS E TRAVA DE MÊS)
+  // =========================================================================
+  const addDespesa = (dados) => {
+    const dataIso = dados.data || new Date().toISOString().slice(0, 10);
+    const mesRef = dados.mesReferencia || dataIso.slice(0, 7);
+
+    // Valida trava de segurança
+    if (mesesFechados[mesRef]?.fechado) {
+      showToast(`⚠️ O mês ${mesRef} está fechado! Reabra o mês para lançar despesas nele.`, 'warning');
+      return null;
+    }
+
+    const nova = {
+      id: `desp_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      data: dataIso,
+      mesReferencia: mesRef,
+      tipoMacro: dados.tipoMacro || 'insumo',
+      categoria: dados.categoria || 'Produtos de Limpeza',
+      descricao: (dados.descricao || 'Despesa Avulsa').trim(),
+      valor: Math.abs(Number(dados.valor || 0)),
+      formaPagamento: dados.formaPagamento || 'PIX',
+      observacoes: (dados.observacoes || '').trim(),
+      criadoEm: new Date().toISOString()
+    };
+
+    setDespesas(prev => [nova, ...prev]);
+    salvarDespesaNuvem(nova);
+    showToast('Lançamento registrado com sucesso!');
+    return nova;
+  };
+
+  const updateDespesa = (id, dados) => {
+    const despesaAtual = despesas.find(d => d.id === id);
+    if (!despesaAtual) return;
+
+    if (mesesFechados[despesaAtual.mesReferencia]?.fechado) {
+      showToast(`⚠️ O mês ${despesaAtual.mesReferencia} está fechado! Reabra o mês para editar lançamentos.`, 'warning');
+      return;
+    }
+
+    setDespesas(prev => prev.map(d => {
+      if (d.id === id) {
+        const dataIso = dados.data !== undefined ? dados.data : d.data;
+        const mesRef = dados.mesReferencia || dataIso.slice(0, 7);
+        const updated = {
+          ...d,
+          ...dados,
+          data: dataIso,
+          mesReferencia: mesRef,
+          valor: dados.valor !== undefined ? Math.abs(Number(dados.valor)) : d.valor
+        };
+        salvarDespesaNuvem(updated);
+        return updated;
+      }
+      return d;
+    }));
+    showToast('Lançamento atualizado!');
+  };
+
+  const deleteDespesa = (id) => {
+    const despesaAtual = despesas.find(d => d.id === id);
+    if (!despesaAtual) return;
+
+    if (mesesFechados[despesaAtual.mesReferencia]?.fechado) {
+      showToast(`⚠️ O mês ${despesaAtual.mesReferencia} está fechado! Reabra o mês para excluir lançamentos.`, 'warning');
+      return;
+    }
+
+    setDespesas(prev => prev.filter(d => d.id !== id));
+    excluirDespesaNuvem(id);
+    showToast('Lançamento excluído!');
+  };
+
+  const fecharMes = (mesAno) => {
+    if (!mesAno) return;
+    const info = {
+      fechado: true,
+      fechadoEm: new Date().toISOString(),
+      fechadoPor: currentUser?.name || 'Administradora'
+    };
+    setMesesFechados(prev => ({ ...prev, [mesAno]: info }));
+    salvarMesFechadoNuvem(mesAno, info);
+    showToast(`🔒 Mês ${mesAno} fechado e auditado com sucesso!`, 'success');
+  };
+
+  const reabrirMes = (mesAno) => {
+    if (!mesAno) return;
+    setMesesFechados(prev => {
+      const copy = { ...prev };
+      delete copy[mesAno];
+      return copy;
+    });
+    salvarMesFechadoNuvem(mesAno, { fechado: false });
+    showToast(`🔓 Mês ${mesAno} reaberto para novos lançamentos e ajustes!`, 'info');
+  };
+
   // Exportar Backup JSON
   const exportBackup = () => {
     const backupData = {
       clientes,
       ajudantes,
       agendamentos,
+      planos,
+      despesas,
+      mesesFechados,
       exportadoEm: new Date().toISOString(),
-      versao: '1.0'
+      versao: '2.0'
     };
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
     const downloadAnchor = document.createElement('a');
@@ -595,6 +753,8 @@ export const AppProvider = ({ children }) => {
       if (jsonData.ajudantes) setAjudantes(jsonData.ajudantes);
       if (jsonData.agendamentos) setAgendamentos(jsonData.agendamentos);
       if (jsonData.planos) setPlanos(jsonData.planos);
+      if (jsonData.despesas) setDespesas(jsonData.despesas);
+      if (jsonData.mesesFechados) setMesesFechados(jsonData.mesesFechados);
       showToast('Backup restaurado com sucesso!');
     } catch (e) {
       showToast('Erro ao ler arquivo de backup.', 'danger');
@@ -837,11 +997,14 @@ export const AppProvider = ({ children }) => {
     setAjudantes(AJUDANTES_INICIAIS);
     setAgendamentos(AGENDAMENTOS_INICIAIS);
     setPlanos(PLANOS_CATALOGO);
+    setDespesas(DESPESAS_INICIAIS);
+    setMesesFechados({});
     subirBaseParaNuvem({
       clientes: CLIENTES_INICIAIS,
       ajudantes: AJUDANTES_INICIAIS,
       agendamentos: AGENDAMENTOS_INICIAIS,
-      planos: PLANOS_CATALOGO
+      planos: PLANOS_CATALOGO,
+      despesas: DESPESAS_INICIAIS
     });
     showToast('Dados de demonstração recarregados na nuvem!');
   };
@@ -895,6 +1058,14 @@ export const AppProvider = ({ children }) => {
       setStatusPagamentoCliente,
       setStatusPagamentoAjudante,
       getFinanceiroGeral,
+      // Fechamento Mês / Despesas / Trava
+      despesas,
+      mesesFechados,
+      addDespesa,
+      updateDespesa,
+      deleteDespesa,
+      fecharMes,
+      reabrirMes,
       exportBackup,
       importBackup,
       resetDemo,

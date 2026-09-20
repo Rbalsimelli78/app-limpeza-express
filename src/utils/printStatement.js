@@ -1100,3 +1100,266 @@ export const imprimirFluxoCaixa = ({
   executarImpressaoIframe(html);
 };
 
+// ==========================================
+// IMPRESSÃO A4 / PDF - FECHAMENTO DO MÊS (DRE GERENCIAL)
+// ==========================================
+export const imprimirFechamentoMes = ({
+  mesAno = '2026-09',
+  mesNome = 'Setembro de 2026',
+  modoDescricao = 'Todos os Lançamentos (com Projeções)',
+  isFechado = false,
+  fechadoInfo = null,
+  dre = {},
+  clientesDetalhados = [],
+  ajudantesDetalhadas = [],
+  impostosDetalhados = [],
+  despesasDetalhadas = []
+}) => {
+  const pctDiarias = dre.receitaBruta > 0 ? ((dre.custoAjudantes / dre.receitaBruta) * 100).toFixed(1) : '0,0';
+  const pctMargem = dre.receitaBruta > 0 ? ((dre.margemContribuicao / dre.receitaBruta) * 100).toFixed(1) : '0,0';
+  const pctGastos = dre.receitaBruta > 0 ? ((dre.totalGastosOperacionais / dre.receitaBruta) * 100).toFixed(1) : '0,0';
+  const pctLucro = dre.receitaBruta > 0 ? ((dre.lucroLiquido / dre.receitaBruta) * 100).toFixed(1) : '0,0';
+
+  const html = `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Fechamento Mensal - ${mesNome} - Limpeza Express SP</title>
+  <style>
+    @page { size: A4; margin: 12mm 15mm; }
+    * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 11px; line-height: 1.4; color: #1e293b; background: #fff; margin: 0; padding: 0; }
+    .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #059669; padding-bottom: 8px; margin-bottom: 14px; }
+    .brand { display: flex; align-items: center; gap: 10px; }
+    .brand img { width: 44px; height: 44px; border-radius: 8px; object-fit: cover; }
+    .brand-title { font-size: 18px; font-weight: 800; color: #0f172a; margin: 0; letter-spacing: -0.5px; }
+    .brand-sub { font-size: 11px; color: #059669; font-weight: 600; margin: 0; }
+    .doc-meta { text-align: right; }
+    .doc-title { font-size: 15px; font-weight: 800; color: #0f172a; margin: 0; text-transform: uppercase; }
+    .doc-periodo { font-size: 11px; color: #64748b; margin-top: 2px; }
+    .status-badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 9px; font-weight: 700; margin-top: 3px; }
+    .badge-fechado { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+    .badge-aberto { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+
+    .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px; }
+    .kpi-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px; }
+    .kpi-label { font-size: 9px; text-transform: uppercase; color: #64748b; font-weight: 700; display: block; }
+    .kpi-value { font-size: 14px; font-weight: 800; color: #0f172a; margin-top: 2px; }
+    .kpi-sub { font-size: 9px; color: #64748b; margin-top: 1px; }
+
+    .secao-titulo { font-size: 12px; font-weight: 800; text-transform: uppercase; color: #0f172a; background: #f1f5f9; padding: 5px 8px; border-left: 4px solid #059669; margin: 12px 0 6px 0; display: flex; justify-content: space-between; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 8px; font-size: 10px; }
+    th { background: #f8fafc; color: #475569; font-weight: 700; text-align: left; padding: 5px 6px; border-bottom: 1px solid #cbd5e1; font-size: 9px; text-transform: uppercase; }
+    td { padding: 4px 6px; border-bottom: 1px solid #f1f5f9; }
+    .row-total { background: #fef3c7; font-weight: 700; }
+    .dre-tabela { width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; margin-bottom: 12px; }
+    .dre-tabela td { padding: 5px 8px; border-bottom: 1px solid #e2e8f0; }
+    .dre-destaque { background: #ecfdf5; font-weight: 800; color: #065f46; font-size: 11px; }
+    .dre-lucro { background: #eff6ff; font-weight: 800; color: #1e3a8a; font-size: 12px; }
+
+    .footer { margin-top: 18px; border-top: 1px solid #e2e8f0; padding-top: 6px; display: flex; justify-content: space-between; font-size: 9px; color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="brand">
+      <img src="/logo.jpg" alt="Limpeza Express SP" />
+      <div>
+        <h1 class="brand-title">Limpeza Express SP</h1>
+        <p class="brand-sub">Gestão Profissional de Limpeza Residencial & Comercial</p>
+      </div>
+    </div>
+    <div class="doc-meta">
+      <h2 class="doc-title">Fechamento do Mês (DRE)</h2>
+      <div class="doc-periodo">${mesNome} • ${modoDescricao}</div>
+      <div class="status-badge ${isFechado ? 'badge-fechado' : 'badge-aberto'}">
+        ${isFechado ? '🔒 MÊS FECHADO & AUDITADO' : '🔓 MÊS EM ANDAMENTO'}
+      </div>
+    </div>
+  </div>
+
+  <!-- KPIs Executivos -->
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <span class="kpi-label">Faturamento Bruto</span>
+      <div class="kpi-value" style="color: #059669;">${formatCurrency(dre.receitaBruta)}</div>
+      <div class="kpi-sub">${dre.totalLimpezas || 0} limpezas</div>
+    </div>
+    <div class="kpi-card">
+      <span class="kpi-label">Diárias da Equipe</span>
+      <div class="kpi-value" style="color: #dc2626;">${formatCurrency(dre.custoAjudantes)}</div>
+      <div class="kpi-sub">${pctDiarias}% da receita</div>
+    </div>
+    <div class="kpi-card" style="border-color: #059669; background: #ecfdf5;">
+      <span class="kpi-label" style="color: #065f46;">Margem de Contribuição</span>
+      <div class="kpi-value" style="color: #059669;">${formatCurrency(dre.margemContribuicao)}</div>
+      <div class="kpi-sub" style="color: #047857; font-weight: 700;">${pctMargem}% da receita</div>
+    </div>
+    <div class="kpi-card" style="border-color: #2563eb; background: #eff6ff;">
+      <span class="kpi-label" style="color: #1e40af;">Lucro Líquido Real</span>
+      <div class="kpi-value" style="color: #1d4ed8;">${formatCurrency(dre.lucroLiquido)}</div>
+      <div class="kpi-sub" style="color: #1e40af; font-weight: 700;">Margem Líquida: ${pctLucro}%</div>
+    </div>
+  </div>
+
+  <!-- DRE Gerencial em Cascata -->
+  <div class="secao-titulo">
+    <span>Demonstrativo de Resultado Gerencial (DRE)</span>
+    <span>Estrutura Gerencial</span>
+  </div>
+  <table class="dre-tabela">
+    <tbody>
+      <tr>
+        <td style="width: 60%;"><strong>(+) 1. Receita Bruta Total</strong> (Faturamento dos Serviços)</td>
+        <td style="text-align: right; width: 20%; color: #059669; font-weight: 700;">${formatCurrency(dre.receitaBruta)}</td>
+        <td style="text-align: right; width: 20%; color: #64748b;">100,0%</td>
+      </tr>
+      <tr>
+        <td><strong>(-) 2. Deduções da Receita</strong> (Simples Nacional, DAS e Taxas)</td>
+        <td style="text-align: right; color: #dc2626;">- ${formatCurrency(dre.totalImpostos)}</td>
+        <td style="text-align: right; color: #64748b;">${dre.receitaBruta > 0 ? ((dre.totalImpostos / dre.receitaBruta) * 100).toFixed(1) : '0,0'}%</td>
+      </tr>
+      <tr style="background: #f8fafc;">
+        <td><strong>(=) 3. Receita Líquida</strong></td>
+        <td style="text-align: right; font-weight: 700;">${formatCurrency(dre.receitaLiquida)}</td>
+        <td style="text-align: right; color: #64748b;">${dre.receitaBruta > 0 ? ((dre.receitaLiquida / dre.receitaBruta) * 100).toFixed(1) : '0,0'}%</td>
+      </tr>
+      <tr>
+        <td><strong>(-) 4. Custos Diretos com Serviços</strong> (Diárias das Colaboradoras)</td>
+        <td style="text-align: right; color: #dc2626;">- ${formatCurrency(dre.custoAjudantes)}</td>
+        <td style="text-align: right; color: #64748b;">${pctDiarias}%</td>
+      </tr>
+      <tr class="dre-destaque">
+        <td><strong>(=) 5. MARGEM DE CONTRIBUIÇÃO</strong> (O que sobra dos serviços para a empresa)</td>
+        <td style="text-align: right;">${formatCurrency(dre.margemContribuicao)}</td>
+        <td style="text-align: right; font-weight: 800;">${pctMargem}%</td>
+      </tr>
+      <tr>
+        <td><strong>(-) 6. Gastos Operacionais & Insumos de Limpeza</strong> (Álcool, panos, vassouras)</td>
+        <td style="text-align: right; color: #dc2626;">- ${formatCurrency(dre.totalInsumos)}</td>
+        <td style="text-align: right; color: #64748b;">${dre.receitaBruta > 0 ? ((dre.totalInsumos / dre.receitaBruta) * 100).toFixed(1) : '0,0'}%</td>
+      </tr>
+      <tr>
+        <td><strong>(-) 7. Investimentos em Equipamentos & Ativos</strong> (Aspiradores novos, máquinas)</td>
+        <td style="text-align: right; color: #2563eb;">- ${formatCurrency(dre.totalInvestimentos)}</td>
+        <td style="text-align: right; color: #64748b;">${dre.receitaBruta > 0 ? ((dre.totalInvestimentos / dre.receitaBruta) * 100).toFixed(1) : '0,0'}%</td>
+      </tr>
+      <tr class="dre-lucro">
+        <td><strong>(=) 8. RESULTADO LÍQUIDO REAL</strong> (Sobra Líquida no Bolso da Administradora)</td>
+        <td style="text-align: right; font-size: 13px;">${formatCurrency(dre.lucroLiquido)}</td>
+        <td style="text-align: right; font-size: 12px;">${pctLucro}%</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Tabela de Receitas por Cliente e Condomínio -->
+  <div class="secao-titulo">
+    <span>Receitas por Cliente e Condomínio</span>
+    <span>${clientesDetalhados.length} clientes atendidos</span>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Cliente</th>
+        <th>Condomínio / Prédio</th>
+        <th style="text-align: center;">Qtd Limpezas</th>
+        <th style="text-align: right;">Total Faturado</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${clientesDetalhados.map(c => `
+        <tr>
+          <td><strong>${c.nome}</strong></td>
+          <td>${c.condominio || 'São Paulo'}</td>
+          <td style="text-align: center;">${c.qtdLimpezas}</td>
+          <td style="text-align: right; font-weight: 700;">${formatCurrency(c.valorTotal)}</td>
+        </tr>
+      `).join('')}
+      <tr class="row-total">
+        <td colspan="2">TOTAL DE RECEITAS</td>
+        <td style="text-align: center;">${dre.totalLimpezas || 0}</td>
+        <td style="text-align: right;">${formatCurrency(dre.receitaBruta)}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Tabela de Despesas com Diárias das Ajudantes -->
+  <div class="secao-titulo">
+    <span>Diárias da Equipe de Limpeza (Ajudantes)</span>
+    <span>${ajudantesDetalhadas.length} profissionais escaladas</span>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Colaboradora</th>
+        <th>Locais Atendidos</th>
+        <th style="text-align: center;">Qtd Limpezas</th>
+        <th style="text-align: right;">Total em Diárias</th>
+        <th style="text-align: right;">% da Receita</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${ajudantesDetalhadas.map(a => {
+        const pctAjud = dre.receitaBruta > 0 ? ((a.totalDiarias / dre.receitaBruta) * 100).toFixed(1) : '0,0';
+        return `
+        <tr>
+          <td><strong>${a.nome}</strong></td>
+          <td>${a.predios || 'Diversos'}</td>
+          <td style="text-align: center;">${a.qtdLimpezas}</td>
+          <td style="text-align: right; font-weight: 700; color: #dc2626;">${formatCurrency(a.totalDiarias)}</td>
+          <td style="text-align: right; color: #64748b;">${pctAjud}%</td>
+        </tr>
+        `;
+      }).join('')}
+      <tr class="row-total" style="background: #fee2e2;">
+        <td colspan="2">TOTAL DE DIÁRIAS PAGAS / A PAGAR</td>
+        <td style="text-align: center;">${dre.totalLimpezasEquipe || 0}</td>
+        <td style="text-align: right; color: #dc2626;">${formatCurrency(dre.custoAjudantes)}</td>
+        <td style="text-align: right; font-weight: 700;">${pctDiarias}%</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Tabela de Gastos, Insumos e Investimentos -->
+  ${(impostosDetalhados.length > 0 || despesasDetalhadas.length > 0) ? `
+  <div class="secao-titulo">
+    <span>Impostos, Insumos & Investimentos Lançados</span>
+    <span>${impostosDetalhados.length + despesasDetalhadas.length} itens</span>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Data</th>
+        <th>Categoria</th>
+        <th>Descrição</th>
+        <th>Forma</th>
+        <th style="text-align: right;">Valor</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${[...impostosDetalhados, ...despesasDetalhadas].map(d => `
+        <tr>
+          <td>${d.data ? new Date(d.data + 'T12:00:00').toLocaleDateString('pt-BR') : '-'}</td>
+          <td><span style="font-weight: 600; font-size: 9px;">${d.categoria || 'Gasto'}</span></td>
+          <td>${d.descricao}</td>
+          <td>${d.formaPagamento || 'PIX'}</td>
+          <td style="text-align: right; font-weight: 700;">${formatCurrency(d.valor)}</td>
+        </tr>
+      `).join('')}
+    </tbody>
+  </table>
+  ` : ''}
+
+  <div class="footer">
+    <span>Limpeza Express SP • Relatório de Gestão & Fechamento Financeiro</span>
+    <span>Documento gerado em ${new Date().toLocaleString('pt-BR')}</span>
+  </div>
+</body>
+</html>
+  `;
+
+  executarImpressaoIframe(html);
+};
+
+

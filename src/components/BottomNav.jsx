@@ -7,6 +7,7 @@ import {
   UserCheck, 
   Calculator, 
   DollarSign,
+  BarChart3,
   Layers,
   Settings,
   LogOut
@@ -23,6 +24,7 @@ export const BottomNav = () => {
     { id: 'planos', label: 'Planos', icon: Layers },
     { id: 'orcamento', label: 'Orçar', icon: Calculator },
     { id: 'financeiro', label: 'Caixa', icon: DollarSign },
+    { id: 'fechamento', label: 'Fechamento', icon: BarChart3 },
     { id: 'config', label: 'Ajustes', icon: Settings },
   ];
 

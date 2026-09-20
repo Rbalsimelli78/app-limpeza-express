@@ -7,6 +7,7 @@ import {
   UserCheck, 
   Calculator, 
   DollarSign, 
+  BarChart3,
   Settings,
   Sparkles,
   Layers,
@@ -25,6 +26,7 @@ export const Sidebar = () => {
     { id: 'planos', label: 'Planos & Catálogo', icon: Layers },
     { id: 'orcamento', label: 'Calculadora WhatsApp', icon: Calculator },
     { id: 'financeiro', label: 'Financeiro & Lucro', icon: DollarSign },
+    { id: 'fechamento', label: 'Fechamento Mês', icon: BarChart3 },
     { id: 'config', label: 'Configurações', icon: Settings },
   ];
 

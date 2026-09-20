@@ -211,7 +211,7 @@ export const excluirPlanoNuvem = async (id) => {
 /**
  * Faz upload em lote dos dados locais para a nuvem caso o banco esteja vazio
  */
-export const subirBaseParaNuvem = async ({ clientes = [], ajudantes = [], agendamentos = [], planos = [] }) => {
+export const subirBaseParaNuvem = async ({ clientes = [], ajudantes = [], agendamentos = [], planos = [], despesas = [] }) => {
   try {
     const batch = writeBatch(db);
 
@@ -231,11 +231,90 @@ export const subirBaseParaNuvem = async ({ clientes = [], ajudantes = [], agenda
       if (p.id) batch.set(doc(db, 'planos', p.id), p);
     });
 
+    despesas.forEach(d => {
+      if (d.id) batch.set(doc(db, 'despesas', d.id), d);
+    });
+
     await batch.commit();
     return true;
   } catch (e) {
     console.warn('Erro ao subir base em lote para a nuvem:', e.message);
     return false;
+  }
+};
+
+/**
+ * Escuta em tempo real a coleção de Despesas / Fechamento
+ */
+export const listenDespesas = (onUpdate, onError) => {
+  try {
+    const colRef = collection(db, 'despesas');
+    return onSnapshot(colRef, (snapshot) => {
+      const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      onUpdate(docs, snapshot.empty);
+    }, (err) => {
+      console.warn('Erro ao escutar despesas na nuvem:', err.message);
+      if (onError) onError(err);
+    });
+  } catch (err) {
+    if (onError) onError(err);
+    return () => {};
+  }
+};
+
+export const salvarDespesaNuvem = async (despesa) => {
+  try {
+    if (!despesa || !despesa.id) return;
+    const ref = doc(db, 'despesas', despesa.id);
+    await setDoc(ref, despesa, { merge: true });
+  } catch (e) {
+    console.warn('Falha ao salvar despesa na nuvem:', e.message);
+  }
+};
+
+export const excluirDespesaNuvem = async (id) => {
+  try {
+    if (!id) return;
+    const ref = doc(db, 'despesas', id);
+    await deleteDoc(ref);
+  } catch (e) {
+    console.warn('Falha ao excluir despesa na nuvem:', e.message);
+  }
+};
+
+/**
+ * Escuta e salva status de meses fechados (trava de segurança)
+ */
+export const listenMesesFechados = (onUpdate, onError) => {
+  try {
+    const colRef = collection(db, 'meses_fechados');
+    return onSnapshot(colRef, (snapshot) => {
+      const map = {};
+      snapshot.docs.forEach(d => {
+        map[d.id] = d.data();
+      });
+      onUpdate(map);
+    }, (err) => {
+      console.warn('Erro ao escutar meses fechados na nuvem:', err.message);
+      if (onError) onError(err);
+    });
+  } catch (err) {
+    if (onError) onError(err);
+    return () => {};
+  }
+};
+
+export const salvarMesFechadoNuvem = async (mesAno, dados) => {
+  try {
+    if (!mesAno) return;
+    const ref = doc(db, 'meses_fechados', mesAno);
+    if (!dados || dados.fechado === false) {
+      await deleteDoc(ref);
+    } else {
+      await setDoc(ref, dados, { merge: true });
+    }
+  } catch (e) {
+    console.warn('Falha ao salvar status de mês fechado na nuvem:', e.message);
   }
 };
 
@@ -255,3 +334,4 @@ export const limparColecaoNuvem = async (nomeColecao) => {
     console.warn(`Erro ao limpar coleção ${nomeColecao}:`, e.message);
   }
 };
+

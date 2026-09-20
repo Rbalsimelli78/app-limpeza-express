@@ -945,3 +945,196 @@ export const exportFluxoCaixaXlsx = async ({
   URL.revokeObjectURL(url);
 };
 
+// ==========================================
+// EXPORTAÇÃO EXCEL (.XLSX) - FECHAMENTO DO MÊS / DRE GERENCIAL
+// ==========================================
+export const exportFechamentoMesXlsx = async ({
+  mesAno = '2026-09',
+  mesNome = 'Setembro de 2026',
+  modoDescricao = 'Todos os Lançamentos (com Projeções)',
+  dre = {},
+  clientesDetalhados = [],
+  ajudantesDetalhadas = [],
+  impostosDetalhados = [],
+  despesasDetalhadas = []
+}) => {
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'Limpeza Express SP';
+  workbook.created = new Date();
+
+  const worksheet = workbook.addWorksheet(`Fechamento ${mesAno}`);
+
+  worksheet.columns = [
+    { key: 'colA', width: 34 }, // Nome / Descrição
+    { key: 'colB', width: 26 }, // Prédio / Condomínio / Categoria
+    { key: 'colC', width: 18 }, // Qtd / Data
+    { key: 'colD', width: 22 }, // Valor (R$) / %
+  ];
+
+  // Estilo Helper de Cabeçalhos de Seção (Amarelo inspirado no Excel do usuário)
+  const addSecaoHeader = (titulo, colunas = []) => {
+    const secRow = worksheet.addRow([titulo, '', '', '']);
+    secRow.height = 24;
+    secRow.getCell(1).font = { bold: true, size: 12, color: { argb: 'FF000000' } };
+    worksheet.mergeCells(`A${secRow.number}:D${secRow.number}`);
+    secRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF000' } }; // Amarelo clássico
+    
+    if (colunas.length > 0) {
+      const colRow = worksheet.addRow(colunas);
+      colRow.height = 20;
+      colRow.font = { bold: true, size: 10, color: { argb: 'FF1F2937' } };
+      colRow.eachCell(c => {
+        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } };
+        c.border = { bottom: { style: 'thin', color: { argb: 'FFD1D5DB' } } };
+      });
+    }
+  };
+
+  // 1. TÍTULO PRINCIPAL
+  const titleRow = worksheet.addRow(['LIMPEZA EXPRESS SP - FECHAMENTO MENSAL & DRE GERENCIAL']);
+  titleRow.height = 30;
+  worksheet.mergeCells('A1:D1');
+  titleRow.getCell(1).font = { bold: true, size: 14, color: { argb: 'FFFFFFFF' } };
+  titleRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+  titleRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF047857' } }; // Verde Emerald
+
+  const metaRow = worksheet.addRow([`Competência: ${mesNome} | Visão: ${modoDescricao} | Gerado em: ${new Date().toLocaleDateString('pt-BR')}`]);
+  worksheet.mergeCells('A2:D2');
+  metaRow.getCell(1).font = { italic: true, size: 9, color: { argb: 'FF4B5563' } };
+  metaRow.getCell(1).alignment = { horizontal: 'center' };
+  worksheet.addRow([]); // Espaço
+
+  // 2. RECEITAS (POR CLIENTE E PRÉDIO)
+  addSecaoHeader('Receitas', ['Nome cliente', 'Prédio / Condomínio', 'Qtd de limpeza', 'Vlr Total']);
+  
+  if (clientesDetalhados.length === 0) {
+    worksheet.addRow(['Nenhum faturamento registrado no período', '-', 0, 0]);
+  } else {
+    clientesDetalhados.forEach(c => {
+      const r = worksheet.addRow([c.nome, c.condominio || 'São Paulo', c.qtdLimpezas, c.valorTotal]);
+      r.getCell(4).numFmt = '"R$ "#,##0.00';
+    });
+  }
+
+  // Total Receitas
+  const totRecRow = worksheet.addRow(['Total de Receitas', '', dre.totalLimpezas || 0, dre.receitaBruta || 0]);
+  totRecRow.height = 22;
+  totRecRow.font = { bold: true, size: 11 };
+  totRecRow.getCell(4).numFmt = '"R$ "#,##0.00';
+  totRecRow.eachCell(c => {
+    c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } };
+    c.border = { top: { style: 'thin', color: { argb: 'FFD97706' } }, bottom: { style: 'thin', color: { argb: 'FFD97706' } } };
+  });
+
+  worksheet.addRow([]); // Espaço
+
+  // 3. DESPESAS COM DIÁRIAS (AJUDANTES)
+  addSecaoHeader('Despesas Diretas (Diárias das Ajudantes)', ['Nome ajudante', 'Prédios Atendidos', 'Qtd de limpezas', 'Vlr Total']);
+
+  if (ajudantesDetalhadas.length === 0) {
+    worksheet.addRow(['Nenhuma colaboradora escalada no período', '-', 0, 0]);
+  } else {
+    ajudantesDetalhadas.forEach(a => {
+      const r = worksheet.addRow([a.nome, a.predios || 'Diversos', a.qtdLimpezas, a.totalDiarias]);
+      r.getCell(4).numFmt = '"R$ "#,##0.00';
+    });
+  }
+
+  // Total Diárias e % da receita
+  const pctDiarias = dre.receitaBruta > 0 ? ((dre.custoAjudantes / dre.receitaBruta) * 100).toFixed(1) : '0,0';
+  const totAjudRow = worksheet.addRow(['Total de Diárias das Colaboradoras', `% da receita: ${pctDiarias}%`, dre.totalLimpezasEquipe || 0, dre.custoAjudantes || 0]);
+  totAjudRow.height = 22;
+  totAjudRow.font = { bold: true, size: 11 };
+  totAjudRow.getCell(4).numFmt = '"R$ "#,##0.00';
+  totAjudRow.eachCell(c => {
+    c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
+    c.border = { top: { style: 'thin', color: { argb: 'FFDC2626' } }, bottom: { style: 'thin', color: { argb: 'FFDC2626' } } };
+  });
+
+  worksheet.addRow([]); // Espaço
+
+  // 4. IMPOSTOS E TAXAS
+  addSecaoHeader('IMPOSTOS E TAXAS', ['Descrição', 'Competência', '', 'Valor']);
+
+  if (impostosDetalhados.length === 0) {
+    worksheet.addRow(['Nenhum imposto lançado para este mês', mesAno, '', 0]);
+  } else {
+    impostosDetalhados.forEach(imp => {
+      const r = worksheet.addRow([imp.descricao, imp.mesReferencia || mesAno, '', imp.valor]);
+      r.getCell(4).numFmt = '"R$ "#,##0.00';
+    });
+  }
+
+  // Total Impostos
+  const totImpRow = worksheet.addRow(['Total de Impostos e Taxas', '', '', dre.totalImpostos || 0]);
+  totImpRow.height = 22;
+  totImpRow.font = { bold: true, size: 11 };
+  totImpRow.getCell(4).numFmt = '"R$ "#,##0.00';
+  totImpRow.eachCell(c => {
+    c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } };
+  });
+
+  // Linha de Destaque: MARGEM DE CONTRIBUIÇÃO
+  const pctMargem = dre.receitaBruta > 0 ? ((dre.margemContribuicao / dre.receitaBruta) * 100).toFixed(1) : '0,0';
+  const margemRow = worksheet.addRow(['(=) MARGEM DE CONTRIBUIÇÃO', `Percentual: ${pctMargem}%`, '', dre.margemContribuicao || 0]);
+  margemRow.height = 26;
+  margemRow.font = { bold: true, size: 12, color: { argb: 'FF065F46' } };
+  margemRow.getCell(4).numFmt = '"R$ "#,##0.00';
+  margemRow.eachCell(c => {
+    c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1FAE5' } };
+    c.border = { top: { style: 'medium', color: { argb: 'FF059669' } }, bottom: { style: 'medium', color: { argb: 'FF059669' } } };
+  });
+
+  worksheet.addRow([]); // Espaço
+
+  // 5. GASTOS OPERACIONAIS, INSUMOS & INVESTIMENTOS
+  addSecaoHeader('Gastos Operacionais, Insumos & Investimentos', ['Descrição', 'Categoria', 'Data', 'Valor']);
+
+  if (despesasDetalhadas.length === 0) {
+    worksheet.addRow(['Nenhum gasto operacional lançado', '-', '-', 0]);
+  } else {
+    despesasDetalhadas.forEach(g => {
+      const r = worksheet.addRow([g.descricao, g.categoria || 'Produtos de Limpeza', g.data || '-', g.valor]);
+      r.getCell(4).numFmt = '"R$ "#,##0.00';
+    });
+  }
+
+  const pctGastos = dre.receitaBruta > 0 ? ((dre.totalGastosOperacionais / dre.receitaBruta) * 100).toFixed(1) : '0,0';
+  const totGastosRow = worksheet.addRow(['Total de Gastos Operacionais & Insumos', `% da receita: ${pctGastos}%`, '', dre.totalGastosOperacionais || 0]);
+  totGastosRow.height = 22;
+  totGastosRow.font = { bold: true, size: 11 };
+  totGastosRow.getCell(4).numFmt = '"R$ "#,##0.00';
+  totGastosRow.eachCell(c => {
+    c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } };
+  });
+
+  worksheet.addRow([]); // Espaço
+
+  // 6. RESULTADO LÍQUIDO GERENCIAL (LUCRO REAL)
+  const pctLucro = dre.receitaBruta > 0 ? ((dre.lucroLiquido / dre.receitaBruta) * 100).toFixed(1) : '0,0';
+  const resultadoRow = worksheet.addRow(['(=) RESULTADO LÍQUIDO (LUCRO REAL DO MÊS)', `Margem Líquida: ${pctLucro}%`, '', dre.lucroLiquido || 0]);
+  resultadoRow.height = 28;
+  resultadoRow.font = { bold: true, size: 13, color: { argb: 'FF1E3A8A' } };
+  resultadoRow.getCell(4).numFmt = '"R$ "#,##0.00';
+  resultadoRow.eachCell(c => {
+    c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBEAFE' } };
+    c.border = { top: { style: 'double', color: { argb: 'FF2563EB' } }, bottom: { style: 'double', color: { argb: 'FF2563EB' } } };
+  });
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  });
+
+  const filename = `fechamento_${mesAno}_limpeza_express.xlsx`;
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+
+

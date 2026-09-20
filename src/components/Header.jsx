@@ -14,6 +14,7 @@ export const Header = ({ onOpenNovoAgendamento }) => {
       case 'planos': return 'Catálogo & Planos de Limpeza';
       case 'orcamento': return 'Calculadora de Propostas WhatsApp';
       case 'financeiro': return 'Fluxo de Caixa & Lucro Líquido';
+      case 'fechamento': return 'Fechamento do Mês • DRE & Margem';
       case 'config': return 'Configurações & Backup';
       default: return 'Limpeza Express SP';
     }

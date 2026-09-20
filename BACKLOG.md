@@ -12,6 +12,7 @@ Este documento gerencia o backlog de tarefas técnicas, correções de bugs, oti
 | **FEAT-07**| ✨ Melhoria | [Cálculo da Virada de Mês ancorado na última limpeza com linha amarela informativa](#feat-07--cálculo-de-virada-de-mês-ancorado-na-última-limpeza) | 🔴 Alta | 30 min | ✅ Concluído |
 | **FEAT-08**| ✨ Melhoria | [Opção de Imprimir / Salvar em PDF com ou sem Gráfico de Evolução](#feat-08--impressão-de-extrato-com-ou-sem-gráfico) | 🟡 Média | 20 min | ✅ Concluído |
 | **FEAT-09**| 🏷️ Marca | [Substituição total do termo "Faxina" por "Limpeza" em todo o sistema](#feat-09--padronização-de-marca-faxina---limpeza) | 🔴 Alta | 20 min | ✅ Concluído |
+| **FEAT-10**| 📊 Gestão | [Módulo Fechamento Mês & DRE Gerencial com Drilldown, Trava e Comparativo Anual](#feat-10--módulo-fechamento-mês--dre-gerencial) | 🔴 Alta | 45 min | ✅ Concluído |
 | **PWA-02** | 📱 PWA | [Criar manifest.json e suporte PWA completo para celular](#pwa-02--manifestjson-e-instalação-pwa-no-celular) | 🟡 Média | 30 min | 📝 A Fazer |
 | **PERF-03**| ⚡ Otimização | [Code-Splitting e Lazy Loading do ExcelJS (reduzir bundle de 2MB)](#perf-03--code-splitting--lazy-loading-do-exceljs) | 🟡 Média | 30 min | 📝 A Fazer |
 | **SEC-04** | 🔒 Segurança | [Proteção e hash de senhas / migração de autenticação](#sec-04--segurança-e-autenticação-reforçada) | 🟡 Média | 1 hora | 📝 A Fazer |
@@ -129,6 +130,22 @@ Este documento gerencia o backlog de tarefas técnicas, correções de bugs, oti
   - [x] Garantir zero quebra de regras de negócio, APIs, filtros ou persistência.
   - [x] Confirmar zero ocorrências restantes com `git grep -i "faxina"`.
   - [x] Validar build de produção (`npm run build`) e lint (`npx oxlint`).
+
+### FEAT-10 — Módulo Fechamento Mês & DRE Gerencial
+* **Arquivos:** [`src/views/FechamentoView.jsx`](./src/views/FechamentoView.jsx), [`src/components/ModalDespesa.jsx`](./src/components/ModalDespesa.jsx), [`src/context/AppContext.jsx`](./src/context/AppContext.jsx), [`src/services/cloudSync.js`](./src/services/cloudSync.js), [`src/utils/exportExcel.js`](./src/utils/exportExcel.js), [`src/utils/printStatement.js`](./src/utils/printStatement.js)
+* **Severidade:** 🔴 Alta (Módulo Estratégico & Tomada de Decisão Financeira)
+* **Status:** ✅ Concluído em 20/09/2026.
+* **Problema:** 
+  A gestora precisava de uma visão financeira executiva e apuração de resultados (DRE) para saber a Margem de Contribuição real do negócio e o valor líquido que sobra ao final do mês, separando custos diretos de ajudantes, impostos, insumos de limpeza (álcool, panos, vassouras) e investimentos/bens duráveis (ex: aquisição de novo aspirador de pó).
+* **Critérios de Aceite:**
+  - [x] Chave seletora no topo destacada: **"✓ Apenas Realizado (Concluídos)"** vs **"📅 Mês Todo (Com Projeções)"**.
+  - [x] Drilldown interativo (`+` / `▾`) na linha de cada Cliente para detalhar dia, valor e status das limpezas.
+  - [x] Drilldown interativo (`+` / `▾`) na linha de cada Ajudante para detalhar diárias, dias trabalhados, cliente/condomínio e % sobre a receita.
+  - [x] Apuração em cascata DRE: Receita Bruta ➔ (-) Custos Variáveis (Diárias) ➔ (=) Margem de Contribuição ➔ (-) Impostos/Taxas ➔ (-) Insumos Operacionais ➔ (-) Investimentos ➔ (=) Lucro Líquido Real / Sobra de Caixa.
+  - [x] Trava de segurança contábil (**"🔒 Fechar Mês"** / **"🔓 Reabrir Mês"**) para proteger meses fechados contra edições indevidas.
+  - [x] Aba de **Comparativo Anual (Jan a Dez)** com matriz mensal de receitas, custos, margens e gráfico de barras comparativo.
+  - [x] Botões de exportação executiva em **Excel (.xlsx)** com cabeçalhos amarelos e **Impressão A4 / PDF**.
+  - [x] Sincronização em tempo real multi-dispositivo no Firebase Firestore (`despesas` e `mesesFechados`).
 
 ---
 

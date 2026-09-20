@@ -153,6 +153,30 @@ Catálogo oficial dos pacotes de limpeza oferecidos aos clientes.
 }
 ```
 
+#### 5. Coleção: `despesas`
+Armazena despesas operacionais do negócio: insumos, impostos/taxas, investimentos duráveis (ex: aspiradores) e custos fixos.
+```json
+{
+  "id": "desp-1788625900000",
+  "descricao": "Aspirador de Pó Vertical Electrolux",
+  "categoria": "investimento",
+  "valor": 349.90,
+  "data": "2026-03-12",
+  "observacoes": "Substituição do aspirador antigo que quebrou",
+  "criadoEm": "2026-03-12T10:30:00"
+}
+```
+
+#### 6. Coleção: `mesesFechados`
+Registra os meses auditados e travados contra alterações acidentais.
+```json
+{
+  "id": "2026-02",
+  "fechadoEm": "2026-03-01T18:00:00.000Z",
+  "fechadoPor": "admin"
+}
+```
+
 ### 🔒 Regras de Segurança do Firestore (`firestore.rules`)
 As regras foram publicadas no console do Firebase para permitir acesso transparente e sem atrito do aplicativo Web/PWA:
 ```javascript
@@ -229,15 +253,34 @@ Toda vez que uma alteração é enviada para a branch `main` do GitHub via `git 
 * **Regra de Cancelamento**:
   $$\text{Cancelamento com menos de 48h} \rightarrow \text{Cobrança de 50\% do valor do serviço}$$
 
-### 📊 Algoritmo Financeiro de Caixa
+### 📊 Algoritmo Financeiro de Caixa & DRE Gerencial (Fechamento Mês)
 * **Total Recebido**: Soma de `valorCliente` de todas as limpezas com `statusClientePagamento === 'pago'`.
 * **Total a Receber**: Soma de `valorCliente` de limpezas com `statusClientePagamento === 'pendente'`.
 * **Total Pago às Ajudantes**: Soma de `valorAPagar` das colaboradoras com `statusPagamento === 'pago'`.
 * **Total a Pagar às Ajudantes**: Soma de `valorAPagar` das colaboradoras com `statusPagamento === 'pendente'`.
 * **Lucro Realizado (Caixa Líquido)**:
   $$\text{Lucro Realizado} = \text{Total Recebido} - \text{Total Pago às Ajudantes}$$
-* **Margem Líquida Real**:
-  $$\text{Margem (\%)} = \left(\frac{\text{Lucro Realizado}}{\text{Total Recebido}}\right) \times 100$$
+
+#### 📈 Estrutura da DRE Gerencial (Demonstração do Resultado do Exercício)
+$$\begin{aligned}
+(+)&\ \text{Receita Bruta Total (Clientes)} \\
+(-)&\\ \text{Custos Variáveis Diretos (Diárias das Ajudantes)} \\
+\hline
+(=)&\ \textbf{Margem de Contribuição} \quad \left(\text{Margem \%} = \frac{\text{Margem}}{\text{Receita}} \times 100\right) \\
+(-)&\\ \text{Deduções / Impostos (DAS MEI, Taxas Bancárias, Maquininha)} \\
+(-)&\\ \text{Insumos Operacionais (Detergentes, Panos de Microfibra, Desinfetantes)} \\
+(-)&\\ \text{Custos Fixos Administrativos (Internet, Telefonia)} \\
+(-)&\\ \text{Investimentos / Bens Duráveis (Aquisição/Troca de Aspirador de Pó, Equipamentos)} \\
+\hline
+(=)&\ \textbf{Lucro Líquido Real / Sobra de Caixa}
+\end{aligned}$$
+
+* **Modos de Apuração do Fechamento**:
+  - **✓ Apenas Realizado (Concluídos)**: Considera estritamente limpezas com `statusServico === 'concluido'`, receitas com `statusClientePagamento === 'pago'`, diárias pagas e despesas efetivadas no mês.
+  - **📅 Mês Todo (Com Projeções)**: Considera a totalidade das limpezas programadas no mês, prevendo a receita total a realizar, o custo das ajudantes escaladas e o resultado projetado para o fim do mês.
+* **Trava de Segurança Contábil (Fechar / Reabrir Mês)**:
+  - Permite congelar um mês auditado para evitar inserções, edições ou exclusões acidentais de agendamentos e despesas retroativas.
+  - O sistema bloqueia adições de despesas no mês travado a menos que o usuário clique explicitamente em **"Reabrir Mês"**.
 
 ---
 
@@ -314,4 +357,4 @@ As melhorias, correções de bugs, otimizações de performance e tarefas de eng
 ---
 
 *Documentação elaborada e validada para arquivo permanente da Limpeza Express SP.*  
-*Versão da Plataforma: **1.2.0 (Cloud Firestore Real-Time Production Edition)**.*
+*Versão da Plataforma: **1.3.0 (Fechamento Mês, DRE Gerencial & Multi-Device Real-Time Edition)**.*

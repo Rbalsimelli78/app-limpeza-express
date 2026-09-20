@@ -295,3 +295,62 @@ export const AGENDAMENTOS_INICIAIS = [
     googleEventId: null
   }
 ];
+
+export const DESPESAS_INICIAIS = [
+  {
+    id: 'desp-1',
+    data: new Date().toISOString().slice(0, 7) + '-05',
+    mesReferencia: new Date().toISOString().slice(0, 7),
+    tipoMacro: 'imposto',
+    categoria: 'Impostos e Taxas',
+    descricao: 'Simples Nacional (DAS Mensal)',
+    valor: 100.50,
+    formaPagamento: 'PIX',
+    observacoes: 'Guia DAS apurada'
+  },
+  {
+    id: 'desp-2',
+    data: new Date().toISOString().slice(0, 7) + '-08',
+    mesReferencia: new Date().toISOString().slice(0, 7),
+    tipoMacro: 'imposto',
+    categoria: 'Impostos e Taxas',
+    descricao: 'Taxas Bancárias e Maquininha',
+    valor: 50.00,
+    formaPagamento: 'Débito',
+    observacoes: 'Tarifas mensais operacionais'
+  },
+  {
+    id: 'desp-3',
+    data: new Date().toISOString().slice(0, 7) + '-10',
+    mesReferencia: new Date().toISOString().slice(0, 7),
+    tipoMacro: 'insumo',
+    categoria: 'Produtos de Limpeza',
+    descricao: 'Álcool 70% e Desinfetante Concentrado',
+    valor: 30.00,
+    formaPagamento: 'PIX',
+    observacoes: 'Atacadão de Limpeza'
+  },
+  {
+    id: 'desp-4',
+    data: new Date().toISOString().slice(0, 7) + '-12',
+    mesReferencia: new Date().toISOString().slice(0, 7),
+    tipoMacro: 'insumo',
+    categoria: 'Produtos de Limpeza',
+    descricao: 'Vassouras de Piaçava e Rodos',
+    valor: 60.00,
+    formaPagamento: 'Cartão de Crédito',
+    observacoes: 'Reposição de materiais para equipe'
+  },
+  {
+    id: 'desp-5',
+    data: new Date().toISOString().slice(0, 7) + '-15',
+    mesReferencia: new Date().toISOString().slice(0, 7),
+    tipoMacro: 'insumo',
+    categoria: 'Produtos de Limpeza',
+    descricao: 'Panos de Microfibra Profissionais (Kit)',
+    valor: 100.00,
+    formaPagamento: 'PIX',
+    observacoes: 'Cores separadas para banheiro e cozinha'
+  }
+];
+

@@ -11,6 +11,7 @@ import { ClientesView } from './views/ClientesView';
 import { AjudantesView } from './views/AjudantesView';
 import { OrcamentoView } from './views/OrcamentoView';
 import { FinanceiroView } from './views/FinanceiroView';
+import { FechamentoView } from './views/FechamentoView';
 import { ConfigView } from './views/ConfigView';
 import { PlanosView } from './views/PlanosView';
 import { LoginView } from './views/LoginView';
@@ -206,6 +207,10 @@ const MainAppContent = () => {
 
             {activeTab === 'financeiro' && (
               <FinanceiroView />
+            )}
+
+            {activeTab === 'fechamento' && (
+              <FechamentoView />
             )}
 
             {activeTab === 'config' && (
