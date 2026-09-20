@@ -62,7 +62,7 @@ ${resumoExtras.length > 0 ? `*Adicionais aplicados:*\n${resumoExtras.join('\n')}
 ⚠️ *Avisos Importantes:*
 • Em caso de cancelamento, avisar com 48hs de antecedência ou será cobrado 50% da reserva.
 
-Podemos confirmar o agendamento da sua faxina? Aguardo seu retorno para reservar na agenda! 📲`;
+Podemos confirmar o agendamento da sua limpeza? Aguardo seu retorno para reservar na agenda! 📲`;
 };
 
 /**
@@ -120,7 +120,7 @@ export const buildLembreteClienteText = ({
   const dataFormatada = d.toLocaleDateString('pt-BR');
   const horaFormatada = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-  return `Olá ${clienteNome}! Passando para lembrar da sua faxina da *Limpeza Express SP* amanhã (${dataFormatada}) às ${horaFormatada} (${planoNome}).
+  return `Olá ${clienteNome}! Passando para lembrar da sua limpeza da *Limpeza Express SP* amanhã (${dataFormatada}) às ${horaFormatada} (${planoNome}).
 Nossa equipe estará pontualmente no seu endereço! 
 Qualquer dúvida ou necessidade, estamos à disposição. Até amanhã! ✨`;
 };
@@ -144,7 +144,7 @@ export const buildApresentacaoPlanoText = (plano, clienteNome = '') => {
 ✨ *${(plano.nome || 'Plano de Limpeza').toUpperCase()}*
 💰 *Valor:* R$ ${Number(plano.valorBase || 0).toFixed(2).replace('.', ',')}
 ${acrescimoQuarto}⏱️ *Tempo estimado:* ${plano.tempoEstimado || '3 a 5hs'}
-👥 *Equipe:* Faxina completa com ${plano.profissionais || 2} profissionais
+👥 *Equipe:* Limpeza completa com ${plano.profissionais || 2} profissionais
 
 📋 *Serviços Oferecidos neste pacote:*
 
@@ -167,11 +167,11 @@ export const buildExtratoClienteText = ({
   totalPago,
   totalPendente
 }) => {
-  const listaFaxinas = agendamentos.map((ag) => {
+  const listaLimpezas = agendamentos.map((ag) => {
     const data = new Date(ag.dataHoraInicio).toLocaleDateString('pt-BR');
     const valor = Number(ag.valorCliente || 0).toFixed(2).replace('.', ',');
     const status = ag.statusClientePagamento === 'pago' ? '✅ Pago' : '⏳ Pendente';
-    return `• *${data}* - ${ag.planoNome || 'Faxina'}: R$ ${valor} (${status})`;
+    return `• *${data}* - ${ag.planoNome || 'Limpeza'}: R$ ${valor} (${status})`;
   }).join('\n');
 
   return `✨ *EXTRATO FINANCEIRO - LIMPEZA EXPRESS SP* ✨
@@ -180,13 +180,13 @@ Olá, *${clienteNome}*! Segue o seu demonstrativo de serviços e pagamentos:
 
 📅 *Período:* ${periodoDesc}
 
-📋 *Histórico de Faxinas:*
-${listaFaxinas || '• Nenhuma faxina registrada no período.'}
+📋 *Histórico de Limpezas:*
+${listaLimpezas || '• Nenhuma limpeza registrada no período.'}
 
 💰 *RESUMO FINANCEIRO:*
 ✅ Total Quitado: *R$ ${Number(totalPago).toFixed(2).replace('.', ',')}*
 ⏳ Saldo Pendente: *R$ ${Number(totalPendente).toFixed(2).replace('.', ',')}*
-📊 Total Geral: *R$ ${Number(totalGeral).toFixed(2).replace('.', ',')}* (${agendamentos.length} faxinas)
+📊 Total Geral: *R$ ${Number(totalGeral).toFixed(2).replace('.', ',')}* (${agendamentos.length} limpezas)
 
 Qualquer dúvida ou comprovante necessário, estamos à disposição! 🧼🧹✨`;
 };
@@ -224,7 +224,7 @@ ${listaDiarias || '• Nenhuma diária registrada no período.'}
 💰 *RESUMO DO PERÍODO:*
 ✅ Total Já Pago / Transferido: *R$ ${Number(totalPago).toFixed(2).replace('.', ',')}*
 ⏳ Saldo a Pagar: *R$ ${Number(totalPendente).toFixed(2).replace('.', ',')}*
-📊 Total de Faxinas: *${historicoDiarias.length} trabalhos*
+📊 Total de Limpezas: *${historicoDiarias.length} trabalhos*
 
 Qualquer dúvida estamos à disposição! 🧼🧹✨`;
 };
@@ -243,16 +243,16 @@ Aguardo seu retorno para programarmos seus dias! Muito obrigado! 📲✨`;
 };
 
 /**
- * Mensagem para enviar a escala semanal consolidada da ajudante com todas as faxinas dos próximos 7 dias
+ * Mensagem para enviar a escala semanal consolidada da ajudante com todas as limpezas dos próximos 7 dias
  */
 export const buildEscalaSemanalAjudanteText = ({
   ajudanteNome,
-  faxinas,
+  limpezas,
   totalDiarias,
   incluirPreco = true,
   incluirEndereco = true
 }) => {
-  const lista = faxinas.map((f, i) => {
+  const lista = limpezas.map((f, i) => {
     const d = new Date(f.dataHoraInicio);
     const diaSemana = d.toLocaleDateString('pt-BR', { weekday: 'short' });
     const data = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
@@ -278,7 +278,7 @@ export const buildEscalaSemanalAjudanteText = ({
     return linhas.join('\n');
   }).join('\n\n');
 
-  let rodape = `📊 *Total:* ${faxinas.length} faxina(s)`;
+  let rodape = `📊 *Total:* ${limpezas.length} limpeza(s)`;
   if (incluirPreco) {
     rodape += `\n💰 *Total em Diárias:* R$ ${Number(totalDiarias || 0).toFixed(2).replace('.', ',')}`;
   }

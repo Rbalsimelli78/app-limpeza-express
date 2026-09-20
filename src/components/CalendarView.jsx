@@ -97,7 +97,7 @@ export const CalendarView = ({
     return nomes.join(', ');
   };
 
-  // Helper de status da faxina (Concluída vs Pendente)
+  // Helper de status da limpeza (Concluída vs Pendente)
   const isConcluida = (ag) => ag?.statusServico === 'concluido';
 
   // Título Dinâmico do Cabeçalho conforme o Modo
@@ -165,7 +165,7 @@ export const CalendarView = ({
 
   // Estatísticas do Mês Atual para o Topo (Serviço e Financeiro)
   const estatisticasMes = useMemo(() => {
-    let totalFaxinas = 0;
+    let totalLimpezas = 0;
     let concluidas = 0;
     let pendentes = 0;
     let totalPagos = 0;
@@ -175,7 +175,7 @@ export const CalendarView = ({
     Object.entries(agendamentosPorDia).forEach(([dataStr, lista]) => {
       const [a, m] = dataStr.split('-').map(Number);
       if (a === ano && m - 1 === mes) {
-        totalFaxinas += lista.length;
+        totalLimpezas += lista.length;
         lista.forEach(ag => {
           if (ag.statusServico === 'concluido') {
             concluidas++;
@@ -192,7 +192,7 @@ export const CalendarView = ({
       }
     });
 
-    return { totalFaxinas, concluidas, pendentes, totalPagos, totalPendentesPagamento, totalInadimplentes };
+    return { totalLimpezas, concluidas, pendentes, totalPagos, totalPendentesPagamento, totalInadimplentes };
   }, [agendamentosPorDia, ano, mes, clientes]);
 
   // 1. DADOS DA VISÃO MENSAL (Grade de 35 a 42 dias)
@@ -410,7 +410,7 @@ export const CalendarView = ({
                   fontSize: '0.75rem', 
                   padding: '0.3rem 0.55rem' 
                 }}
-                title="Faxinas com limpeza já concluída"
+                title="Limpezas com limpeza já concluída"
               >
                 ✓ {estatisticasMes.concluidas} concluída(s)
               </span>
@@ -424,7 +424,7 @@ export const CalendarView = ({
                   fontSize: '0.75rem', 
                   padding: '0.3rem 0.55rem' 
                 }}
-                title="Faxinas agendadas e confirmadas a realizar"
+                title="Limpezas agendadas e confirmadas a realizar"
               >
                 ⏳ {estatisticasMes.pendentes} a realizar
               </span>
@@ -447,7 +447,7 @@ export const CalendarView = ({
             >
               <span style={{ fontWeight: '700', color: 'var(--text-muted)' }}>Pagamento:</span>
 
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }} title="Cliente já pagou a faxina">
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }} title="Cliente já pagou a limpeza">
                 <span style={{ width: '13px', height: '13px', borderRadius: '50%', background: '#10b981', color: '#fff', fontSize: '0.6rem', fontWeight: '900', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>$</span>
                 <span style={{ color: '#34d399', fontWeight: '600' }}>Pago ({estatisticasMes.totalPagos})</span>
               </span>
@@ -566,7 +566,7 @@ export const CalendarView = ({
                             ? `✓ ${qtd} feita(s)` 
                             : concluidas > 0 
                               ? `${concluidas} ok • ${pendentes} pend` 
-                              : `⏳ ${qtd} ${qtd === 1 ? 'faxina' : 'faxinas'}`}
+                              : `⏳ ${qtd} ${qtd === 1 ? 'limpeza' : 'limpezas'}`}
                         </span>
 
                         {qtd > 1 && d.agendamentos.some(ag => checkHasConflict(ag, d.agendamentos, ajudantes)) && (
@@ -691,7 +691,7 @@ export const CalendarView = ({
                         color: qtd > 0 ? (concluidas === qtd ? '#34d399' : '#fbbf24') : 'var(--text-muted)'
                       }}
                     >
-                      {qtd === 0 ? 'Sem faxinas' : `${qtd} faxina(s)`}
+                      {qtd === 0 ? 'Sem limpezas' : `${qtd} limpeza(s)`}
                     </span>
                     {qtd > 1 && diaItem.agendamentos.some(ag => checkHasConflict(ag, diaItem.agendamentos, ajudantes)) && (
                       <span 
@@ -712,7 +712,7 @@ export const CalendarView = ({
                   </div>
                 </div>
 
-                {/* Lista de Faxinas do Dia (Ordenadas por Horário) */}
+                {/* Lista de Limpezas do Dia (Ordenadas por Horário) */}
                 <div style={{ padding: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
                   {qtd === 0 ? (
                     <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.75rem', padding: '2rem 0.25rem', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
@@ -847,7 +847,7 @@ export const CalendarView = ({
                   {isDiaHoje ? 'Hoje' : 'Dia Selecionado'}
                 </span>
                 <span style={{ fontSize: '0.825rem', color: 'var(--text-secondary)' }}>
-                  {agendamentosDoDiaSelecionado.length} faxina(s) agendada(s)
+                  {agendamentosDoDiaSelecionado.length} limpeza(s) agendada(s)
                 </span>
               </div>
               <h4 style={{ fontSize: '1.2rem', color: 'var(--text-primary)', marginTop: '0.2rem' }}>
@@ -862,19 +862,19 @@ export const CalendarView = ({
               style={{ gap: '0.35rem' }}
             >
               <Plus size={16} />
-              <span>+ Agendar Faxina neste Dia</span>
+              <span>+ Agendar Limpeza neste Dia</span>
             </button>
           </div>
 
-          {/* Se não houver faxinas no dia */}
+          {/* Se não houver limpezas no dia */}
           {agendamentosDoDiaSelecionado.length === 0 ? (
             <div className="glass-card" style={{ textAlign: 'center', padding: '3rem 1rem' }}>
               <CalendarIcon size={44} color="var(--text-muted)" style={{ margin: '0 auto 0.75rem', opacity: 0.5 }} />
               <h4 style={{ color: 'var(--text-primary)', marginBottom: '0.35rem' }}>
-                Nenhuma faxina agendada para este dia
+                Nenhuma limpeza agendada para este dia
               </h4>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '1.25rem' }}>
-                Você pode utilizar os botões de navegação acima para ver outros dias ou agendar uma nova faxina agora.
+                Você pode utilizar os botões de navegação acima para ver outros dias ou agendar uma nova limpeza agora.
               </p>
               <button
                 type="button"
@@ -882,11 +882,11 @@ export const CalendarView = ({
                 className="btn btn-primary btn-sm"
               >
                 <Plus size={16} />
-                <span>Agendar Faxina</span>
+                <span>Agendar Limpeza</span>
               </button>
             </div>
           ) : (
-            /* Lista detalhada das faxinas do dia com horários e ações */
+            /* Lista detalhada das limpezas do dia com horários e ações */
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               {agendamentosDoDiaSelecionado.length > 1 && agendamentosDoDiaSelecionado.some(ag => checkHasConflict(ag, agendamentosDoDiaSelecionado, ajudantes)) && (
                 <div style={{
@@ -902,7 +902,7 @@ export const CalendarView = ({
                   fontWeight: '600'
                 }}>
                   <AlertCircle size={17} color="#ef4444" />
-                  <span>Atenção: Existem faxinas com choque de horário e/ou ajudantes sobrepostas neste dia.</span>
+                  <span>Atenção: Existem limpezas com choque de horário e/ou ajudantes sobrepostas neste dia.</span>
                 </div>
               )}
 
@@ -913,7 +913,7 @@ export const CalendarView = ({
                 const feita = isConcluida(ag);
                 const horaIni = ag.dataHoraInicio ? ag.dataHoraInicio.slice(11, 16) : '08:00';
                 const horaFim = ag.dataHoraFim ? ag.dataHoraFim.slice(11, 16) : '12:00';
-                const waUrl = cli ? getWhatsAppUrl(cli.telefone, `Olá ${cli.nome}! Aqui é da Limpeza Express SP sobre sua faxina de hoje ✨`) : '';
+                const waUrl = cli ? getWhatsAppUrl(cli.telefone, `Olá ${cli.nome}! Aqui é da Limpeza Express SP sobre sua limpeza de hoje ✨`) : '';
                 const conflito = checkHasConflict(ag, agendamentosDoDiaSelecionado, ajudantes);
 
                 return (
@@ -953,7 +953,7 @@ export const CalendarView = ({
                             className={`badge ${feita ? 'badge-success' : 'badge-warning'}`}
                             style={{ fontSize: '0.75rem' }}
                           >
-                            {feita ? '✓ Faxina Concluída' : '⏳ A Realizar / Confirmada'}
+                            {feita ? '✓ Limpeza Concluída' : '⏳ A Realizar / Confirmada'}
                           </span>
 
                           <PaymentStatusBadge agendamento={ag} cliente={cli} variant="badge" showValor={true} />
@@ -994,8 +994,8 @@ export const CalendarView = ({
                             fontWeight: '600'
                           }}>
                             {conflito.tipo === 'ajudante'
-                              ? `⚠️ Ajudante (${conflito.ajudantes.join(', ')}) escalada em 2 ou mais faxinas com horários sobrepostos neste dia.`
-                              : '⚠️ Há outra faxina cadastrada para este mesmo horário.'}
+                              ? `⚠️ Ajudante (${conflito.ajudantes.join(', ')}) escalada em 2 ou mais limpezas com horários sobrepostos neste dia.`
+                              : '⚠️ Há outra limpeza cadastrada para este mesmo horário.'}
                           </div>
                         )}
 
@@ -1023,7 +1023,7 @@ export const CalendarView = ({
                           </div>
                         )}
 
-                        {/* Observações da Faxina */}
+                        {/* Observações da Limpeza */}
                         {ag.observacoes && (
                           <div style={{ marginTop: '0.5rem', background: 'rgba(0,0,0,0.2)', padding: '0.35rem 0.65rem', borderRadius: 'var(--radius-sm)', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                             Obs: {ag.observacoes}
@@ -1039,10 +1039,10 @@ export const CalendarView = ({
                             onClick={() => setStatusServico(ag.id, feita ? 'confirmado' : 'concluido')}
                             className={`btn btn-sm ${feita ? 'btn-secondary' : 'btn-primary'}`}
                             style={{ gap: '0.35rem' }}
-                            title={feita ? 'Reabrir faxina como pendente' : 'Marcar faxina como concluída'}
+                            title={feita ? 'Reabrir limpeza como pendente' : 'Marcar limpeza como concluída'}
                           >
                             {feita ? <RotateCcw size={14} /> : <Check size={14} />}
-                            <span>{feita ? 'Reabrir' : 'Concluir Faxina'}</span>
+                            <span>{feita ? 'Reabrir' : 'Concluir Limpeza'}</span>
                           </button>
                         )}
 

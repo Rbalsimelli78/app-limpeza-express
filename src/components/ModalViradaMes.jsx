@@ -105,12 +105,12 @@ export const ModalViradaMes = ({ isOpen, onClose, onMesAgendado }) => {
 
   // Cálculos de totais selecionados
   const clientesAtivosSelecionados = clientesProjetadosIniciais.filter(item => selecionadosMap[item.cliente.id]);
-  const totalFaxinasAGerar = clientesAtivosSelecionados.reduce((acc, item) => acc + item.totalFaxinas, 0);
+  const totalLimpezasAGerar = clientesAtivosSelecionados.reduce((acc, item) => acc + item.totalLimpezas, 0);
   const totalFaturamentoPrevisto = clientesAtivosSelecionados.reduce((acc, item) => acc + item.totalPrevisto, 0);
 
   // Executar virada de mês
   const handleConfirmarVirada = () => {
-    if (totalFaxinasAGerar === 0) {
+    if (totalLimpezasAGerar === 0) {
       showToast('Selecione ao menos 1 cliente para programar.', 'danger');
       return;
     }
@@ -126,7 +126,7 @@ export const ModalViradaMes = ({ isOpen, onClose, onMesAgendado }) => {
           dataHoraFim: dataItem.dataHoraFim,
           dormitorios: item.dormitorios,
           semManutencao2Meses: false,
-          valorCliente: item.valorPorFaxina,
+          valorCliente: item.valorPorLimpeza,
           statusClientePagamento: 'pendente',
           formaPagamentoCliente: item.formaPagamento || 'PIX',
           statusServico: 'confirmado',
@@ -172,7 +172,7 @@ export const ModalViradaMes = ({ isOpen, onClose, onMesAgendado }) => {
               Programar Agenda para o Próximo Mês
             </h2>
             <p style={{ fontSize: '0.825rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
-              O sistema analisa a última faxina efetuada ou agendada no mês anterior e projeta com precisão a cadência correta (semanal, quinzenal de 14 em 14 dias e mensal) para o novo mês!
+              O sistema analisa a última limpeza efetuada ou agendada no mês anterior e projeta com precisão a cadência correta (semanal, quinzenal de 14 em 14 dias e mensal) para o novo mês!
             </p>
           </div>
 
@@ -253,9 +253,9 @@ export const ModalViradaMes = ({ isOpen, onClose, onMesAgendado }) => {
           </div>
 
           <div className="glass-card" style={{ padding: '0.75rem 1rem' }}>
-            <span style={{ fontSize: '0.725rem', color: 'var(--text-muted)', display: 'block' }}>Faxinas a Agendar em {MESES_NOMES[mesDestino]}</span>
+            <span style={{ fontSize: '0.725rem', color: 'var(--text-muted)', display: 'block' }}>Limpezas a Agendar em {MESES_NOMES[mesDestino]}</span>
             <strong style={{ fontSize: '1.25rem', color: 'var(--primary-400)' }}>
-              {totalFaxinasAGerar} faxinas
+              {totalLimpezasAGerar} limpezas
             </strong>
           </div>
 
@@ -276,7 +276,7 @@ export const ModalViradaMes = ({ isOpen, onClose, onMesAgendado }) => {
                 Nenhum cliente recorrente ou com histórico pendente de agendamento para {nomeMesSelecionado}.
               </p>
               <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-                Todos os clientes ativos já possuem suas faxinas agendadas para este mês ou não possuem atendimentos regulares cadastrados.
+                Todos os clientes ativos já possuem suas limpezas agendadas para este mês ou não possuem atendimentos regulares cadastrados.
               </p>
             </div>
           ) : (
@@ -344,13 +344,13 @@ export const ModalViradaMes = ({ isOpen, onClose, onMesAgendado }) => {
                         {formatCurrency(item.totalPrevisto)}
                       </div>
                       <span style={{ fontSize: '0.725rem', color: 'var(--text-muted)' }}>
-                        {item.totalFaxinas}x de {formatCurrency(item.valorPorFaxina)}
+                        {item.totalLimpezas}x de {formatCurrency(item.valorPorLimpeza)}
                       </span>
                     </div>
                   </div>
 
                   {/* Linha de Destaque em Amarelo: Informação da Última Limpeza no Mês Anterior */}
-                  {item.ultimaFaxinaInfo ? (
+                  {item.ultimaLimpezaInfo ? (
                     <div style={{
                       background: 'rgba(245, 158, 11, 0.12)',
                       border: '1.5px solid rgba(245, 158, 11, 0.4)',
@@ -384,14 +384,14 @@ export const ModalViradaMes = ({ isOpen, onClose, onMesAgendado }) => {
                             Última Limpeza no Mês Anterior
                           </span>
                           <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>
-                            {item.ultimaFaxinaInfo.diaSemanaExtenso}, {item.ultimaFaxinaInfo.dataCurta} às {item.ultimaFaxinaInfo.horaFormatada}
+                            {item.ultimaLimpezaInfo.diaSemanaExtenso}, {item.ultimaLimpezaInfo.dataCurta} às {item.ultimaLimpezaInfo.horaFormatada}
                           </span>
                         </div>
                       </div>
 
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <span style={{ color: 'var(--text-muted)', fontSize: '0.725rem' }}>Status:</span>
-                        {item.ultimaFaxinaInfo.isEfetuada ? (
+                        {item.ultimaLimpezaInfo.isEfetuada ? (
                           <span style={{ 
                             background: 'rgba(16, 185, 129, 0.2)', 
                             border: '1px solid rgba(16, 185, 129, 0.5)',
@@ -438,7 +438,7 @@ export const ModalViradaMes = ({ isOpen, onClose, onMesAgendado }) => {
                     }}>
                       <AlertCircle size={15} style={{ flexShrink: 0 }} />
                       <span>
-                        <strong>Cliente sem faxina anterior cadastrada:</strong> Programando datas padrão a partir do início de {MESES_NOMES[mesDestino]}.
+                        <strong>Cliente sem limpeza anterior cadastrada:</strong> Programando datas padrão a partir do início de {MESES_NOMES[mesDestino]}.
                       </span>
                     </div>
                   )}
@@ -507,7 +507,7 @@ export const ModalViradaMes = ({ isOpen, onClose, onMesAgendado }) => {
           <button
             type="button"
             onClick={handleConfirmarVirada}
-            disabled={totalFaxinasAGerar === 0}
+            disabled={totalLimpezasAGerar === 0}
             className="btn btn-primary btn-sm"
             style={{ 
               gap: '0.5rem',
@@ -517,7 +517,7 @@ export const ModalViradaMes = ({ isOpen, onClose, onMesAgendado }) => {
             }}
           >
             <Sparkles size={16} />
-            <span>Confirmar e Agendar {totalFaxinasAGerar} Faxinas em {MESES_NOMES[mesDestino]}</span>
+            <span>Confirmar e Agendar {totalLimpezasAGerar} Limpezas em {MESES_NOMES[mesDestino]}</span>
           </button>
         </div>
       </div>

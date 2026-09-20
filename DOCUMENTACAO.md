@@ -6,7 +6,7 @@ Este documento consolida a arquitetura completa, boas práticas de programação
 
 ## 1. 📌 VISÃO GERAL DO PROJETO
 
-O **Limpeza Express SP** é uma plataforma integrada de gestão operacional, agendamentos, precificação e fluxo de caixa desenvolvida sob medida para a gestão de serviços de faxinas residenciais e corporativas (com foco em apartamentos de 80 a 100m² em São Paulo - SP).
+O **Limpeza Express SP** é uma plataforma integrada de gestão operacional, agendamentos, precificação e fluxo de caixa desenvolvida sob medida para a gestão de serviços de limpezas residenciais e corporativas (com foco em apartamentos de 80 a 100m² em São Paulo - SP).
 
 ### 🎯 Objetivos Atendidos
 * **Sincronização em Tempo Real Multi-Dispositivo**: Qualquer agendamento, cadastro ou pagamento registrado no computador da administração reflete instantaneamente no celular da gestora e vice-versa.
@@ -108,7 +108,7 @@ Armazena o perfil das colaboradoras e diaristas, com dados financeiros para paga
 ```
 
 #### 3. Coleção: `agendamentos`
-Armazena cada faxina agendada, sua composição de equipe, valores e status financeiro.
+Armazena cada limpeza agendada, sua composição de equipe, valores e status financeiro.
 ```json
 {
   "id": "agend-1788625900000",
@@ -230,8 +230,8 @@ Toda vez que uma alteração é enviada para a branch `main` do GitHub via `git 
   $$\text{Cancelamento com menos de 48h} \rightarrow \text{Cobrança de 50\% do valor do serviço}$$
 
 ### 📊 Algoritmo Financeiro de Caixa
-* **Total Recebido**: Soma de `valorCliente` de todas as faxinas com `statusClientePagamento === 'pago'`.
-* **Total a Receber**: Soma de `valorCliente` de faxinas com `statusClientePagamento === 'pendente'`.
+* **Total Recebido**: Soma de `valorCliente` de todas as limpezas com `statusClientePagamento === 'pago'`.
+* **Total a Receber**: Soma de `valorCliente` de limpezas com `statusClientePagamento === 'pendente'`.
 * **Total Pago às Ajudantes**: Soma de `valorAPagar` das colaboradoras com `statusPagamento === 'pago'`.
 * **Total a Pagar às Ajudantes**: Soma de `valorAPagar` das colaboradoras com `statusPagamento === 'pendente'`.
 * **Lucro Realizado (Caixa Líquido)**:
@@ -279,7 +279,7 @@ Em menos de 1 minuto, a Vercel compila e atualiza o aplicativo em produção.
 Quando a gestora estiver pronta para utilizar o sistema exclusivamente com dados de clientes reais:
 1. Vá em **Configurações & Backup** ➔ **Limpar Dados de Exemplo**.
 2. Opções disponíveis:
-   * **Limpar Apenas Faxinas de Teste**: Mantém os clientes e ajudantes cadastrados e zera apenas a agenda e o histórico financeiro.
+   * **Limpar Apenas Limpezas de Teste**: Mantém os clientes e ajudantes cadastrados e zera apenas a agenda e o histórico financeiro.
    * **Limpar Base Completa**: Zera 100% dos dados no computador, celular e na nuvem Firebase para começar do zero absoluto.
    * **Recarregar Dados de Demonstração**: Restaura os dados de exemplo caso deseje treinar ou apresentar o sistema.
 

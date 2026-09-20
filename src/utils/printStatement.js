@@ -331,7 +331,7 @@ export const imprimirExtratoCliente = ({
     <div class="kpi-card blue">
       <div class="kpi-label">Total do Período</div>
       <div class="kpi-val">${formatCurrency(totalGeral)}</div>
-      <div class="kpi-sub">${agendamentos.length} faxina(s) registrada(s)</div>
+      <div class="kpi-sub">${agendamentos.length} limpeza(s) registrada(s)</div>
     </div>
     <div class="kpi-card green">
       <div class="kpi-label">Total Quitado</div>
@@ -987,7 +987,7 @@ export const imprimirFluxoCaixa = ({
   <div class="header">
     <div class="brand">
       <h1>Limpeza Express SP</h1>
-      <p>Gestão Profissional de Serviços de Faxina Residencial & Corporativa</p>
+      <p>Gestão Profissional de Serviços de Limpeza Residencial & Corporativa</p>
     </div>
     <div class="report-badge">
       <div class="tag">Fluxo de Caixa</div>

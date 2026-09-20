@@ -317,7 +317,7 @@ export const AjudantesView = ({ onNovaAjudante, onEditarAjudante }) => {
                       Já Pago / Concluído
                     </span>
                     <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: '600' }}>
-                      {formatCurrency(totalPago)} ({totalServicos} faxinas)
+                      {formatCurrency(totalPago)} ({totalServicos} limpezas)
                     </span>
                   </div>
                 </div>

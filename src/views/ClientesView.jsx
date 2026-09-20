@@ -118,7 +118,7 @@ export const ClientesView = ({ onNovoCliente, onEditarCliente, onAgendarParaClie
             <span>Cadastro de Clientes</span>
           </h2>
           <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-            Controle de clientes, condomínios, torres, endereços e histórico de faxinas em São Paulo
+            Controle de clientes, condomínios, torres, endereços e histórico de limpezas em São Paulo
           </p>
         </div>
 
@@ -159,7 +159,7 @@ export const ClientesView = ({ onNovoCliente, onEditarCliente, onAgendarParaClie
                 borderRadius: '999px',
                 marginLeft: '0.25rem'
               }}>
-                {qtdSemAgendamentoMesAtual} sem faxina
+                {qtdSemAgendamentoMesAtual} sem limpeza
               </span>
             )}
           </button>
@@ -320,10 +320,10 @@ export const ClientesView = ({ onNovoCliente, onEditarCliente, onAgendarParaClie
         ) : (
           clientesFiltrados.map(c => {
             const planoPadrao = planos.find(p => p.id === c.planoPadraoId);
-            const faxinasDoCliente = agendamentos
+            const limpezasDoCliente = agendamentos
               .filter(a => a.clienteId === c.id)
               .sort((a, b) => new Date(b.dataHoraInicio) - new Date(a.dataHoraInicio));
-            const totalGasto = faxinasDoCliente.reduce((acc, curr) => acc + Number(curr.valorCliente || 0), 0);
+            const totalGasto = limpezasDoCliente.reduce((acc, curr) => acc + Number(curr.valorCliente || 0), 0);
             const waUrl = getWhatsAppUrl(c.telefone, `Olá ${c.nome}! Como você está? Aqui é da Limpeza Express SP ✨`);
             const inad = inadimplenciasPorCliente[c.id];
             const sujInfo = getGrauSujidadeInfo(c.grauSujidade);
@@ -438,11 +438,11 @@ export const ClientesView = ({ onNovoCliente, onEditarCliente, onAgendarParaClie
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
                       <span style={{ fontSize: '0.75rem', color: '#fca5a5' }}>
                         {c.tipoPagamento === 'mensal' 
-                          ? `Vencimento acordado dia ${c.diaVencimento || 10} ultrapassado com faxinas em aberto.` 
-                          : 'Faxina realizada com prazo de pagamento vencido.'}
+                          ? `Vencimento acordado dia ${c.diaVencimento || 10} ultrapassado com limpezas em aberto.` 
+                          : 'Limpeza realizada com prazo de pagamento vencido.'}
                       </span>
                       <a
-                        href={getWhatsAppUrl(c.telefone, `Olá ${c.nome}! Tudo bem? Aqui é da Limpeza Express SP ✨\n\nConstatamos em nosso controle financeiro uma pendência no valor de ${formatCurrency(inad.totalVencido)} referente às faxinas realizadas.\n\nVocê poderia verificar e nos encaminhar o comprovante PIX por gentileza? Nossa chave PIX é o nosso CNPJ/Telefone.\n\nMuito obrigado pela parceria! 🙏`)}
+                        href={getWhatsAppUrl(c.telefone, `Olá ${c.nome}! Tudo bem? Aqui é da Limpeza Express SP ✨\n\nConstatamos em nosso controle financeiro uma pendência no valor de ${formatCurrency(inad.totalVencido)} referente às limpezas realizadas.\n\nVocê poderia verificar e nos encaminhar o comprovante PIX por gentileza? Nossa chave PIX é o nosso CNPJ/Telefone.\n\nMuito obrigado pela parceria! 🙏`)}
                         target="_blank"
                         rel="noreferrer"
                         className="btn btn-whatsapp btn-sm"
@@ -585,26 +585,26 @@ export const ClientesView = ({ onNovoCliente, onEditarCliente, onAgendarParaClie
                   marginBottom: '1rem',
                   fontSize: '0.8rem'
                 }}>
-                  <span>Faxinas Realizadas: <strong>{faxinasDoCliente.length}</strong></span>
+                  <span>Limpezas Realizadas: <strong>{limpezasDoCliente.length}</strong></span>
                   <span style={{ color: 'var(--primary-400)', fontWeight: '600' }}>
                     Total: {formatCurrency(totalGasto)}
                   </span>
                 </div>
 
-                {/* Lista das Últimas Faxinas com Status e Ação de Estorno / Pagar */}
-                {faxinasDoCliente.length > 0 && (
+                {/* Lista das Últimas Limpezas com Status e Ação de Estorno / Pagar */}
+                {limpezasDoCliente.length > 0 && (
                   <div style={{ marginBottom: '0.85rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
                       <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase' }}>
-                        {expandidosCliente[c.id] ? `Todas as Faxinas (${faxinasDoCliente.length}):` : 'Últimos Trabalhos:'}
+                        {expandidosCliente[c.id] ? `Todas as Limpezas (${limpezasDoCliente.length}):` : 'Últimos Trabalhos:'}
                       </span>
-                      {faxinasDoCliente.length > 2 && (
+                      {limpezasDoCliente.length > 2 && (
                         <button
                           type="button"
                           onClick={() => setExpandidosCliente(prev => ({ ...prev, [c.id]: !prev[c.id] }))}
                           style={{ background: 'none', border: 'none', color: 'var(--primary-400)', fontSize: '0.72rem', cursor: 'pointer', padding: 0, fontWeight: '600' }}
                         >
-                          {expandidosCliente[c.id] ? 'Ver menos' : `Ver todas (${faxinasDoCliente.length})`}
+                          {expandidosCliente[c.id] ? 'Ver menos' : `Ver todas (${limpezasDoCliente.length})`}
                         </button>
                       )}
                     </div>
@@ -616,7 +616,7 @@ export const ClientesView = ({ onNovoCliente, onEditarCliente, onAgendarParaClie
                       maxHeight: expandidosCliente[c.id] ? '220px' : 'none', 
                       overflowY: expandidosCliente[c.id] ? 'auto' : 'visible' 
                     }}>
-                      {(expandidosCliente[c.id] ? faxinasDoCliente : faxinasDoCliente.slice(0, 2)).map((ag) => {
+                      {(expandidosCliente[c.id] ? limpezasDoCliente : limpezasDoCliente.slice(0, 2)).map((ag) => {
                         const isPago = ag.statusClientePagamento === 'pago';
                         return (
                           <div 
@@ -643,7 +643,7 @@ export const ClientesView = ({ onNovoCliente, onEditarCliente, onAgendarParaClie
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    if (window.confirm(`Deseja estornar o pagamento da faxina de ${c.nome} (${formatCurrency(ag.valorCliente)}) para "Pendente"?`)) {
+                                    if (window.confirm(`Deseja estornar o pagamento da limpeza de ${c.nome} (${formatCurrency(ag.valorCliente)}) para "Pendente"?`)) {
                                       setStatusPagamentoCliente(ag.id, 'pendente');
                                     }
                                   }}
@@ -667,7 +667,7 @@ export const ClientesView = ({ onNovoCliente, onEditarCliente, onAgendarParaClie
                                 </button>
                               ) : (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                                  {inad?.faxinasAtrasadas?.some(fa => fa.id === ag.id) && (
+                                  {inad?.limpezasAtrasadas?.some(fa => fa.id === ag.id) && (
                                     <span className="badge" style={{ fontSize: '0.62rem', background: '#ef4444', color: '#fff', padding: '0.1rem 0.35rem', fontWeight: '700' }}>
                                       Vencida
                                     </span>
@@ -677,7 +677,7 @@ export const ClientesView = ({ onNovoCliente, onEditarCliente, onAgendarParaClie
                                     onClick={() => setStatusPagamentoCliente(ag.id, 'pago')}
                                     className="btn btn-primary btn-sm"
                                     style={{ padding: '0.15rem 0.45rem', fontSize: '0.68rem' }}
-                                    title="Marcar faxina como paga pelo cliente"
+                                    title="Marcar limpeza como paga pelo cliente"
                                   >
                                     Pagar
                                   </button>
@@ -729,7 +729,7 @@ export const ClientesView = ({ onNovoCliente, onEditarCliente, onAgendarParaClie
                     <button 
                       onClick={() => onAgendarParaCliente(c)}
                       className="btn btn-primary btn-sm"
-                      title="Agendar faxina para este cliente"
+                      title="Agendar limpeza para este cliente"
                     >
                       <Calendar size={14} />
                       <span>Agendar</span>

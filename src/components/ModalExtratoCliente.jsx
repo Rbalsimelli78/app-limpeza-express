@@ -164,7 +164,7 @@ export const ModalExtratoCliente = ({ isOpen, onClose, cliente }) => {
         cliente,
         agendamentos: agendamentosFiltrados.map(ag => {
           const p = planos.find(pl => pl.id === ag.planoId);
-          return { ...ag, planoNome: p?.nome || 'Faxina Residencial' };
+          return { ...ag, planoNome: p?.nome || 'Limpeza Residencial' };
         }),
         totalGeral,
         totalPago,
@@ -179,7 +179,7 @@ export const ModalExtratoCliente = ({ isOpen, onClose, cliente }) => {
         cliente,
         agendamentos: agendamentosFiltrados.map(ag => {
           const p = planos.find(pl => pl.id === ag.planoId);
-          return { ...ag, planoNome: p?.nome || 'Faxina Residencial' };
+          return { ...ag, planoNome: p?.nome || 'Limpeza Residencial' };
         }),
         totalGeral,
         totalPago,
@@ -196,7 +196,7 @@ export const ModalExtratoCliente = ({ isOpen, onClose, cliente }) => {
       periodoDesc,
       agendamentos: agendamentosFiltrados.map(ag => {
         const p = planos.find(pl => pl.id === ag.planoId);
-        return { ...ag, planoNome: p?.nome || 'Faxina Residencial' };
+        return { ...ag, planoNome: p?.nome || 'Limpeza Residencial' };
       }),
       totalGeral,
       totalPago,
@@ -212,7 +212,7 @@ export const ModalExtratoCliente = ({ isOpen, onClose, cliente }) => {
       cliente,
       agendamentos: agendamentosFiltrados.map(ag => {
         const p = planos.find(pl => pl.id === ag.planoId);
-        return { ...ag, planoNome: p?.nome || 'Faxina Residencial' };
+        return { ...ag, planoNome: p?.nome || 'Limpeza Residencial' };
       }),
       totalGeral,
       totalPago,
@@ -343,7 +343,7 @@ export const ModalExtratoCliente = ({ isOpen, onClose, cliente }) => {
               {formatCurrency(totalGeral)}
             </strong>
             <span className="extrato-kpi-subtitle">
-              {agendamentosFiltrados.length} faxina(s)
+              {agendamentosFiltrados.length} limpeza(s)
             </span>
           </div>
 
@@ -436,7 +436,7 @@ export const ModalExtratoCliente = ({ isOpen, onClose, cliente }) => {
               color="#10b981" 
               gradientColor="#06b6d4" 
               valuePrefix="R$ " 
-              emptyMessage="Nenhuma faxina registrada no período selecionado."
+              emptyMessage="Nenhuma limpeza registrada no período selecionado."
             />
           </div>
         )}
@@ -622,7 +622,7 @@ export const ModalExtratoCliente = ({ isOpen, onClose, cliente }) => {
                   {agendamentosFiltrados.length === 0 ? (
                     <tr>
                       <td colSpan="6" style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                        Nenhuma faxina encontrada para o período selecionado.
+                        Nenhuma limpeza encontrada para o período selecionado.
                       </td>
                     </tr>
                   ) : (
@@ -673,7 +673,7 @@ export const ModalExtratoCliente = ({ isOpen, onClose, cliente }) => {
                               type="button"
                               onClick={() => {
                                 if (isPago) {
-                                  if (window.confirm(`Deseja estornar o pagamento da faxina (${formatCurrency(ag.valorCliente)}) para "Pendente"?`)) {
+                                  if (window.confirm(`Deseja estornar o pagamento da limpeza (${formatCurrency(ag.valorCliente)}) para "Pendente"?`)) {
                                     setStatusPagamentoCliente(ag.id, 'pendente');
                                   }
                                 } else {

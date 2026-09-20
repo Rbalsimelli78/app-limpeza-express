@@ -43,7 +43,7 @@ export const FinanceiroView = () => {
         clienteId: ag.clienteId,
         clienteNome: cliente?.nome || 'Cliente',
         tipo: 'entrada',
-        descricao: `Faxina: ${cliente?.nome || 'Cliente'} (${ag.dormitorios} dorms)`,
+        descricao: `Limpeza: ${cliente?.nome || 'Cliente'} (${ag.dormitorios} dorms)`,
         bairro: cliente?.bairro || '',
         data: ag.dataHoraInicio,
         valor: Number(ag.valorCliente || 0),
@@ -52,7 +52,7 @@ export const FinanceiroView = () => {
         origem: 'cliente'
       });
 
-      // Saídas de cada ajudante vinculada à faxina
+      // Saídas de cada ajudante vinculada à limpeza
       (ag.ajudantesEscaladas || []).forEach((ae, idx) => {
         const aj = ajudantes.find(a => a.id === ae.ajudanteId);
         list.push({
@@ -353,7 +353,7 @@ export const FinanceiroView = () => {
             {formatCurrency(metricasExibicao.lucroProjetado)}
           </div>
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-            Com todas faxinas pagas
+            Com todas limpezas pagas
           </span>
         </div>
       </div>

@@ -24,7 +24,7 @@ export const PLANOS_CATALOGO = [
     tempoEstimado: '3 a 5hs',
     profissionais: 2,
     destaque: 'Mais Econômico',
-    descricao: 'Faxina completa 2 profissionais, ideal para manter o apartamento sempre impecável.',
+    descricao: 'Limpeza completa 2 profissionais, ideal para manter o apartamento sempre impecável.',
     avisoCancelamento: 'No caso de cancelamento avisar com 48hs de antecedência ou será cobrado 50% da sua reserva!!!',
     servicosOferecidos: SERVICOS_CATALOGO_PADRAO
   },
@@ -39,7 +39,7 @@ export const PLANOS_CATALOGO = [
     tempoEstimado: '3 a 5hs',
     profissionais: 2,
     destaque: 'Mais Popular',
-    descricao: 'Faxina completa 2 profissionais, equilíbrio perfeito para manutenção contínua.',
+    descricao: 'Limpeza completa 2 profissionais, equilíbrio perfeito para manutenção contínua.',
     avisoCancelamento: 'No caso de cancelamento avisar com 48hs de antecedência ou será cobrado 50% da sua reserva!!!',
     servicosOferecidos: SERVICOS_CATALOGO_PADRAO
   },
@@ -53,8 +53,8 @@ export const PLANOS_CATALOGO = [
     frequencia: 'Mensal (1x por mês)',
     tempoEstimado: '3 a 5hs',
     profissionais: 2,
-    destaque: 'Faxina Completa',
-    descricao: 'Faxina profunda e detalhada com 2 profissionais para renovar o apartamento.',
+    destaque: 'Limpeza Completa',
+    descricao: 'Limpeza profunda e detalhada com 2 profissionais para renovar o apartamento.',
     avisoCancelamento: 'No caso de cancelamento avisar com 48hs de antecedência ou será cobrado 50% da sua reserva!!!',
     servicosOferecidos: SERVICOS_CATALOGO_PADRAO
   },
@@ -92,7 +92,7 @@ export const PLANOS_CATALOGO = [
 
 export const REGRAS_ADICIONAIS = {
   acrescimoPorQuartoExtra: 30.00, // +R$ 30,00 para 3 quartos
-  taxaSemManutencao2Meses: 50.00, // +R$ 50,00 se sem faxina > 2 meses
+  taxaSemManutencao2Meses: 50.00, // +R$ 50,00 se sem limpeza > 2 meses
   multaCancelamento48hPercent: 50 // 50% se cancelado com < 48h
 };
 
@@ -202,7 +202,7 @@ export const AJUDANTES_INICIAIS = [
     tipoPix: 'CPF',
     tipoRemuneracao: 'hora',
     valorPadrao: 25.00, // R$ 25/hora
-    especialidade: 'Faxinas express e apoio rápido',
+    especialidade: 'Limpezas express e apoio rápido',
     status: 'ativo'
   }
 ];
@@ -272,7 +272,7 @@ export const AGENDAMENTOS_INICIAIS = [
       { ajudanteId: 'ajud-2', tipo: 'diaria', valorAPagar: 95.00, statusPagamento: 'pendente' }
     ],
     statusServico: 'agendado',
-    observacoes: 'Apto sem faxina há mais de 2 meses (+R$ 50 adicionais). Faxina profunda.',
+    observacoes: 'Apto sem limpeza há mais de 2 meses (+R$ 50 adicionais). Limpeza profunda.',
     googleEventId: null
   },
   {
@@ -291,7 +291,7 @@ export const AGENDAMENTOS_INICIAIS = [
       { ajudanteId: 'ajud-3', tipo: 'hora', horasTrabalhadas: 4, valorAPagar: 80.00, statusPagamento: 'pago' }
     ],
     statusServico: 'concluido',
-    observacoes: 'Faxina realizada e elogiada pelo cliente.',
+    observacoes: 'Limpeza realizada e elogiada pelo cliente.',
     googleEventId: null
   }
 ];

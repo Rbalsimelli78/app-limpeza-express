@@ -167,44 +167,44 @@ export const projetarViradaDeMes = ({
   const inicioMesDestino = new Date(anoDestino, mesDestino, 1, 0, 0, 0);
 
   clientesAtivos.forEach(cliente => {
-    // Busca todas as faxinas válidas do cliente ordenadas da mais recente para a mais antiga
-    const faxinasCliente = agendamentos
+    // Busca todas as limpezas válidas do cliente ordenadas da mais recente para a mais antiga
+    const limpezasCliente = agendamentos
       .filter(a => a.clienteId === cliente.id && a.statusServico !== 'cancelado')
       .sort((a, b) => new Date(b.dataHoraInicio) - new Date(a.dataHoraInicio));
 
-    // Identifica a última faxina efetuada ou agendada anterior ao mês de destino
-    const faxinasAnteriores = faxinasCliente.filter(a => new Date(a.dataHoraInicio) < inicioMesDestino);
-    const ultimaFaxinaReferencia = faxinasAnteriores[0] || faxinasCliente[0] || null;
+    // Identifica a última limpeza efetuada ou agendada anterior ao mês de destino
+    const limpezasAnteriores = limpezasCliente.filter(a => new Date(a.dataHoraInicio) < inicioMesDestino);
+    const ultimaLimpezaReferencia = limpezasAnteriores[0] || limpezasCliente[0] || null;
 
-    // Monta o objeto com informações detalhadas da última faxina para exibição em destaque
-    let ultimaFaxinaInfo = null;
-    if (ultimaFaxinaReferencia?.dataHoraInicio) {
-      const dUlt = new Date(ultimaFaxinaReferencia.dataHoraInicio);
-      const isEfetuada = ultimaFaxinaReferencia.statusServico === 'concluido';
-      const isAgendada = ultimaFaxinaReferencia.statusServico === 'confirmado' || ultimaFaxinaReferencia.statusServico === 'pendente';
+    // Monta o objeto com informações detalhadas da última limpeza para exibição em destaque
+    let ultimaLimpezaInfo = null;
+    if (ultimaLimpezaReferencia?.dataHoraInicio) {
+      const dUlt = new Date(ultimaLimpezaReferencia.dataHoraInicio);
+      const isEfetuada = ultimaLimpezaReferencia.statusServico === 'concluido';
+      const isAgendada = ultimaLimpezaReferencia.statusServico === 'confirmado' || ultimaLimpezaReferencia.statusServico === 'pendente';
       const statusTexto = isEfetuada 
         ? 'Efetuada (Concluída)' 
         : (isAgendada ? 'Agendada (Pendente de realização)' : 'Agendada');
 
-      ultimaFaxinaInfo = {
-        id: ultimaFaxinaReferencia.id,
-        dataHoraInicio: ultimaFaxinaReferencia.dataHoraInicio,
-        dataHoraFim: ultimaFaxinaReferencia.dataHoraFim,
+      ultimaLimpezaInfo = {
+        id: ultimaLimpezaReferencia.id,
+        dataHoraInicio: ultimaLimpezaReferencia.dataHoraInicio,
+        dataHoraFim: ultimaLimpezaReferencia.dataHoraFim,
         dataObj: dUlt,
         diaSemanaExtenso: DIAS_SEMANA_NOMES[dUlt.getDay()],
         diaFormatado: formatDateWithWeekday(dUlt),
         dataCurta: dUlt.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }),
         horaFormatada: `${String(dUlt.getHours()).padStart(2, '0')}:${String(dUlt.getMinutes()).padStart(2, '0')}`,
-        statusServico: ultimaFaxinaReferencia.statusServico,
+        statusServico: ultimaLimpezaReferencia.statusServico,
         isEfetuada,
         statusTexto,
-        statusPagamento: ultimaFaxinaReferencia.statusClientePagamento || 'pendente',
-        ajudantesEscaladas: ultimaFaxinaReferencia.ajudantesEscaladas || [],
-        valorCliente: ultimaFaxinaReferencia.valorCliente
+        statusPagamento: ultimaLimpezaReferencia.statusClientePagamento || 'pendente',
+        ajudantesEscaladas: ultimaLimpezaReferencia.ajudantesEscaladas || [],
+        valorCliente: ultimaLimpezaReferencia.valorCliente
       };
     }
 
-    const planoId = cliente.planoPadraoId || ultimaFaxinaReferencia?.planoId || 'plano-quinzenal';
+    const planoId = cliente.planoPadraoId || ultimaLimpezaReferencia?.planoId || 'plano-quinzenal';
     const planoObj = planos.find(p => p.id === planoId);
 
     let frequencia = 'semanal';
@@ -214,9 +214,9 @@ export const projetarViradaDeMes = ({
       frequencia = 'mensal';
     } else if (planoId.includes('semanal') || planoId.includes('comercial')) {
       frequencia = 'semanal';
-    } else if (faxinasCliente.length >= 2) {
+    } else if (limpezasCliente.length >= 2) {
       const diffDias = Math.round(
-        Math.abs(new Date(faxinasCliente[0].dataHoraInicio) - new Date(faxinasCliente[1].dataHoraInicio)) / (1000 * 60 * 60 * 24)
+        Math.abs(new Date(limpezasCliente[0].dataHoraInicio) - new Date(limpezasCliente[1].dataHoraInicio)) / (1000 * 60 * 60 * 24)
       );
       if (diffDias >= 11 && diffDias <= 18) frequencia = 'quinzenal';
       else if (diffDias > 18) frequencia = 'mensal';
@@ -227,20 +227,20 @@ export const projetarViradaDeMes = ({
     let horaInicio = 9;
     let minutoInicio = 0;
     let duracaoHoras = 4;
-    let ajudantesEscaladas = ultimaFaxinaReferencia?.ajudantesEscaladas || [];
-    let dormitorios = cliente.dormitorios || ultimaFaxinaReferencia?.dormitorios || 2;
-    let valorCobrado = cliente.valorFechado || ultimaFaxinaReferencia?.valorCliente || planoObj?.valorBase || 190;
-    let formaPagamento = ultimaFaxinaReferencia?.formaPagamentoCliente || 'PIX';
-    let observacoes = ultimaFaxinaReferencia?.observacoes || cliente.observacoes || '';
+    let ajudantesEscaladas = ultimaLimpezaReferencia?.ajudantesEscaladas || [];
+    let dormitorios = cliente.dormitorios || ultimaLimpezaReferencia?.dormitorios || 2;
+    let valorCobrado = cliente.valorFechado || ultimaLimpezaReferencia?.valorCliente || planoObj?.valorBase || 190;
+    let formaPagamento = ultimaLimpezaReferencia?.formaPagamentoCliente || 'PIX';
+    let observacoes = ultimaLimpezaReferencia?.observacoes || cliente.observacoes || '';
 
-    if (ultimaFaxinaReferencia?.dataHoraInicio) {
-      const dUltima = new Date(ultimaFaxinaReferencia.dataHoraInicio);
+    if (ultimaLimpezaReferencia?.dataHoraInicio) {
+      const dUltima = new Date(ultimaLimpezaReferencia.dataHoraInicio);
       diaSemanaAlvo = dUltima.getDay();
       horaInicio = dUltima.getHours();
       minutoInicio = dUltima.getMinutes();
 
-      if (ultimaFaxinaReferencia.dataHoraFim) {
-        const dFim = new Date(ultimaFaxinaReferencia.dataHoraFim);
+      if (ultimaLimpezaReferencia.dataHoraFim) {
+        const dFim = new Date(ultimaLimpezaReferencia.dataHoraFim);
         duracaoHoras = Math.max(2, Math.round((dFim.getTime() - dUltima.getTime()) / (1000 * 60 * 60)));
       }
     }
@@ -248,12 +248,12 @@ export const projetarViradaDeMes = ({
 
     let datasCalculadas = [];
 
-    // Se temos a última faxina de referência, calculamos com base no ritmo exato dela:
-    if (ultimaFaxinaReferencia?.dataHoraInicio) {
-      const dUlt = new Date(ultimaFaxinaReferencia.dataHoraInicio);
+    // Se temos a última limpeza de referência, calculamos com base no ritmo exato dela:
+    if (ultimaLimpezaReferencia?.dataHoraInicio) {
+      const dUlt = new Date(ultimaLimpezaReferencia.dataHoraInicio);
 
       if (frequencia === 'semanal') {
-        // Passo semanal: +7 dias a partir da data da última faxina
+        // Passo semanal: +7 dias a partir da data da última limpeza
         let cursor = new Date(dUlt);
         cursor.setHours(horaInicio, minutoInicio, 0, 0);
 
@@ -277,7 +277,7 @@ export const projetarViradaDeMes = ({
           cursor.setDate(cursor.getDate() + 7);
         }
       } else if (frequencia === 'quinzenal') {
-        // Passo quinzenal: exatamente +14 dias a partir da última faxina (mantém a cadência sem quebras no início do mês)
+        // Passo quinzenal: exatamente +14 dias a partir da última limpeza (mantém a cadência sem quebras no início do mês)
         let cursor = new Date(dUlt);
         cursor.setHours(horaInicio, minutoInicio, 0, 0);
 
@@ -329,7 +329,7 @@ export const projetarViradaDeMes = ({
         }
       }
     } else {
-      // Cliente novo (sem faxina anterior registrada): fallback no calendário do mês
+      // Cliente novo (sem limpeza anterior registrada): fallback no calendário do mês
       const todasDatasNoMes = getDatasDoMesPorDiaSemana(
         anoDestino,
         mesDestino,
@@ -371,13 +371,13 @@ export const projetarViradaDeMes = ({
         diaSemanaAlvo,
         horaFormatada: `${String(horaInicio).padStart(2, '0')}:${String(minutoInicio).padStart(2, '0')}`,
         dormitorios,
-        valorPorFaxina: Number(valorCobrado),
+        valorPorLimpeza: Number(valorCobrado),
         formaPagamento,
         ajudantesEscaladas,
         observacoes,
-        ultimaFaxinaInfo,
+        ultimaLimpezaInfo,
         datasCalculadas: datasNaoAgendadas,
-        totalFaxinas: datasNaoAgendadas.length,
+        totalLimpezas: datasNaoAgendadas.length,
         totalPrevisto: datasNaoAgendadas.length * Number(valorCobrado),
         jaTemAgendamentosNoMes: agendamentosJaExistentesNoMes.length > 0,
         selecionado: true

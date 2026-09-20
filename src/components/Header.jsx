@@ -8,7 +8,7 @@ export const Header = ({ onOpenNovoAgendamento }) => {
   const getPageTitle = () => {
     switch (activeTab) {
       case 'dashboard': return 'Painel Geral';
-      case 'agenda': return 'Agenda de Faxinas';
+      case 'agenda': return 'Agenda de Limpezas';
       case 'clientes': return 'Gestão de Clientes';
       case 'ajudantes': return 'Controle de Ajudantes & Diárias';
       case 'planos': return 'Catálogo & Planos de Limpeza';
@@ -110,7 +110,7 @@ export const Header = ({ onOpenNovoAgendamento }) => {
         <button 
           onClick={onOpenNovoAgendamento}
           className="header-btn-agendar"
-          title="Novo Agendamento de Faxina"
+          title="Novo Agendamento de Limpeza"
           style={{
             display: 'inline-flex',
             alignItems: 'center',

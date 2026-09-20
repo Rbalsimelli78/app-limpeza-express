@@ -7,7 +7,7 @@ export const ModalPreviewEscalaSemanal = ({
   isOpen,
   onClose,
   ajudante,
-  faxinas,
+  limpezas,
   clientes,
   showToast
 }) => {
@@ -16,8 +16,8 @@ export const ModalPreviewEscalaSemanal = ({
   const [copiado, setCopiado] = useState(false);
   const [textoPersonalizado, setTextoPersonalizado] = useState('');
 
-  // Prepara os dados das faxinas da semana para o texto
-  const payloadFaxinas = (faxinas || []).map(ag => {
+  // Prepara os dados das limpezas da semana para o texto
+  const payloadLimpezas = (limpezas || []).map(ag => {
     const cli = (clientes || []).find(c => c.id === ag.clienteId);
     const ae = (ag.ajudantesEscaladas || []).find(e => e.ajudanteId === ajudante?.id);
     return {
@@ -32,14 +32,14 @@ export const ModalPreviewEscalaSemanal = ({
     };
   });
 
-  const totalDiarias = payloadFaxinas.reduce((acc, f) => acc + Number(f.valorDiaria || 0), 0);
+  const totalDiarias = payloadLimpezas.reduce((acc, f) => acc + Number(f.valorDiaria || 0), 0);
 
   // Recalcula o texto quando as opções mudam
   useEffect(() => {
     if (!isOpen || !ajudante) return;
     const textoGerado = buildEscalaSemanalAjudanteText({
       ajudanteNome: ajudante.nome,
-      faxinas: payloadFaxinas,
+      limpezas: payloadLimpezas,
       totalDiarias,
       incluirPreco,
       incluirEndereco
@@ -172,7 +172,7 @@ export const ModalPreviewEscalaSemanal = ({
               💬 Pré-visualização da mensagem (você pode editar antes de enviar):
             </span>
             <span style={{ fontSize: '0.72rem', color: 'var(--accent-cyan)' }}>
-              {payloadFaxinas.length} faxina(s) na semana
+              {payloadLimpezas.length} limpeza(s) na semana
             </span>
           </div>
 

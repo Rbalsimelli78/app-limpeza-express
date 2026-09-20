@@ -90,7 +90,7 @@ export const exportExtratoClienteXlsx = async ({
   kpiHeaderRow.font = { bold: true, size: 11, color: { argb: 'FF1E293B' } };
   worksheet.mergeCells(`A${kpiHeaderRow.number}:F${kpiHeaderRow.number}`);
 
-  const kpiRow1 = worksheet.addRow(['Total de Faxinas Realizadas:', `${agendamentos.length} faxina(s)`]);
+  const kpiRow1 = worksheet.addRow(['Total de Limpezas Realizadas:', `${agendamentos.length} limpeza(s)`]);
   kpiRow1.getCell(1).font = { bold: true };
 
   const kpiRow2 = worksheet.addRow(['Total Já Quitado:', Number(totalPago)]);
@@ -145,7 +145,7 @@ export const exportExtratoClienteXlsx = async ({
   worksheet.mergeCells(`A${tableTitle.number}:F${tableTitle.number}`);
 
   const headerRow = worksheet.addRow([
-    'Data da Faxina',
+    'Data da Limpeza',
     'Dia da Semana',
     'Plano / Serviço',
     'Dormitórios',
@@ -495,7 +495,7 @@ export const exportExtratoClienteCsv = ({ cliente, agendamentos, totalGeral, tot
   rows.push([`Data de Emissão: ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR')}`]);
   rows.push([]);
 
-  rows.push(['Data da Faxina', 'Dia da Semana', 'Plano / Serviço', 'Dormitórios', 'Status Pagamento', 'Valor (R$)']);
+  rows.push(['Data da Limpeza', 'Dia da Semana', 'Plano / Serviço', 'Dormitórios', 'Status Pagamento', 'Valor (R$)']);
 
   agendamentos.forEach((ag) => {
     const dataObj = new Date(ag.dataHoraInicio);
@@ -516,7 +516,7 @@ export const exportExtratoClienteCsv = ({ cliente, agendamentos, totalGeral, tot
 
   rows.push([]);
   rows.push(['RESUMO DO PERÍODO', '', '', '', '', '']);
-  rows.push(['Total de Faxinas Realizadas:', `${agendamentos.length}`, '', '', '', '']);
+  rows.push(['Total de Limpezas Realizadas:', `${agendamentos.length}`, '', '', '', '']);
   rows.push(['Total Já Quitado:', `R$ ${Number(totalPago).toFixed(2).replace('.', ',')}`, '', '', '', '']);
   rows.push(['Saldo Pendente:', `R$ ${Number(totalPendente).toFixed(2).replace('.', ',')}`, '', '', '', '']);
   rows.push(['TOTAL GERAL NO PERÍODO:', `R$ ${Number(totalGeral).toFixed(2).replace('.', ',')}`, '', '', '', '']);

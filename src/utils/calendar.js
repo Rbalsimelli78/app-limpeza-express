@@ -95,7 +95,7 @@ export const downloadIcsFile = (agendamento, cliente, plano, ajudantesNomes = []
   const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
   const link = document.createElement('a');
   link.href = window.URL.createObjectURL(blob);
-  link.setAttribute('download', `faxina-${cliente.nome.replace(/\s+/g, '_')}.ics`);
+  link.setAttribute('download', `limpeza-${cliente.nome.replace(/\s+/g, '_')}.ics`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);

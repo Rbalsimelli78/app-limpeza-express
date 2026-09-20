@@ -162,7 +162,7 @@ export const AgendaView = ({ onNovoAgendamento, onEditarAgendamento }) => {
 
           <button onClick={() => onNovoAgendamento()} className="btn btn-primary btn-sm" style={{ gap: '0.35rem' }}>
             <Plus size={16} />
-            <span>Nova Faxina</span>
+            <span>Nova Limpeza</span>
           </button>
         </div>
       </div>
@@ -233,7 +233,7 @@ export const AgendaView = ({ onNovoAgendamento, onEditarAgendamento }) => {
         </div>
       )}
 
-      {/* MODO 2: LISTA DE FAXINAS DA AGENDA */}
+      {/* MODO 2: LISTA DE LIMPEZAS DA AGENDA */}
       {modoVisualizacao === 'lista' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {agendamentosFiltrados.length === 0 ? (
@@ -241,7 +241,7 @@ export const AgendaView = ({ onNovoAgendamento, onEditarAgendamento }) => {
               <CalendarIcon size={44} color="var(--text-muted)" style={{ margin: '0 auto 0.75rem' }} />
               <h4 style={{ color: 'var(--text-primary)', marginBottom: '0.35rem' }}>Nenhum agendamento encontrado</h4>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                Tente alterar os filtros de busca ou cadastre uma nova faxina.
+                Tente alterar os filtros de busca ou cadastre uma nova limpeza.
               </p>
             </div>
           ) : (
@@ -388,7 +388,7 @@ export const AgendaView = ({ onNovoAgendamento, onEditarAgendamento }) => {
                       <button 
                         type="button"
                         onClick={() => {
-                          if (confirm(`Deseja realmente excluir a faxina de ${cliente?.nome}?`)) {
+                          if (confirm(`Deseja realmente excluir a limpeza de ${cliente?.nome}?`)) {
                             deleteAgendamento(ag.id);
                           }
                         }} 

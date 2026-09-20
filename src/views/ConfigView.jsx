@@ -639,7 +639,7 @@ CREATE TABLE IF NOT EXISTS agendamentos (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             <button 
               onClick={() => {
-                if (confirm('Atenção: Deseja apagar todos os clientes, ajudantes e faxinas de teste para começar do zero?')) {
+                if (confirm('Atenção: Deseja apagar todos os clientes, ajudantes e limpezas de teste para começar do zero?')) {
                   limparTodosOsDados();
                 }
               }} 
@@ -652,7 +652,7 @@ CREATE TABLE IF NOT EXISTS agendamentos (
 
             <button 
               onClick={() => {
-                if (confirm('Deseja apagar apenas as faxinas e histórico financeiro de teste? (Seus clientes e ajudantes cadastrados serão mantidos)')) {
+                if (confirm('Deseja apagar apenas as limpezas e histórico financeiro de teste? (Seus clientes e ajudantes cadastrados serão mantidos)')) {
                   limparApenasAgendamentos();
                 }
               }} 
@@ -660,7 +660,7 @@ CREATE TABLE IF NOT EXISTS agendamentos (
               style={{ width: '100%', justifyContent: 'flex-start', padding: '0.75rem 1rem' }}
             >
               <RotateCcw size={16} />
-              <span>Limpar Apenas Faxinas de Teste (Manter Clientes/Ajudantes)</span>
+              <span>Limpar Apenas Limpezas de Teste (Manter Clientes/Ajudantes)</span>
             </button>
 
             <button 

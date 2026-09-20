@@ -471,7 +471,7 @@ export const ExtratoAnaliticoAjudantes = () => {
           </div>
         </div>
 
-        {/* Card 4: Total de Faxinas */}
+        {/* Card 4: Total de Limpezas */}
         <div 
           onClick={() => setStatusFiltro('todos')}
           className="glass-card" 
@@ -489,7 +489,7 @@ export const ExtratoAnaliticoAjudantes = () => {
             <Users size={16} color="var(--text-secondary)" />
           </div>
           <div style={{ fontSize: '1.6rem', fontWeight: '800', color: 'var(--text-primary)' }}>
-            {qtdTotal} faxina(s)
+            {qtdTotal} limpeza(s)
           </div>
           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
             Clique para ver todas

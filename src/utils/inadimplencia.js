@@ -3,11 +3,11 @@
 
 /**
  * Calcula a situação de adimplência / inadimplência de um cliente
- * baseado em suas faxinas pendentes e modalidade acordada de pagamento.
+ * baseado em suas limpezas pendentes e modalidade acordada de pagamento.
  * 
  * @param {Object} cliente 
  * @param {Array} agendamentos 
- * @returns {Object} { isInadimplente, totalVencido, totalPendente, diasAtrasoMax, faxinasAtrasadas, statusTexto }
+ * @returns {Object} { isInadimplente, totalVencido, totalPendente, diasAtrasoMax, limpezasAtrasadas, statusTexto }
  */
 export const calcularInadimplenciaCliente = (cliente, agendamentos = []) => {
   if (!cliente) {
@@ -16,7 +16,7 @@ export const calcularInadimplenciaCliente = (cliente, agendamentos = []) => {
       totalVencido: 0,
       totalPendente: 0,
       diasAtrasoMax: 0,
-      faxinasAtrasadas: [],
+      limpezasAtrasadas: [],
       statusTexto: 'Em dia'
     };
   }
@@ -30,7 +30,7 @@ export const calcularInadimplenciaCliente = (cliente, agendamentos = []) => {
   const diaVencimento = Number(cliente.diaVencimento) || 10;
 
   // Filtra agendamentos do cliente com pagamento pendente e serviço não cancelado
-  const faxinasPendentes = agendamentos.filter(ag => 
+  const limpezasPendentes = agendamentos.filter(ag => 
     ag.clienteId === cliente.id && 
     ag.statusClientePagamento === 'pendente' &&
     ag.statusServico !== 'cancelado' &&
@@ -40,9 +40,9 @@ export const calcularInadimplenciaCliente = (cliente, agendamentos = []) => {
   let totalPendente = 0;
   let totalVencido = 0;
   let diasAtrasoMax = 0;
-  const faxinasAtrasadas = [];
+  const limpezasAtrasadas = [];
 
-  faxinasPendentes.forEach(ag => {
+  limpezasPendentes.forEach(ag => {
     const val = Number(ag.valorCliente || 0);
     totalPendente += val;
 
@@ -56,22 +56,22 @@ export const calcularInadimplenciaCliente = (cliente, agendamentos = []) => {
 
     if (tipoPagamento === 'mensal') {
       // Regra Mensal:
-      // Se a faxina foi em mês anterior ao atual, já fechou o mês e venceu no diaVencimento do mês seguinte
+      // Se a limpeza foi em mês anterior ao atual, já fechou o mês e venceu no diaVencimento do mês seguinte
       if (agAno < hojeAno || (agAno === hojeAno && agMes < hojeMes)) {
         vencido = true;
-        // Data teórica de vencimento: diaVencimento do mês subsequente à faxina
+        // Data teórica de vencimento: diaVencimento do mês subsequente à limpeza
         const dataVenc = new Date(agAno, agMes + 1, diaVencimento);
         const diffMs = agora.getTime() - dataVenc.getTime();
         diasAtraso = Math.max(1, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
       } else if (agAno === hojeAno && agMes === hojeMes) {
-        // Faxina realizada no mês atual: vence no diaVencimento deste mês
+        // Limpeza realizada no mês atual: vence no diaVencimento deste mês
         if (hojeDia > diaVencimento && dataAg < agora) {
           vencido = true;
           diasAtraso = hojeDia - diaVencimento;
         }
       }
     } else if (tipoPagamento === 'quinzenal') {
-      // Regra Quinzenal: vence 15 dias após a realização da faxina
+      // Regra Quinzenal: vence 15 dias após a realização da limpeza
       const dataLimite = new Date(dataAg.getTime() + (15 * 24 * 60 * 60 * 1000));
       if (agora > dataLimite) {
         vencido = true;
@@ -79,12 +79,12 @@ export const calcularInadimplenciaCliente = (cliente, agendamentos = []) => {
         diasAtraso = Math.max(1, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
       }
     } else {
-      // Regra Diária (padrão): o pagamento é devido no dia da faxina ou até 24h após
-      // Considera vencido se a faxina já passou da data de realização (dia anterior ou mais)
-      const dataFimDiaFaxina = new Date(agAno, agMes, agDia, 23, 59, 59);
-      if (agora > dataFimDiaFaxina) {
+      // Regra Diária (padrão): o pagamento é devido no dia da limpeza ou até 24h após
+      // Considera vencido se a limpeza já passou da data de realização (dia anterior ou mais)
+      const dataFimDiaLimpeza = new Date(agAno, agMes, agDia, 23, 59, 59);
+      if (agora > dataFimDiaLimpeza) {
         vencido = true;
-        const diffMs = agora.getTime() - dataFimDiaFaxina.getTime();
+        const diffMs = agora.getTime() - dataFimDiaLimpeza.getTime();
         diasAtraso = Math.max(1, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
       }
     }
@@ -92,14 +92,14 @@ export const calcularInadimplenciaCliente = (cliente, agendamentos = []) => {
     if (vencido) {
       totalVencido += val;
       if (diasAtraso > diasAtrasoMax) diasAtrasoMax = diasAtraso;
-      faxinasAtrasadas.push({
+      limpezasAtrasadas.push({
         ...ag,
         diasAtraso
       });
     }
   });
 
-  const isInadimplente = faxinasAtrasadas.length > 0;
+  const isInadimplente = limpezasAtrasadas.length > 0;
 
   let statusTexto = 'Em dia';
   if (isInadimplente) {
@@ -113,7 +113,7 @@ export const calcularInadimplenciaCliente = (cliente, agendamentos = []) => {
     totalVencido,
     totalPendente,
     diasAtrasoMax,
-    faxinasAtrasadas,
+    limpezasAtrasadas,
     statusTexto,
     tipoPagamento,
     diaVencimento
@@ -252,7 +252,7 @@ export const getAgendamentoStatusPagamento = (agendamento, cliente, agora = new 
 
     if (tipoPagamento === 'mensal') {
       // Regra Mensal:
-      // Se faxina é de mês anterior, já fechou o mês e venceu no diaVencimento do mês seguinte
+      // Se limpeza é de mês anterior, já fechou o mês e venceu no diaVencimento do mês seguinte
       if (agAno < hojeAno || (agAno === hojeAno && agMes < hojeMes)) {
         vencido = true;
         const dataVenc = new Date(agAno, agMes + 1, diaVencimento);
@@ -260,7 +260,7 @@ export const getAgendamentoStatusPagamento = (agendamento, cliente, agora = new 
         diasAtraso = Math.max(1, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
         motivo = `Mês anterior - Vencimento dia ${diaVencimento}`;
       } else if (agAno === hojeAno && agMes === hojeMes) {
-        // Mês atual: se hoje já passou do dia de vencimento e a faxina já ocorreu
+        // Mês atual: se hoje já passou do dia de vencimento e a limpeza já ocorreu
         if (hojeDia > diaVencimento && dataAg < agora) {
           vencido = true;
           diasAtraso = hojeDia - diaVencimento;
@@ -268,22 +268,22 @@ export const getAgendamentoStatusPagamento = (agendamento, cliente, agora = new 
         }
       }
     } else if (tipoPagamento === 'quinzenal') {
-      // Regra Quinzenal: vence 15 dias após a data da faxina
+      // Regra Quinzenal: vence 15 dias após a data da limpeza
       const dataLimite = new Date(dataAg.getTime() + (15 * 24 * 60 * 60 * 1000));
       if (agora > dataLimite) {
         vencido = true;
         const diffMs = agora.getTime() - dataLimite.getTime();
         diasAtraso = Math.max(1, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
-        motivo = `+15 dias da faxina`;
+        motivo = `+15 dias da limpeza`;
       }
     } else {
-      // Regra Diária / Avulsa (padrão): vence no próprio dia da faxina
+      // Regra Diária / Avulsa (padrão): vence no próprio dia da limpeza
       const fimDia = new Date(agAno, agMes, agDia, 23, 59, 59);
       if (agora > fimDia) {
         vencido = true;
         const diffMs = agora.getTime() - fimDia.getTime();
         diasAtraso = Math.max(1, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
-        motivo = `Faxina realizada sem pagamento`;
+        motivo = `Limpeza realizada sem pagamento`;
       }
     }
   }

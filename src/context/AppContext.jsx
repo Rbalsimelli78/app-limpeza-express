@@ -447,7 +447,7 @@ export const AppProvider = ({ children }) => {
     };
     setAgendamentos(prev => [novo, ...prev]);
     salvarAgendamentoNuvem(novo);
-    showToast('Faxina agendada com sucesso!');
+    showToast('Limpeza agendada com sucesso!');
     return novo;
   };
 
@@ -460,7 +460,7 @@ export const AppProvider = ({ children }) => {
     }));
     setAgendamentos(prev => [...novos, ...prev]);
     novos.forEach(ag => salvarAgendamentoNuvem(ag));
-    showToast(`🎉 ${novos.length} faxinas agendadas com sucesso!`);
+    showToast(`🎉 ${novos.length} limpezas agendadas com sucesso!`);
     return novos;
   };
 
@@ -617,7 +617,7 @@ export const AppProvider = ({ children }) => {
     showToast('Base 100% limpa no celular, micro e na nuvem!', 'info');
   };
 
-  // Limpar apenas as faxinas e histórico de caixa
+  // Limpar apenas as limpezas e histórico de caixa
   const limparApenasAgendamentos = async () => {
     setAgendamentos([]);
     localStorage.setItem(`${STORAGE_KEY}_agendamentos`, JSON.stringify([]));

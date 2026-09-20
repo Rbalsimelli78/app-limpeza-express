@@ -46,7 +46,7 @@ export const findAgendamentoConflicts = ({
     if (!ag || !ag.dataHoraInicio) return;
     // Ignorar o próprio agendamento na edição
     if (agendamentoIdIgnorar && ag.id === agendamentoIdIgnorar) return;
-    // Ignorar faxinas canceladas
+    // Ignorar limpezas canceladas
     if (ag.statusServico === 'cancelado') return;
 
     // Verificar se se sobrepõem no tempo

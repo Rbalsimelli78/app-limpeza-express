@@ -43,7 +43,7 @@ export const ModalPlano = ({ isOpen, onClose, planoEdicao = null }) => {
       setAcrescimoPorQuartoExtra(30);
       setTaxaSemManutencao(50);
       setDestaque('');
-      setDescricao('Faxina completa 2 profissionais.');
+      setDescricao('Limpeza completa 2 profissionais.');
       setAvisoCancelamento('No caso de cancelamento avisar com 48hs de antecedência ou será cobrado 50% da sua reserva!!!');
       setServicos(JSON.parse(JSON.stringify(SERVICOS_CATALOGO_PADRAO)));
     }

@@ -362,7 +362,7 @@ export const ModalAgendamento = ({
       return;
     }
     if (!dataHoraInicio) {
-      showToast('Defina a data e horário da faxina.', 'danger');
+      showToast('Defina a data e horário da limpeza.', 'danger');
       return;
     }
 
@@ -372,7 +372,7 @@ export const ModalAgendamento = ({
       if (choquesAjudante.length > 0) {
         const nomesAjudantesConflito = [...new Set(choquesAjudante.flatMap(c => c.ajudantesEmConflito))].join(', ');
         const confirmMsg = `⚠️ ATENÇÃO: Choque de Horário e Ajudante Detectado!\n\n` +
-          `A ajudante (${nomesAjudantesConflito}) já está escalada em outra faxina no mesmo horário:\n` +
+          `A ajudante (${nomesAjudantesConflito}) já está escalada em outra limpeza no mesmo horário:\n` +
           choquesAjudante.map(c => `• ${c.clienteNome} (${c.horaInicio}${c.horaFim ? ' às ' + c.horaFim : ''})`).join('\n') +
           `\n\nDeseja salvar o agendamento mesmo com este choque de horário?`;
         if (!window.confirm(confirmMsg)) {
@@ -405,7 +405,7 @@ export const ModalAgendamento = ({
       }));
 
       addAgendamentosMultiplos(listaPayloads);
-      showToast(`🎉 ${listaPayloads.length} faxinas agendadas com sucesso para o mês todo!`, 'success');
+      showToast(`🎉 ${listaPayloads.length} limpezas agendadas com sucesso para o mês todo!`, 'success');
 
       if (openGoogleCalendar && listaPayloads.length > 0) {
         const clienteObj = clientes.find(c => c.id === clienteId);
@@ -471,7 +471,7 @@ export const ModalAgendamento = ({
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
             <Calendar size={20} color="var(--primary-400)" />
             <h3 style={{ fontSize: '1.125rem' }}>
-              {isEdicao ? 'Editar Faxina' : 'Novo Agendamento de Faxina'}
+              {isEdicao ? 'Editar Limpeza' : 'Novo Agendamento de Limpeza'}
             </h3>
           </div>
           <button onClick={onClose} className="btn btn-secondary btn-icon" style={{ width: '32px', height: '32px' }}>
@@ -588,10 +588,10 @@ export const ModalAgendamento = ({
               </div>
             )}
 
-            {/* Plano de Faxina */}
+            {/* Plano de Limpeza */}
             <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '1rem' }}>
               <div className="form-group">
-                <label className="form-label">Plano de Faxina *</label>
+                <label className="form-label">Plano de Limpeza *</label>
                 <select 
                   className="form-select" 
                   value={planoId} 
@@ -641,7 +641,7 @@ export const ModalAgendamento = ({
                 style={{ width: '18px', height: '18px', accentColor: 'var(--accent-gold)' }}
               />
               <label htmlFor="semManut" style={{ fontSize: '0.85rem', cursor: 'pointer', color: 'var(--text-primary)' }}>
-                <strong>Apartamento sem faxina há mais de 2 meses?</strong> (+R$ 50,00 adicional)
+                <strong>Apartamento sem limpeza há mais de 2 meses?</strong> (+R$ 50,00 adicional)
               </label>
             </div>
 
@@ -693,14 +693,14 @@ export const ModalAgendamento = ({
                   }}>
                     {conflitosHorario.some(c => c.temChoqueAjudante) 
                       ? '⚠️ Choque de Horário e Ajudante Detectado!' 
-                      : '⚠️ Atenção: Outra faxina no mesmo dia e horário'}
+                      : '⚠️ Atenção: Outra limpeza no mesmo dia e horário'}
                   </strong>
                 </div>
                 
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
                   {conflitosHorario.some(c => c.temChoqueAjudante)
-                    ? 'A ajudante selecionada já está escalada em outra faxina que coincide com este horário:'
-                    : 'Já existe faxina cadastrada para este mesmo horário. Verifique a disponibilidade:'}
+                    ? 'A ajudante selecionada já está escalada em outra limpeza que coincide com este horário:'
+                    : 'Já existe limpeza cadastrada para este mesmo horário. Verifique a disponibilidade:'}
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
@@ -769,7 +769,7 @@ export const ModalAgendamento = ({
                       style={{ width: '18px', height: '18px', accentColor: '#3b82f6' }}
                     />
                     <Repeat size={16} />
-                    <span>📅 Programar Faxinas do Mês Todo (Recorrência)</span>
+                    <span>📅 Programar Limpezas do Mês Todo (Recorrência)</span>
                   </label>
                   {agendarMesTodo && (
                     <span className="badge badge-blue" style={{ fontSize: '0.75rem' }}>
@@ -811,7 +811,7 @@ export const ModalAgendamento = ({
 
                     {/* Checklist das datas geradas */}
                     <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', fontWeight: '500' }}>
-                      Datas calculadas para este cliente (desmarque se houver algum dia sem faxina):
+                      Datas calculadas para este cliente (desmarque se houver algum dia sem limpeza):
                     </div>
 
                     <div style={{
@@ -896,7 +896,7 @@ export const ModalAgendamento = ({
                         color: 'var(--primary-400)'
                       }}>
                         <span>
-                          <strong>{datasRecorrentes.filter(d => d.selecionada).length} faxinas</strong> programadas no mês
+                          <strong>{datasRecorrentes.filter(d => d.selecionada).length} limpezas</strong> programadas no mês
                         </span>
                         <strong>
                           Total Cliente: {formatCurrency(datasRecorrentes.filter(d => d.selecionada).length * Number(valorCliente))}
@@ -1025,7 +1025,7 @@ export const ModalAgendamento = ({
 
             {/* Status do Serviço */}
             <div className="form-group">
-              <label className="form-label">Status da Faxina</label>
+              <label className="form-label">Status da Limpeza</label>
               <select 
                 className="form-select" 
                 value={statusServico} 
@@ -1040,7 +1040,7 @@ export const ModalAgendamento = ({
 
             {/* Observações */}
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label">Observações da Faxina</label>
+              <label className="form-label">Observações da Limpeza</label>
               <textarea 
                 className="form-textarea" 
                 rows="2" 
@@ -1056,7 +1056,7 @@ export const ModalAgendamento = ({
               type="button" 
               onClick={e => handleSubmit(e, true)} 
               className="btn btn-google btn-sm"
-              title="Salva a faxina e já abre no Google Agenda com 1 clique"
+              title="Salva a limpeza e já abre no Google Agenda com 1 clique"
             >
               <Calendar size={16} />
               <span>Salvar + Google Agenda</span>
@@ -1067,7 +1067,7 @@ export const ModalAgendamento = ({
                 Cancelar
               </button>
               <button type="submit" className="btn btn-primary btn-sm">
-                {isEdicao ? 'Salvar Alterações' : (agendarMesTodo && datasRecorrentes.filter(d => d.selecionada).length > 1) ? `Salvar ${datasRecorrentes.filter(d => d.selecionada).length} Faxinas do Mês` : 'Salvar Faxina'}
+                {isEdicao ? 'Salvar Alterações' : (agendarMesTodo && datasRecorrentes.filter(d => d.selecionada).length > 1) ? `Salvar ${datasRecorrentes.filter(d => d.selecionada).length} Limpezas do Mês` : 'Salvar Limpeza'}
               </button>
             </div>
           </div>

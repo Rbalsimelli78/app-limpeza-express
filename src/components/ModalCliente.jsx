@@ -440,7 +440,7 @@ export const ModalCliente = ({ isOpen, onClose, clienteEdicao = null }) => {
               }}>
                 <DollarSign size={14} />
                 <span>
-                  <strong>Valor Acordado:</strong> R$ {Number(valorFechado).toFixed(2).replace('.', ',')} por faxina (será puxado direto no agendamento).
+                  <strong>Valor Acordado:</strong> R$ {Number(valorFechado).toFixed(2).replace('.', ',')} por limpeza (será puxado direto no agendamento).
                 </span>
               </div>
             )}
@@ -469,7 +469,7 @@ export const ModalCliente = ({ isOpen, onClose, clienteEdicao = null }) => {
                     onChange={e => setTipoPagamento(e.target.value)}
                     style={{ fontSize: '0.85rem' }}
                   >
-                    <option value="diario">Diário (No Dia da Faxina / Por Atendimento)</option>
+                    <option value="diario">Diário (No Dia da Limpeza / Por Atendimento)</option>
                     <option value="mensal">Mensal (Fechamento do Mês com Vencimento Fixo)</option>
                     <option value="quinzenal">Quinzenal (A cada 15 dias)</option>
                   </select>
@@ -513,15 +513,15 @@ export const ModalCliente = ({ isOpen, onClose, clienteEdicao = null }) => {
                 <span>
                   {tipoPagamento === 'mensal' ? (
                     <>
-                      <strong>Vencimento acordado:</strong> Todo dia <strong>{diaVencimento}</strong> de cada mês. Assim que passar deste dia sem quitação de faxinas, o sistema <strong>acusará inadimplência automaticamente</strong> com alerta visual e cobrança rápida no WhatsApp.
+                      <strong>Vencimento acordado:</strong> Todo dia <strong>{diaVencimento}</strong> de cada mês. Assim que passar deste dia sem quitação de limpezas, o sistema <strong>acusará inadimplência automaticamente</strong> com alerta visual e cobrança rápida no WhatsApp.
                     </>
                   ) : tipoPagamento === 'quinzenal' ? (
                     <>
-                      <strong>Acordo quinzenal:</strong> Pagamento devido a cada 15 dias. Faxinas pendentes há mais de 15 dias serão acusadas como <strong>inadimplentes</strong>.
+                      <strong>Acordo quinzenal:</strong> Pagamento devido a cada 15 dias. Limpezas pendentes há mais de 15 dias serão acusadas como <strong>inadimplentes</strong>.
                     </>
                   ) : (
                     <>
-                      <strong>Acordo diário:</strong> Pagamento devido no mesmo dia de cada faxina. Se o dia passar sem quitação, o sistema apontará <strong>pendência vencida</strong>.
+                      <strong>Acordo diário:</strong> Pagamento devido no mesmo dia de cada limpeza. Se o dia passar sem quitação, o sistema apontará <strong>pendência vencida</strong>.
                     </>
                   )}
                 </span>
@@ -641,7 +641,7 @@ export const ModalCliente = ({ isOpen, onClose, clienteEdicao = null }) => {
                   onChange={e => setStatus(e.target.value)}
                 >
                   <option value="ativo">Ativo (Atendimentos Regulares)</option>
-                  <option value="inativo">Inativo / Pausado (Sem Faxinas Ativas)</option>
+                  <option value="inativo">Inativo / Pausado (Sem Limpezas Ativas)</option>
                 </select>
               </div>
             </div>

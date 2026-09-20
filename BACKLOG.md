@@ -9,8 +9,9 @@ Este documento gerencia o backlog de tarefas técnicas, correções de bugs, oti
 | ID | Tipo | Descrição | Prioridade | Esforço Est. | Status |
 | :---: | :---: | :--- | :---: | :---: | :---: |
 | **BUG-01** | 🐛 Bugfix | [Corrigir violação de Hooks do React no ModalPreviewEscalaSemanal](#bug-01--correção-de-hooks-no-modalpreviewescalasemanal) | 🔴 Alta | 15 min | ✅ Concluído |
-| **FEAT-07**| ✨ Melhoria | [Cálculo da Virada de Mês ancorado na última faxina com linha amarela informativa](#feat-07--cálculo-de-virada-de-mês-ancorado-na-última-faxina) | 🔴 Alta | 30 min | ✅ Concluído |
+| **FEAT-07**| ✨ Melhoria | [Cálculo da Virada de Mês ancorado na última limpeza com linha amarela informativa](#feat-07--cálculo-de-virada-de-mês-ancorado-na-última-limpeza) | 🔴 Alta | 30 min | ✅ Concluído |
 | **FEAT-08**| ✨ Melhoria | [Opção de Imprimir / Salvar em PDF com ou sem Gráfico de Evolução](#feat-08--impressão-de-extrato-com-ou-sem-gráfico) | 🟡 Média | 20 min | ✅ Concluído |
+| **FEAT-09**| 🏷️ Marca | [Substituição total do termo "Faxina" por "Limpeza" em todo o sistema](#feat-09--padronização-de-marca-faxina---limpeza) | 🔴 Alta | 20 min | ✅ Concluído |
 | **PWA-02** | 📱 PWA | [Criar manifest.json e suporte PWA completo para celular](#pwa-02--manifestjson-e-instalação-pwa-no-celular) | 🟡 Média | 30 min | 📝 A Fazer |
 | **PERF-03**| ⚡ Otimização | [Code-Splitting e Lazy Loading do ExcelJS (reduzir bundle de 2MB)](#perf-03--code-splitting--lazy-loading-do-exceljs) | 🟡 Média | 30 min | 📝 A Fazer |
 | **SEC-04** | 🔒 Segurança | [Proteção e hash de senhas / migração de autenticação](#sec-04--segurança-e-autenticação-reforçada) | 🟡 Média | 1 hora | 📝 A Fazer |
@@ -34,14 +35,14 @@ Este documento gerencia o backlog de tarefas técnicas, correções de bugs, oti
 
 ---
 
-### FEAT-07 — Cálculo de Virada de Mês Ancorado na Última Faxina
+### FEAT-07 — Cálculo de Virada de Mês Ancorado na Última Limpeza
 * **Arquivos:** [`src/utils/recurrence.js`](./src/utils/recurrence.js), [`src/components/ModalViradaMes.jsx`](./src/components/ModalViradaMes.jsx)
 * **Severidade:** 🔴 Alta (Precisão de escala do cliente final)
 * **Status:** ✅ Concluído em 20/09/2026.
 * **Problema:** 
-  A virada de mês calculava as datas quinzenais e mensais a partir do início do mês (índices 0 e 2), gerando agendamentos já no primeiro dia do mês mesmo quando a última faxina ocorreu no fim do mês anterior (ex: caso Mayara Filha Miriam).
+  A virada de mês calculava as datas quinzenais e mensais a partir do início do mês (índices 0 e 2), gerando agendamentos já no primeiro dia do mês mesmo quando a última limpeza ocorreu no fim do mês anterior (ex: caso Mayara Filha Miriam).
 * **Critérios de Aceite:**
-  - [x] Ancorar a projeção da cadência quinzenal estritamente em +14 dias e semanal em +7 dias após a data da última faxina do mês anterior.
+  - [x] Ancorar a projeção da cadência quinzenal estritamente em +14 dias e semanal em +7 dias após a data da última limpeza do mês anterior.
   - [x] Inserir linha em amarelo de destaque exibindo a data e o status da última limpeza (Efetuada/Concluída ou Agendada/Pendente).
   - [x] Exibir detalhes da cadência na tela de aprovação da virada de mês.
 
@@ -101,7 +102,7 @@ Este documento gerencia o backlog de tarefas técnicas, correções de bugs, oti
   As regras de negócio para cálculo de inadimplência, conflitos de agenda de ajudantes e acréscimo de quartos não possuem testes unitários automatizados.
 * **Critérios de Aceite:**
   - [ ] Configurar Vitest (integrado com o Vite).
-  - [ ] Cobrir cenários de sobreposição de horários de faxinas da mesma ajudante.
+  - [ ] Cobrir cenários de sobreposição de horários de limpezas da mesma ajudante.
   - [ ] Cobrir cálculo de status de inadimplência e tolerância de dias.
 
 ### FEAT-08 — Impressão de Extrato Com ou Sem Gráfico
@@ -116,6 +117,18 @@ Este documento gerencia o backlog de tarefas técnicas, correções de bugs, oti
     - **📄 Imprimir sem Gráfico**: *Recomendado para envio ao cliente* (formato limpo A4 apenas com lançamentos e totais).
     - **📊 Imprimir com Gráfico**: *Inclui a curva visual de evolução de pagamentos*.
   - [x] Aplicar a mesma consistência no extrato de diárias das colaboradoras.
+
+### FEAT-09 — Padronização de Marca (Faxina -> Limpeza)
+* **Arquivos:** Todas as 29 telas, componentes, relatórios, templates WhatsApp, exportações Excel e PDFs.
+* **Severidade:** 🔴 Alta (Posicionamento institucional e diretriz da empresa)
+* **Status:** ✅ Concluído em 20/09/2026.
+* **Problema:** 
+  A empresa não realiza "faxinas", mas sim serviços especializados de "Limpeza". O termo anterior precisava ser 100% substituído por "Limpeza", garantindo harmonia gramatical e consistência visual perante os clientes e equipe.
+* **Critérios de Aceite:**
+  - [x] Substituir todas as variações de caixa (`faxina`, `faxinas`, `Faxina`, `Faxinas`, `FAXINA`, `FAXINAS`) por `limpeza`, `limpezas`, `Limpeza`, `Limpezas`, `LIMPEZA`, `LIMPEZAS`.
+  - [x] Garantir zero quebra de regras de negócio, APIs, filtros ou persistência.
+  - [x] Confirmar zero ocorrências restantes com `git grep -i "faxina"`.
+  - [x] Validar build de produção (`npm run build`) e lint (`npx oxlint`).
 
 ---
 

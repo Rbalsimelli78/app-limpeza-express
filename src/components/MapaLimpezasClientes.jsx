@@ -69,7 +69,7 @@ export const MapaLimpezasClientes = ({
     return clientes.filter(c => c.status !== 'inativo');
   }, [clientes]);
 
-  // Agrupa contagem de faxinas por cliente e por mês do ano selecionado
+  // Agrupa contagem de limpezas por cliente e por mês do ano selecionado
   const dadosMatriz = useMemo(() => {
     return clientesAtivos.map(cli => {
       const categoria = getCategoriaRecorrencia(cli);
@@ -128,7 +128,7 @@ export const MapaLimpezasClientes = ({
     return dadosMatriz.filter(d => !d.semAgendamentoNoMes).length;
   }, [dadosMatriz]);
 
-  const totalFaxinasMes = useMemo(() => {
+  const totalLimpezasMes = useMemo(() => {
     return totaisMeses[mesSelecionado] || 0;
   }, [totaisMeses, mesSelecionado]);
 
@@ -295,7 +295,7 @@ export const MapaLimpezasClientes = ({
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.3rem' }}>
             <span style={{ fontSize: '0.75rem', fontWeight: '700', textTransform: 'uppercase', color: 'var(--accent-gold)' }}>
-              Sem Faxina no Mês
+              Sem Limpeza no Mês
             </span>
             <AlertTriangle size={16} color="var(--accent-gold)" />
           </div>
@@ -321,7 +321,7 @@ export const MapaLimpezasClientes = ({
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.3rem' }}>
             <span style={{ fontSize: '0.75rem', fontWeight: '700', textTransform: 'uppercase', color: 'var(--primary-400)' }}>
-              Com Faxinas no Mês
+              Com Limpezas no Mês
             </span>
             <CheckCircle2 size={16} color="var(--primary-400)" />
           </div>
@@ -333,7 +333,7 @@ export const MapaLimpezasClientes = ({
           </div>
         </div>
 
-        {/* Card 3: Total de Faxinas Programadas */}
+        {/* Card 3: Total de Limpezas Programadas */}
         <div 
           className="glass-card" 
           style={{
@@ -349,7 +349,7 @@ export const MapaLimpezasClientes = ({
             <TrendingUp size={16} color="var(--accent-cyan)" />
           </div>
           <div style={{ fontSize: '1.6rem', fontWeight: '800', color: 'var(--accent-cyan)' }}>
-            {totalFaxinasMes} faxina(s)
+            {totalLimpezasMes} limpeza(s)
           </div>
           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
             Em {MESES_NOMES[mesSelecionado]}/{ano}
@@ -480,7 +480,7 @@ export const MapaLimpezasClientes = ({
             <div>
               <h4 style={{ fontSize: '1rem', color: 'var(--accent-gold)', display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: '800' }}>
                 <AlertTriangle size={18} />
-                <span>Atenção: Clientes Ativos Sem Faxina em {MESES_NOMES[mesSelecionado]} ({dadosFiltrados.length})</span>
+                <span>Atenção: Clientes Ativos Sem Limpeza em {MESES_NOMES[mesSelecionado]} ({dadosFiltrados.length})</span>
               </h4>
               <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
                 Clique no botão verde de WhatsApp para enviar a mensagem automática de verificação e agendar em seguida.
@@ -490,7 +490,7 @@ export const MapaLimpezasClientes = ({
 
           {dadosFiltrados.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-              🎉 Parabéns! Todos os clientes desta categoria já possuem faxinas agendadas para {MESES_NOMES[mesSelecionado]}!
+              🎉 Parabéns! Todos os clientes desta categoria já possuem limpezas agendadas para {MESES_NOMES[mesSelecionado]}!
             </div>
           ) : (
             <div style={{
@@ -565,7 +565,7 @@ export const MapaLimpezasClientes = ({
                       onClick={() => onAgendarParaCliente && onAgendarParaCliente(cli)}
                       className="btn btn-primary btn-sm"
                       style={{ fontSize: '0.75rem', padding: '0.35rem 0.65rem' }}
-                      title="Abrir tela para agendar faxina para este cliente"
+                      title="Abrir tela para agendar limpeza para este cliente"
                     >
                       <CalendarPlus size={14} />
                       <span>Agendar</span>
@@ -710,7 +710,7 @@ export const MapaLimpezasClientes = ({
                         </div>
                       </td>
 
-                      {/* 12 Meses com Números de Faxinas */}
+                      {/* 12 Meses com Números de Limpezas */}
                       {item.mesesQtd.map((qtd, mIdx) => {
                         const isMesAtivo = mIdx === mesSelecionado;
                         const isZeroNoMesAtivo = isMesAtivo && qtd === 0;
@@ -795,7 +795,7 @@ export const MapaLimpezasClientes = ({
                             onClick={() => onAgendarParaCliente && onAgendarParaCliente(item)}
                             className="btn btn-primary btn-icon btn-sm"
                             style={{ width: '28px', height: '28px' }}
-                            title="Agendar faxina para este cliente"
+                            title="Agendar limpeza para este cliente"
                           >
                             <CalendarPlus size={14} />
                           </button>
@@ -821,7 +821,7 @@ export const MapaLimpezasClientes = ({
                     zIndex: 1,
                     color: 'var(--text-primary)'
                   }}>
-                    TOTAL DE FAXINAS:
+                    TOTAL DE LIMPEZAS:
                   </td>
 
                   {totaisMeses.map((tot, idx) => {

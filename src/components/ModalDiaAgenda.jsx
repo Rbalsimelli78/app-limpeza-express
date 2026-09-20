@@ -145,7 +145,7 @@ export const ModalDiaAgenda = ({
             style={{ gap: '0.35rem', fontSize: '0.8rem' }}
           >
             <Plus size={15} />
-            <span>+ Agendar Faxina neste Dia</span>
+            <span>+ Agendar Limpeza neste Dia</span>
           </button>
         </div>
 
@@ -157,7 +157,7 @@ export const ModalDiaAgenda = ({
               Nenhum agendamento para este dia
             </h4>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.825rem', marginBottom: '1rem' }}>
-              Não há nenhuma faxina cadastrada para {dataExtensoCapitalizada}.
+              Não há nenhuma limpeza cadastrada para {dataExtensoCapitalizada}.
             </p>
             <button
               type="button"
@@ -173,7 +173,7 @@ export const ModalDiaAgenda = ({
               className="btn btn-primary btn-sm"
             >
               <Plus size={15} />
-              <span>Agendar Faxina para este Dia</span>
+              <span>Agendar Limpeza para este Dia</span>
             </button>
           </div>
         ) : (
@@ -192,7 +192,7 @@ export const ModalDiaAgenda = ({
                 fontWeight: '600'
               }}>
                 <AlertCircle size={17} color="#ef4444" />
-                <span>Atenção: Detectamos faxinas com choques de horário ou de ajudante escalada neste dia.</span>
+                <span>Atenção: Detectamos limpezas com choques de horário ou de ajudante escalada neste dia.</span>
               </div>
             )}
 
@@ -222,7 +222,7 @@ export const ModalDiaAgenda = ({
                     borderLeft: conflito ? (conflito.tipo === 'ajudante' ? '4px solid #ef4444' : '4px solid #f59e0b') : (ag.statusServico === 'concluido' ? '4px solid #10b981' : '4px solid #f59e0b') 
                   }}
                 >
-                  {/* Cabeçalho do Card da Faxina */}
+                  {/* Cabeçalho do Card da Limpeza */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap', marginBottom: '0.25rem' }}>
@@ -434,7 +434,7 @@ export const ModalDiaAgenda = ({
                     </div>
                   </div>
 
-                  {/* Equipe Escalada (Ajudantes para esta faxina) */}
+                  {/* Equipe Escalada (Ajudantes para esta limpeza) */}
                   <div style={{ margin: '0.75rem 0' }}>
                     <span style={{ fontSize: '0.78rem', fontWeight: '700', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.4rem' }}>
                       👥 Ajudante(s) Escalada(s) para este Trabalho ({ag.ajudantesEscaladas?.length || 0}):
@@ -442,7 +442,7 @@ export const ModalDiaAgenda = ({
 
                     {(!ag.ajudantesEscaladas || ag.ajudantesEscaladas.length === 0) ? (
                       <div style={{ fontSize: '0.78rem', color: 'var(--accent-gold)', background: 'rgba(245, 158, 11, 0.06)', padding: '0.5rem', borderRadius: 'var(--radius-sm)', border: '1px dashed rgba(245, 158, 11, 0.3)' }}>
-                        ⚠️ Nenhuma colaboradora escalada para esta faxina ainda.
+                        ⚠️ Nenhuma colaboradora escalada para esta limpeza ainda.
                       </div>
                     ) : (
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '0.5rem' }}>
@@ -572,7 +572,7 @@ export const ModalDiaAgenda = ({
                     </div>
                   )}
 
-                  {/* Ações da Faxina */}
+                  {/* Ações da Limpeza */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem', marginTop: '0.75rem', paddingTop: '0.6rem', borderTop: '1px solid var(--border-color)' }}>
                     <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
                       {/* WhatsApp Lembrete Cliente */}
@@ -581,7 +581,7 @@ export const ModalDiaAgenda = ({
                           href={getWhatsAppUrl(cliente.telefone, buildLembreteClienteText({
                             clienteNome: cliente.nome,
                             dataHoraInicio: ag.dataHoraInicio,
-                            planoNome: plano?.nome || 'Faxina Residencial',
+                            planoNome: plano?.nome || 'Limpeza Residencial',
                             valorFinal: ag.valorCliente
                           }))}
                           target="_blank"
@@ -629,7 +629,7 @@ export const ModalDiaAgenda = ({
                         }} 
                         className="btn btn-secondary btn-sm"
                         style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}
-                        title="Editar Faxina"
+                        title="Editar Limpeza"
                       >
                         <Edit2 size={13} />
                         <span>Editar</span>
@@ -638,14 +638,14 @@ export const ModalDiaAgenda = ({
                       <button 
                         type="button"
                         onClick={() => {
-                          if (confirm(`Deseja realmente excluir a faxina de ${cliente?.nome || 'este cliente'}?`)) {
+                          if (confirm(`Deseja realmente excluir a limpeza de ${cliente?.nome || 'este cliente'}?`)) {
                             deleteAgendamento(ag.id);
-                            if (showToast) showToast('Faxina excluída com sucesso');
+                            if (showToast) showToast('Limpeza excluída com sucesso');
                           }
                         }} 
                         className="btn btn-danger btn-sm"
                         style={{ padding: '0.25rem 0.5rem' }}
-                        title="Excluir Faxina"
+                        title="Excluir Limpeza"
                       >
                         <Trash2 size={13} />
                       </button>

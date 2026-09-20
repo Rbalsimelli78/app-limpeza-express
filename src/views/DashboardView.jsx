@@ -49,7 +49,7 @@ export const DashboardView = ({ onNovoAgendamento, onEditarAgendamento }) => {
   const [modalViradaMesOpen, setModalViradaMesOpen] = useState(false);
   const [modalPreviewEscalaOpen, setModalPreviewEscalaOpen] = useState(false);
   const [ajudantePreviewEscala, setAjudantePreviewEscala] = useState(null);
-  const [faxinasPreviewEscala, setFaxinasPreviewEscala] = useState([]);
+  const [limpezasPreviewEscala, setLimpezasPreviewEscala] = useState([]);
   const [expandedAjudantes, setExpandedAjudantes] = useState({});
 
   const toggleExpandAjudante = (id) => {
@@ -57,12 +57,12 @@ export const DashboardView = ({ onNovoAgendamento, onEditarAgendamento }) => {
   };
 
   const abrirPreviewEscala = (item) => {
-    if (item.faxinas.length === 0) {
-      showToast(`${item.ajudante.nome} não possui faxinas agendadas para os próximos 7 dias.`);
+    if (item.limpezas.length === 0) {
+      showToast(`${item.ajudante.nome} não possui limpezas agendadas para os próximos 7 dias.`);
       return;
     }
     setAjudantePreviewEscala(item.ajudante);
-    setFaxinasPreviewEscala(item.faxinas);
+    setLimpezasPreviewEscala(item.limpezas);
     setModalPreviewEscalaOpen(true);
   };
 
@@ -76,29 +76,29 @@ export const DashboardView = ({ onNovoAgendamento, onEditarAgendamento }) => {
   const amanhaFim = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 23, 59, 59);
   const em7DiasFim = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 7, 23, 59, 59);
 
-  // 1. Faxinas de Hoje
-  const faxinasHoje = agendamentos.filter(ag => {
+  // 1. Limpezas de Hoje
+  const limpezasHoje = agendamentos.filter(ag => {
     const d = new Date(ag.dataHoraInicio);
     return d >= hojeInicio && d <= hojeFim;
   }).sort((a, b) => new Date(a.dataHoraInicio) - new Date(b.dataHoraInicio));
 
-  // 2. Faxinas de Amanhã
-  const faxinasAmanha = agendamentos.filter(ag => {
+  // 2. Limpezas de Amanhã
+  const limpezasAmanha = agendamentos.filter(ag => {
     const d = new Date(ag.dataHoraInicio);
     return d >= amanhaInicio && d <= amanhaFim;
   }).sort((a, b) => new Date(a.dataHoraInicio) - new Date(b.dataHoraInicio));
 
-  // 3. Faxinas na Próxima Semana (próximos 7 dias)
-  const faxinasProximaSemana = agendamentos.filter(ag => {
+  // 3. Limpezas na Próxima Semana (próximos 7 dias)
+  const limpezasProximaSemana = agendamentos.filter(ag => {
     const d = new Date(ag.dataHoraInicio);
     return d >= hojeInicio && d <= em7DiasFim;
   }).sort((a, b) => new Date(a.dataHoraInicio) - new Date(b.dataHoraInicio));
 
   // Faturamento total previsto para a próxima semana
-  const faturamentoProximaSemana = faxinasProximaSemana.reduce((sum, ag) => sum + (Number(ag.valorCliente) || 0), 0);
+  const faturamentoProximaSemana = limpezasProximaSemana.reduce((sum, ag) => sum + (Number(ag.valorCliente) || 0), 0);
 
   // Custo total de diárias das ajudantes na próxima semana
-  const diariasProximaSemana = faxinasProximaSemana.reduce((sum, ag) => {
+  const diariasProximaSemana = limpezasProximaSemana.reduce((sum, ag) => {
     return sum + (ag.ajudantesEscaladas || []).reduce((sub, ae) => sub + (Number(ae.valorAPagar) || 0), 0);
   }, 0);
 
@@ -109,13 +109,13 @@ export const DashboardView = ({ onNovoAgendamento, onEditarAgendamento }) => {
   // 4. Distribuição da escala por colaboradora nos próximos 7 dias
   const ajudantesAtivas = ajudantes.filter(a => a.status !== 'inativo');
   const escalaPorAjudante = ajudantesAtivas.map(aj => {
-    const faxinasDestaAjudante = faxinasProximaSemana.filter(ag => {
+    const limpezasDestaAjudante = limpezasProximaSemana.filter(ag => {
       const escalada = (ag.ajudantesEscaladas || []).some(ae => ae.ajudanteId === aj.id);
       const porId = (ag.ajudantesIds || []).includes(aj.id);
       return escalada || porId;
     });
 
-    const totalDiariasAjudante = faxinasDestaAjudante.reduce((sum, ag) => {
+    const totalDiariasAjudante = limpezasDestaAjudante.reduce((sum, ag) => {
       const escalada = (ag.ajudantesEscaladas || []).find(ae => ae.ajudanteId === aj.id);
       if (escalada && escalada.valorAPagar) return sum + Number(escalada.valorAPagar);
       return sum + (Number(aj.valorDiariaBase) || 100);
@@ -123,8 +123,8 @@ export const DashboardView = ({ onNovoAgendamento, onEditarAgendamento }) => {
 
     return {
       ajudante: aj,
-      faxinas: faxinasDestaAjudante,
-      qtd: faxinasDestaAjudante.length,
+      limpezas: limpezasDestaAjudante,
+      qtd: limpezasDestaAjudante.length,
       totalDiarias: totalDiariasAjudante
     };
   }).sort((a, b) => b.qtd - a.qtd);
@@ -256,7 +256,7 @@ export const DashboardView = ({ onNovoAgendamento, onEditarAgendamento }) => {
               className="btn btn-primary btn-sm"
               style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem' }}
             >
-              <span>+ Agendar Faxina</span>
+              <span>+ Agendar Limpeza</span>
             </button>
           </div>
         </div>
@@ -315,10 +315,10 @@ export const DashboardView = ({ onNovoAgendamento, onEditarAgendamento }) => {
           </span>
         </div>
 
-        {/* KPI 4: Total de Faxinas Cadastradas (Elogiado pelo usuário) */}
+        {/* KPI 4: Total de Limpezas Cadastradas (Elogiado pelo usuário) */}
         <div className="kpi-card" style={{ borderLeft: '4px solid var(--accent-purple)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <span className="kpi-label">Faxinas na Escala</span>
+            <span className="kpi-label">Limpezas na Escala</span>
             <div className="kpi-icon-wrapper" style={{ background: 'rgba(139, 92, 246, 0.15)' }}>
               <Calendar size={20} color="var(--accent-purple)" />
             </div>
@@ -344,7 +344,7 @@ export const DashboardView = ({ onNovoAgendamento, onEditarAgendamento }) => {
         <div>
           <h3 style={{ fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
             <Clock size={20} color="var(--primary-400)" />
-            <span>Próximas Faxinas & Decisão Macro</span>
+            <span>Próximas Limpezas & Decisão Macro</span>
           </h3>
           <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
             Visão executiva da próxima semana e escala da equipe para tomada de decisão
@@ -366,20 +366,20 @@ export const DashboardView = ({ onNovoAgendamento, onEditarAgendamento }) => {
         style={{ 
           marginBottom: '1.25rem', 
           padding: '1rem 1.25rem',
-          borderLeft: faxinasHoje.length > 0 ? '4px solid var(--primary-500)' : '1px solid var(--border-color)'
+          borderLeft: limpezasHoje.length > 0 ? '4px solid var(--primary-500)' : '1px solid var(--border-color)'
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.65rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <span style={{ 
-              background: faxinasHoje.length > 0 ? 'rgba(16, 185, 129, 0.2)' : 'var(--bg-input)', 
-              color: faxinasHoje.length > 0 ? 'var(--primary-400)' : 'var(--text-muted)',
+              background: limpezasHoje.length > 0 ? 'rgba(16, 185, 129, 0.2)' : 'var(--bg-input)', 
+              color: limpezasHoje.length > 0 ? 'var(--primary-400)' : 'var(--text-muted)',
               padding: '0.2rem 0.55rem', 
               borderRadius: '6px', 
               fontSize: '0.75rem', 
               fontWeight: '700' 
             }}>
-              {faxinasHoje.length > 0 ? `Hoje (${faxinasHoje.length} faxinas)` : 'Hoje'}
+              {limpezasHoje.length > 0 ? `Hoje (${limpezasHoje.length} limpezas)` : 'Hoje'}
             </span>
             <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
               {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
@@ -387,18 +387,18 @@ export const DashboardView = ({ onNovoAgendamento, onEditarAgendamento }) => {
           </div>
 
           <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-            Amanhã: <strong>{faxinasAmanha.length} faxina(s) agendada(s)</strong>
+            Amanhã: <strong>{limpezasAmanha.length} limpeza(s) agendada(s)</strong>
           </span>
         </div>
 
-        {faxinasHoje.length === 0 ? (
+        {limpezasHoje.length === 0 ? (
           <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.45rem', padding: '0.35rem 0' }}>
             <CheckCircle2 size={16} color="var(--primary-400)" />
-            <span>Nenhuma faxina programada para hoje. Dia livre para planejamento ou novos contatos!</span>
+            <span>Nenhuma limpeza programada para hoje. Dia livre para planejamento ou novos contatos!</span>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            {faxinasHoje.map(ag => {
+            {limpezasHoje.map(ag => {
               const cli = clientes.find(c => c.id === ag.clienteId);
               const nomesAj = (ag.ajudantesEscaladas || []).map(ae => {
                 const a = ajudantes.find(aj => aj.id === ae.ajudanteId);
@@ -461,16 +461,16 @@ export const DashboardView = ({ onNovoAgendamento, onEditarAgendamento }) => {
 
       {/* GRADE DE KPIS DA PRÓXIMA SEMANA (PRÓXIMOS 7 DIAS) */}
       <div className="grid-kpis" style={{ marginBottom: '1.5rem' }}>
-        {/* KPI 1: Faxinas Próxima Semana */}
+        {/* KPI 1: Limpezas Próxima Semana */}
         <div className="kpi-card" style={{ borderLeft: '4px solid #3b82f6' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <span className="kpi-label">Faxinas Próx. Semana</span>
+            <span className="kpi-label">Limpezas Próx. Semana</span>
             <div className="kpi-icon-wrapper" style={{ background: 'rgba(59, 130, 246, 0.15)' }}>
               <Calendar size={20} color="#3b82f6" />
             </div>
           </div>
           <div className="kpi-value" style={{ color: '#60a5fa' }}>
-            {faxinasProximaSemana.length}
+            {limpezasProximaSemana.length}
           </div>
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
             Próximos 7 dias programados
@@ -578,7 +578,7 @@ export const DashboardView = ({ onNovoAgendamento, onEditarAgendamento }) => {
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '0.85rem' }}>
             {escalaPorAjudante.map(item => {
-              const { ajudante, faxinas, qtd, totalDiarias } = item;
+              const { ajudante, limpezas, qtd, totalDiarias } = item;
               const semEscala = qtd === 0;
 
               return (
@@ -624,7 +624,7 @@ export const DashboardView = ({ onNovoAgendamento, onEditarAgendamento }) => {
                           }}
                         >
                           <AlertTriangle size={12} />
-                          <span>Sem faxina</span>
+                          <span>Sem limpeza</span>
                         </span>
                       ) : qtd === 1 ? (
                         <span 
@@ -637,14 +637,14 @@ export const DashboardView = ({ onNovoAgendamento, onEditarAgendamento }) => {
                             padding: '0.2rem 0.5rem'
                           }}
                         >
-                          1 faxina • Disponível
+                          1 limpeza • Disponível
                         </span>
                       ) : (
                         <span 
                           className="badge badge-success" 
                           style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem' }}
                         >
-                          ✓ {qtd} faxinas • Escalada
+                          ✓ {qtd} limpezas • Escalada
                         </span>
                       )}
                     </div>
@@ -672,10 +672,10 @@ export const DashboardView = ({ onNovoAgendamento, onEditarAgendamento }) => {
                       </div>
                     </div>
 
-                    {/* Resumo das Faxinas Agendadas nos Próximos 7 Dias */}
+                    {/* Resumo das Limpezas Agendadas nos Próximos 7 Dias */}
                     {qtd > 0 && (
                       <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                        {((expandedAjudantes[ajudante.id] ? faxinas : faxinas.slice(0, 3))).map(f => {
+                        {((expandedAjudantes[ajudante.id] ? limpezas : limpezas.slice(0, 3))).map(f => {
                           const c = clientes.find(cli => cli.id === f.clienteId);
                           const ae = (f.ajudantesEscaladas || []).find(e => e.ajudanteId === ajudante.id);
                           const valorDiaria = ae?.valorAPagar || ajudante.valorDiariaBase || 100;
@@ -734,7 +734,7 @@ export const DashboardView = ({ onNovoAgendamento, onEditarAgendamento }) => {
                               background: 'rgba(16, 185, 129, 0.05)'
                             }}
                           >
-                            {expandedAjudantes[ajudante.id] ? `▴ Ver menos (recolher lista)` : `▾ Ver todas as ${qtd} faxinas da semana`}
+                            {expandedAjudantes[ajudante.id] ? `▴ Ver menos (recolher lista)` : `▾ Ver todas as ${qtd} limpezas da semana`}
                           </button>
                         )}
                       </div>
@@ -773,7 +773,7 @@ export const DashboardView = ({ onNovoAgendamento, onEditarAgendamento }) => {
                         className="btn btn-primary btn-sm"
                         style={{ width: '100%', fontSize: '0.72rem', padding: '0.35rem 0.5rem', gap: '0.3rem' }}
                       >
-                        <span>+ Escalar Faxina Agora</span>
+                        <span>+ Escalar Limpeza Agora</span>
                       </button>
                     )}
                   </div>
@@ -833,10 +833,10 @@ export const DashboardView = ({ onNovoAgendamento, onEditarAgendamento }) => {
         onClose={() => {
           setModalPreviewEscalaOpen(false);
           setAjudantePreviewEscala(null);
-          setFaxinasPreviewEscala([]);
+          setLimpezasPreviewEscala([]);
         }}
         ajudante={ajudantePreviewEscala}
-        faxinas={faxinasPreviewEscala}
+        limpezas={limpezasPreviewEscala}
         clientes={clientes}
         showToast={showToast}
       />

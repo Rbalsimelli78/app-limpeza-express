@@ -217,7 +217,7 @@ export const OrcamentoView = ({ onAgendarComDados }) => {
               style={{ width: '18px', height: '18px', accentColor: 'var(--accent-gold)' }}
             />
             <label htmlFor="semManutOrc" style={{ fontSize: '0.85rem', cursor: 'pointer', color: 'var(--text-primary)' }}>
-              <strong>Apartamento sem faxina há mais de 2 meses?</strong> (+R$ 50,00 adicional)
+              <strong>Apartamento sem limpeza há mais de 2 meses?</strong> (+R$ 50,00 adicional)
             </label>
           </div>
 
@@ -233,7 +233,7 @@ export const OrcamentoView = ({ onAgendarComDados }) => {
           }}>
             <div>
               <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block' }}>
-                Valor Total da Faxina
+                Valor Total da Limpeza
               </span>
               <span style={{ fontSize: '0.75rem', color: 'var(--primary-400)' }}>
                 {planoAtual.tempoEstimado} • 2 profissionais
@@ -294,7 +294,7 @@ export const OrcamentoView = ({ onAgendarComDados }) => {
               style={{ flex: 1 }}
             >
               <Calendar size={18} />
-              <span>Agendar Faxina</span>
+              <span>Agendar Limpeza</span>
             </button>
           </div>
         </div>
